@@ -1,0 +1,68 @@
+{
+  "name": "@galaxy/ai-coder-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Consumed by galaxy-desktop (Tauri), galaxy-code (terminal CLI), and galaxy-vscode-extension.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "import": "./dist/ports/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js"
+    },
+    "./context": {
+      "types": "./dist/context/index.d.ts",
+      "import": "./dist/context/index.js"
+    },
+    "./prompt": {
+      "types": "./dist/prompt/index.d.ts",
+      "import": "./dist/prompt/index.js"
+    },
+    "./approval": {
+      "types": "./dist/approval/index.d.ts",
+      "import": "./dist/approval/index.js"
+    },
+    "./retrieval": {
+      "types": "./dist/retrieval/index.d.ts",
+      "import": "./dist/retrieval/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "tsx --test \"test/**/*.test.ts\"",
+    "test:dist": "node test/dist-smoke.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "verify": "npm run typecheck && npm run test && npm run build && npm run test:dist",
+    "prepack": "npm run verify"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.2"
+  }
+}

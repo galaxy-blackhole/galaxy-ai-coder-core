@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://galaxy.local/schemas/ai-coder-tool-registry-2.0.0.json",
+  "title": "Galaxy AI Coder Tool Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tools"],
+  "properties": {
+    "schemaVersion": { "const": "2.0.0" },
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/toolDescriptor" }
+    }
+  },
+  "$defs": {
+    "jsonSchema": {
+      "type": "object",
+      "description": "Validated separately against the deterministic AI Coder JSON Schema subset."
+    },
+    "modalities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepts", "produces"],
+      "properties": {
+        "accepts": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "structured_data",
+              "artifact"
+            ]
+          }
+        },
+        "produces": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "structured_data",
+              "artifact"
+            ]
+          }
+        },
+        "requiredModelCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner"],
+      "properties": {
+        "owner": { "enum": ["base", "core", "extension", "mcp"] },
+        "extensionId": { "type": "string" },
+        "serverId": { "type": "string" }
+      }
+    },
+    "toolDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "modelName",
+        "version",
+        "title",
+        "description",
+        "category",
+        "transport",
+        "inputSchema",
+        "outputSchema",
+        "permissions",
+        "risk",
+        "mutability",
+        "idempotency",
+        "timeoutMs",
+        "maxOutputBytes",
+        "maxOutputTokens",
+        "supportsPagination",
+        "supportsCancellation",
+        "enabledByDefault",
+        "modalities",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$"
+        },
+        "modelName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "category": {
+          "enum": [
+            "artifact",
+            "bootstrap",
+            "command",
+            "communication",
+            "git",
+            "perception",
+            "preview",
+            "project",
+            "research",
+            "workspace"
+          ]
+        },
+        "transport": { "enum": ["native", "core", "extension", "mcp"] },
+        "inputSchema": { "$ref": "#/$defs/jsonSchema" },
+        "outputSchema": { "$ref": "#/$defs/jsonSchema" },
+        "permissions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "risk": { "enum": ["low", "medium", "high", "critical"] },
+        "mutability": {
+          "enum": ["read", "write", "execute", "external_side_effect"]
+        },
+        "idempotency": { "enum": ["safe", "with_key", "unsafe"] },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 600000 },
+        "maxOutputBytes": { "type": "integer", "minimum": 256 },
+        "maxOutputTokens": { "type": "integer", "minimum": 64 },
+        "supportsPagination": { "type": "boolean" },
+        "supportsCancellation": { "type": "boolean" },
+        "enabledByDefault": { "type": "boolean" },
+        "modalities": { "$ref": "#/$defs/modalities" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}
