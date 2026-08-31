@@ -316,6 +316,20 @@ export class AiCoderContextManager {
     });
   }
 
+  replaceSystemPrompt(systemPrompt: string, turn: number): void {
+    this.items = this.items.filter((item) => item.id !== "system-policy");
+    this.addItem({
+      id: "system-policy",
+      kind: "policy",
+      lastUsedTurn: turn,
+      messages: [Object.freeze({ role: "system", content: systemPrompt })],
+      priority: "P0",
+      relevance: 1,
+      summary: "Galaxy AI Coder system policy",
+      trust: "trusted",
+    });
+  }
+
   addFeedback(content: string, turn: number): void {
     this.addItem({
       kind: "message",

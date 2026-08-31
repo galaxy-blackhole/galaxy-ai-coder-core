@@ -224,8 +224,8 @@ const CATALOG: AiCoderToolDescriptor[] = [
   descriptor({
     id: "workspace.read", modelName: "read_file", title: "Read file",
     description: "Read a bounded UTF-8 range inside the workspace. Use after locating a relevant file. Do not read an entire large file without need. Returns content, range, hash, truncation, and provenance.",
-    category: "workspace", inputSchema: objectSchema({ path: PATH, startLine: { type: "integer", minimum: 1 }, endLine: { type: "integer", minimum: 1 }, maxBytes: { type: "integer", minimum: 256, maximum: 128000 } }, ["path"]),
-    outputSchema: objectSchema({ path: PATH, content: STRING, contentHash: HASH, startLine: { type: "integer", minimum: 1 }, endLine: { type: "integer", minimum: 0 }, truncated: BOOLEAN, provenance: PROVENANCE }, ["path", "content", "contentHash", "truncated", "provenance"]),
+    category: "workspace", inputSchema: objectSchema({ path: PATH, startLine: { type: "integer", minimum: 1 }, endLine: { type: "integer", minimum: 1 }, maxBytes: { type: "integer", minimum: 256, maximum: 128000 }, cursor: CURSOR }, ["path"]),
+    outputSchema: objectSchema({ path: PATH, content: STRING, contentHash: HASH, startLine: { type: "integer", minimum: 1 }, endLine: { type: "integer", minimum: 0 }, truncated: BOOLEAN, nextCursor: CURSOR, provenance: PROVENANCE }, ["path", "content", "contentHash", "truncated", "provenance"]),
     permissions: ["fs.workspace"], risk: "low", mutability: "read", maxOutputTokens: 8_000, supportsPagination: true, enabledByDefault: true,
   }),
   descriptor({
@@ -251,17 +251,30 @@ const CATALOG: AiCoderToolDescriptor[] = [
   }),
   descriptor({
     id: "project.detect", modelName: "detect_project", title: "Detect project",
-    description: "Detect project roots, languages, package manager, manifests, and known scripts from workspace metadata. Use before validation. Do not guess commands from filenames alone. Returns deterministic project metadata.",
+    description: "Detect project roots, languages, package manager, manifests, and known scripts from workspace metadata. Use before validation. Check scan.complete and warnings before relying on absence; do not guess commands from filenames alone. Returns deterministic project metadata with explicit scan coverage.",
     category: "project", transport: "native", inputSchema: objectSchema({ path: PATH }),
-    outputSchema: objectSchema({ projectRoot: PATH, languages: arraySchema(NON_EMPTY_STRING, 32), packageManager: STRING, manifests: arraySchema(PATH, 64), commands: objectSchema({}, [], STRING) }, ["projectRoot", "languages", "manifests", "commands"]),
+    outputSchema: objectSchema({
+      projectRoot: PATH,
+      languages: arraySchema(NON_EMPTY_STRING, 32),
+      packageManager: STRING,
+      manifests: arraySchema(PATH, 64),
+      commands: objectSchema({}, [], STRING),
+      scan: objectSchema({
+        complete: BOOLEAN,
+        entriesScanned: { type: "integer", minimum: 0 },
+        deepestDepth: { type: "integer", minimum: 0 },
+        maxDepth: { type: "integer", minimum: 1 },
+      }, ["complete", "entriesScanned", "deepestDepth", "maxDepth"]),
+      warnings: arraySchema(NON_EMPTY_STRING, 32),
+    }, ["projectRoot", "languages", "manifests", "commands", "scan", "warnings"]),
     permissions: ["fs.workspace"], risk: "low", mutability: "read", maxOutputTokens: 4_000, enabledByDefault: true,
   }),
   descriptor({
     id: "project.validate", modelName: "validate_project", title: "Validate project",
-    description: "Run detected, bounded project checks such as tests, typecheck, lint, or build. Use after relevant changes or in validation mode. Do not invent destructive commands. Returns one structured result per check.",
+    description: "Run detected, bounded project checks such as tests, typecheck, lint, or build. Declared repository scripts are executable code and require host approval or verified containment. Use after relevant changes; never invent commands. Returns one structured result per check.",
     category: "project", transport: "native", inputSchema: objectSchema({ checks: arraySchema({ type: "string", enum: ["test", "typecheck", "lint", "build"] }, 4, 1), path: PATH, timeoutMs: { type: "integer", minimum: 100, maximum: 600000 } }, ["checks"]),
     outputSchema: objectSchema({ results: arraySchema(VALIDATION_RESULT, 8), passed: BOOLEAN, cancelled: BOOLEAN }, ["results", "passed", "cancelled"]),
-    permissions: ["fs.workspace", "process.execute"], risk: "medium", mutability: "execute", idempotency: "safe", timeoutMs: 600_000, maxOutputTokens: 12_000, supportsCancellation: true, enabledByDefault: true,
+    permissions: ["fs.workspace", "process.execute"], risk: "high", mutability: "execute", idempotency: "unsafe", timeoutMs: 600_000, maxOutputTokens: 12_000, supportsCancellation: true, enabledByDefault: true,
   }),
   descriptor({
     id: "research.fetch", modelName: "fetch_url", title: "Fetch URL",

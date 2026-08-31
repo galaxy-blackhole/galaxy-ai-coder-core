@@ -30,6 +30,7 @@ import {
   isAiCoderCoreSettings,
   type AiCoderCoreSettings,
 } from "../src/tools/settings-types.js";
+import type { AiCoderRuntimeToolResult } from "../src/runtime/runtime-types.js";
 
 function toolContext(signal: AbortSignal): ToolExecutionContext {
   return {
@@ -227,8 +228,20 @@ test("compile-time contracts reject ambiguous success, mode, and mutation shapes
     content: "replacement",
     path: "src/index.ts",
   };
+  // @ts-expect-error Failed results cannot attest successful mutation effects.
+  const failedMutation: AiCoderRuntimeToolResult = {
+    canonicalToolId: "workspace.write",
+    content: "partial",
+    effects: { writes: [{ afterHash: "after", beforeHash: "before", path: "src/a.ts" }] },
+    effectsAuthority: "host",
+    error: { code: "PARTIAL", message: "failed after commit", retryable: false },
+    ok: false,
+    summary: "partial failure",
+    trust: "workspace",
+  };
 
   assert.deepEqual(ambiguousSuccess, { ok: true });
   assert.equal(multipleMode.executionMode, "multiple");
   assert.equal(unsafeWrite.path, "src/index.ts");
+  assert.equal(failedMutation.ok, false);
 });

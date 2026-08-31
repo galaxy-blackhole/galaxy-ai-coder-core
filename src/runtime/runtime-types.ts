@@ -3,11 +3,14 @@ import type {
   AiCoderCheckpointFile,
   AiCoderCheckpointReason,
   AiCoderRunCheckpoint,
+  AiCoderWorkspaceEntryKind,
 } from "../context/checkpoint.js";
 import type { AiCoderContextPressure } from "../context/context-profile.js";
 import type { AiCoderToolOutputLimits, AiCoderToolOutputSpill } from "../context/tool-output.js";
 import type { CodingModelAdapter, CodingRoundEvent, CodingToolCall, CodingToolDefinition } from "../tools/coding-messages.js";
+import type { AiCoderToolEffectCapability } from "../tools/tool-effect-profile.js";
 import type { AiCoderTokenProfile } from "../tools/settings-types.js";
+import type { AiCoderPromptConfiguration } from "../prompt/prompt-assembler.js";
 import type { AiCoderTaskMode, RunExecutionContext, ToolExecutionContext } from "../ports/execution-context.js";
 import type { PortResult } from "../ports/port-result.js";
 import type { TracePort } from "../ports/trace-port.js";
@@ -49,42 +52,57 @@ export type AiCoderRuntimeToolEffects = Readonly<{
     status: "failed" | "not_run" | "passed";
   }>[];
   writes?: readonly Readonly<{
-    afterHash: string;
+    afterHash: string | null;
+    afterKind?: AiCoderWorkspaceEntryKind;
     beforeHash: string | null;
+    beforeKind?: AiCoderWorkspaceEntryKind;
     path: string;
   }>[];
 }>;
 
-export type AiCoderRuntimeEffectCapability =
-  | "approval"
-  | "criterion_satisfy"
-  | "criterion_waive"
-  | "diff_review"
-  | "inspect"
-  | "plan"
-  | "state_version"
-  | "validate"
-  | "write";
+/** @deprecated Prefer AiCoderToolEffectCapability from the tools contract. */
+export type AiCoderRuntimeEffectCapability = AiCoderToolEffectCapability;
 
 type AiCoderRuntimeToolResultBase = Readonly<{
   artifactRef?: string;
   canonicalToolId: string;
   content: string;
-  error?: AiCoderRuntimeToolError;
-  ok: boolean;
   outputLimits?: AiCoderToolOutputLimits;
   summary: string;
   trust: "external" | "trusted" | "workspace";
 }>;
+
+export type AiCoderRuntimeFailureEffects = Readonly<{
+  acceptanceCriteriaSatisfied?: never;
+  acceptanceCriteriaWaived?: never;
+  approval: "denied";
+  approvalRequestId?: string;
+  diffReview?: never;
+  inspectedPaths?: never;
+  nextAction?: never;
+  plan?: never;
+  stateVersion?: never;
+  validations?: never;
+  writes?: never;
+}>;
+
+type AiCoderRuntimeEffectAttestation<Effects> = Readonly<
+  | { effects?: never; effectsAuthority?: never }
+  | { effects: Effects; effectsAuthority: "host" }
+>;
 
 /**
  * Tool output text may be untrusted. Runtime effects cross the correctness
  * boundary only when the host adapter explicitly attests that it produced
  * them; model/tool text is never parsed into trusted effects by the core.
  */
-export type AiCoderRuntimeToolResult = AiCoderRuntimeToolResultBase & Readonly<
-  | { effects?: never; effectsAuthority?: never }
-  | { effects: AiCoderRuntimeToolEffects; effectsAuthority: "host" }
+export type AiCoderRuntimeToolResult = Readonly<
+  | (AiCoderRuntimeToolResultBase
+    & Readonly<{ error?: never; ok: true }>
+    & AiCoderRuntimeEffectAttestation<AiCoderRuntimeToolEffects>)
+  | (AiCoderRuntimeToolResultBase
+    & Readonly<{ error: AiCoderRuntimeToolError; ok: false }>
+    & AiCoderRuntimeEffectAttestation<AiCoderRuntimeFailureEffects>)
 >;
 
 export type AiCoderRuntimeToolSet = Readonly<{
@@ -175,13 +193,10 @@ export type AiCoderRunRequest = Readonly<{
   constraints?: readonly string[];
   goal: string;
   mode?: AiCoderTaskMode;
-  promptHash: string;
-  promptVersion: string;
+  prompt: AiCoderPromptConfiguration;
   runId?: string;
-  systemPrompt: string;
   taskId: string;
   tokenProfile?: AiCoderTokenProfile;
-  workspaceInstructions?: readonly string[];
   workspaceRoot: string;
 }>;
 

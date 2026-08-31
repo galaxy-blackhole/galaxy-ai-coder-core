@@ -24,6 +24,9 @@ copying the CLI implementation wholesale.
   an artifact/spill port.
 - Return non-zero exits as structured command results, not transport success
   masquerading as validation success.
+- Report process containment separately from workspace `cwd` validation. A
+  missing or failed containment backend must fail before spawn when containment
+  is required; best-effort execution must not be labeled sandboxed.
 
 ### Model
 
@@ -33,14 +36,38 @@ copying the CLI implementation wholesale.
 - Resend/reconstruct attachments because the core does not assume a stateful
   provider session.
 
+### Prompt input
+
+- Supply only the structured `AiCoderPromptConfiguration` fields.
+- Never assemble or pass `systemPrompt`, `promptHash`, or `promptVersion`.
+- Resolve trusted workspace instructions and provenance before starting the
+  run; repository/tool text remains untrusted unless explicitly promoted.
+- Keep approval, network, and write declarations consistent with the actual
+  policy enforced by the host.
+
 ### Tool executor
 
 - Validate input and output schemas.
 - Route model names to stable canonical IDs.
-- Declare effect capabilities per canonical ID.
+- Build core canonical IDs and effect capabilities with
+  `createAiCoderCoreToolEffectMetadata(activeDescriptors)`; do not copy the
+  profile into the host.
 - Apply task-mode and approval policy before side effects.
 - Never derive trusted effects by parsing model-visible output text.
+- For `command.run`, `command.session`, and `project.validate`, emit `write`
+  only after independently capturing exact changed paths and state hashes.
+  Represent file create as null-before and file delete as null-after. For
+  directories, symlinks, and special entries, also emit canonical before/after
+  kinds; a directory transition may have two null content hashes.
+- Treat repository-declared validation scripts as executable code: require
+  explicit approval or a verified containment backend before dispatch.
 - Preserve the core-provided idempotency key for operations that support it.
+- After dispatch starts, propagate unexpected adapter throws and output-schema
+  failures as unknown side-effect outcomes. Never convert them into ordinary
+  retryable tool results, even when the tool was expected to be read-only.
+- A failed structured result may carry only `approval=denied` and its correlated
+  request ID. Inspection, write, validation, review, plan, criterion, or state
+  effects on `ok=false` are contract failures with an unknown outcome.
 
 ### Checkpoint store and trace
 
@@ -67,7 +94,37 @@ Each host should run equivalent fixtures for:
 11. tampered checkpoint and changed workspace rejection;
 12. trace flush and final-report persistence failure;
 13. symlink and path traversal attempts;
-14. deterministic replay hash across two isolated runs.
+14. deterministic replay hash across two isolated runs;
+15. legacy free-form prompt fields and unknown prompt keys are rejected;
+16. prompt hash changes on lazy registry activation and policy changes;
+17. resume rejects prompt configuration different from the checkpoint;
+18. a fresh capability-probe timestamp does not invalidate compatible resume;
+19. a passing validation supersedes older failed evidence with the same ID;
+20. trusted `git.exec` diff-review evidence is classified as a diff observation;
+21. identical stale edits are blocked without changing file content or inode;
+22. varied stale edit arguments on one path/state still reach a bounded pause;
+23. A→B→A→B write-hash cycles pause rather than oscillate indefinitely;
+24. repeated validation failure on one workspace fingerprint is bounded;
+25. provider overflow checkpoints, compacts, recounts, and continues;
+26. persistent provider overflow fails with a resumable checkpoint;
+27. project discovery reports incomplete scans and malformed manifests instead
+    of treating missing evidence as proof of absence;
+28. required command containment refuses to spawn when conformance is
+    unavailable or unverified;
+29. an adapter throw after dispatch terminates with an unknown side-effect
+    outcome, and partial command mutations remain explicit when post-capture
+    succeeds;
+30. directory/symlink/special-entry mutations remain typed through completion,
+    checkpoint, and resume verification;
+31. exact-repeat and failed-mutation-family counters survive pause/resume;
+32. invalid UTF-8 is rejected by text mutation paths without rewriting bytes or
+    replacing the inode;
+33. project detection ignores directory names that resemble manifests/source
+    files and discloses host traversal exclusions.
+34. malformed adapter output after a real write/edit and an unexpected throw
+    after a commit both terminate as durable unknown side-effect outcomes.
+35. `ok=false` plus host-attested write/validation/state effects cannot be
+    ignored or followed by a successful final response.
 
 ## Integration order
 

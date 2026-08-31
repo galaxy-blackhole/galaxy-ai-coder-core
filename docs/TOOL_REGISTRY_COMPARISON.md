@@ -1,7 +1,7 @@
 # Tool Registry Comparison Across Production AI Coding CLIs
 
-Ngày cập nhật: 2026-08-21
-Trạng thái: Sprint 2 milestone — research đầu vào cho `@galaxy/ai-coder-core`.
+Ngày cập nhật: 2026-08-31
+Trạng thái: research lịch sử + đối chiếu triển khai hiện tại ở mục 11.
 
 ## 1. Mục đích
 
@@ -314,3 +314,38 @@ Galaxy đã có convention này trong prompt assembler (`INSTRUCTION PRIORITY AN
 - [ ] Chấp nhận thêm `ask_user` cho non-interactive mode?
 
 Trả lời "yes" cho 7 câu = bootstrap set 12 tool và optional set 9 tool ở phần 4.
+
+## 11. Trạng thái triển khai hiện tại (2026-08-31)
+
+Phần 10.2–10.3 ở trên được giữ lại như lịch sử quyết định. Bảy quyết định đã
+được chấp nhận và **contract core 21 tool đã hoàn thành**:
+
+- catalog có đúng 21 canonical ID, model name không trùng, schema cụ thể và
+  snapshot bất biến;
+- 12 descriptor bootstrap + 9 descriptor optional đã được rút gọn/gộp như đề
+  xuất (`command.session`, `git.exec`, `perception.analyze`, `preview.manage`);
+- lazy activation qua `catalog.search` làm runtime lắp lại system prompt và cập
+  nhật prompt hash;
+- effect capability của cả 21 tool có một nguồn chuẩn versioned trong core;
+  runtime từ chối host map thiếu/thừa/lệch;
+- `workspace.read` có cursor ở cả input/output; `project.detect` có
+  `scan.complete` và warnings; create/edit/delete có mutation evidence rõ ràng;
+- `project.validate` được xếp high-risk/unsafe vì script trong manifest là code
+  của repository, nên profile balanced vẫn yêu cầu approval;
+- approval, mode, schema input/output, provenance, pagination, idempotency,
+  checkpoint/resume và completion gate đều có deterministic test.
+
+Tuy nhiên, “contract hoàn thành” không đồng nghĩa “mọi production adapter đã
+hoàn thành”:
+
+- `galaxy-code` có adapter filesystem, Git, project và command thật cho phòng
+  thí nghiệm; command containment production vẫn chưa có backend đạt probe;
+- 9 tool optional hiện có deterministic in-memory contract doubles để chạy đủ
+  một single-agent flow, chưa phải network/session/preview/perception/artifact/
+  user integration thật;
+- VS Code và Desktop chưa được phép tự tuyên bố conformance cho đến khi cùng
+  chạy matrix host trong `docs/HOST_CONFORMANCE.md`.
+
+Vì vậy câu trả lời chính xác là: **registry architecture và core contract đã
+hoàn thiện; production integration đa host chưa hoàn thiện**. Subagent chỉ nên
+quay lại sau khi ba host cùng vượt qua matrix single-agent này.

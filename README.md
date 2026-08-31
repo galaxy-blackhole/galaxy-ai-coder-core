@@ -27,29 +27,41 @@ the current runtime baseline.
 2. A model round may emit at most one correlated tool call.
 3. The model sees model-facing names; every result must match the host's
    model-name-to-canonical-ID mapping.
-4. Tool text is never parsed into trusted state. Only declared host effects
+4. Hosts provide structured prompt policy only. Runtime assembles and hashes
+   the system prompt after capability and registry discovery, then formats the
+   sole user task from `AiCoderTaskContract`.
+5. Tool text is never parsed into trusted state. Only declared host effects
    can change inspection, write, validation, diff, plan, approval, or criterion
    evidence.
-5. Every host effect is checked against a per-canonical-tool capability policy.
-6. Every mutation uses a precondition and records non-empty before/after
-   evidence. A later validation has an explicit `workspace` or `paths` scope.
-7. Validation and final diff evidence must match the final serialized workspace
+6. Every host effect is checked against a per-canonical-tool capability policy.
+   Built-in hosts derive that policy from the exported versioned core profile;
+   divergent local copies are rejected at runtime startup.
+7. Every mutation uses a precondition and records distinct before/after state:
+   create has a null `beforeHash`, delete has a null `afterHash`, and at least
+   one hash is non-null. Later validation has explicit workspace/path scope.
+8. Validation and final diff evidence must match the final serialized workspace
    fingerprint before completion.
-8. A required acceptance criterion must be `satisfied`; `waived` does not close
+9. A required acceptance criterion must be `satisfied`; `waived` does not close
    a required criterion.
-9. Checkpoints are cloned before validation, deeply frozen after validation,
+10. Checkpoints are cloned before validation, deeply frozen after validation,
    redacted, hashed with SHA-256, and resumed only from trusted host storage (or
    an explicit `trusted_host` provenance assertion).
-10. Cancellation makes an in-flight side-effect outcome `unknown` unless the
-    host returns a structured result. Hosts must honor the supplied signal and
-    absolute deadline.
+11. Cancellation makes an in-flight side-effect outcome `unknown` unless the
+   host returns a structured result. Hosts must honor the supplied signal and
+   absolute deadline.
+12. Identical retries, varied failed mutations on one path/state, repeated
+    validation failures on one fingerprint, and returning content hashes are
+    bounded; unresolved no-progress episodes pause with a checkpoint.
+13. Provider-reported context overflow checkpoints, compacts, and recounts
+    before another model request. Mandatory state is never silently dropped to
+    force a round through.
 
 ## Runtime flow
 
 ```text
 request
   -> capability + tool-policy snapshot
-  -> trusted system/workspace/task envelopes
+  -> core-owned prompt snapshot + canonical user-task contract
   -> bounded context assembly
   -> one streamed model round
   -> zero or one correlated tool call
@@ -64,7 +76,9 @@ request
   -> completed
 ```
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[PROMPT_CONTRACT.md](docs/PROMPT_CONTRACT.md),
+[TOOL_EFFECT_PROFILE.md](docs/TOOL_EFFECT_PROFILE.md), and
 [HOST_CONFORMANCE.md](docs/HOST_CONFORMANCE.md) for integration contracts.
 
 ## Source layout

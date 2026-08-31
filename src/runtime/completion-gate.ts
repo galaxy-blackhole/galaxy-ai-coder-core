@@ -1,6 +1,13 @@
+import {
+  isAiCoderWorkspaceMutationEvidence,
+  type AiCoderWorkspaceEntryKind,
+} from "../context/checkpoint.js";
+
 export type AiCoderCompletionWrite = Readonly<{
-  afterHash: string;
+  afterHash: string | null;
+  afterKind?: AiCoderWorkspaceEntryKind;
   beforeHash: string | null;
+  beforeKind?: AiCoderWorkspaceEntryKind;
   path: string;
   sequence: number;
   toolCallId: string;
@@ -38,6 +45,7 @@ export type AiCoderCompletionSnapshot = Readonly<{
   finalReportStored: boolean;
   finalWorkspaceFingerprint: string | null;
   inspectedWorkspace: boolean;
+  openProblems?: readonly string[];
   pendingApprovals: number;
   runningToolCalls: number;
   tokenLedgerFinalized: boolean;
@@ -61,6 +69,7 @@ export type AiCoderCompletionIssue = Readonly<{
     | "FINAL_REPORT_EMPTY"
     | "FINAL_REPORT_NOT_STORED"
     | "INSPECTION_MISSING"
+    | "OPEN_PROBLEMS"
     | "PENDING_APPROVAL"
     | "RUNNING_TOOL_CALL"
     | "TOKEN_LEDGER_NOT_FINALIZED"
@@ -101,6 +110,9 @@ export function evaluateAiCoderCompletion(
   }
   if (snapshot.runningToolCalls) add("RUNNING_TOOL_CALL", `${snapshot.runningToolCalls} tool call(s) are still running.`);
   if (snapshot.pendingApprovals) add("PENDING_APPROVAL", `${snapshot.pendingApprovals} approval request(s) are still pending.`);
+  if (snapshot.openProblems?.length) {
+    add("OPEN_PROBLEMS", `${snapshot.openProblems.length} unresolved problem(s) remain.`);
+  }
   const openCriteria = snapshot.acceptanceCriteria.filter((criterion) => criterion.required && criterion.status !== "satisfied");
   if (openCriteria.length) {
     add("ACCEPTANCE_CRITERIA_OPEN", `Open criterion ids: ${openCriteria.map((item) => item.id).join(", ")}.`);
@@ -127,8 +139,8 @@ export function evaluateAiCoderCompletion(
     add("VALIDATION_MISSING", "A successful validation result is required.");
   }
   for (const write of snapshot.writes) {
-    if (!write.path.trim() || !write.afterHash.trim() || !write.workspaceFingerprint.trim()
-      || (write.beforeHash !== null && write.beforeHash === write.afterHash)) {
+    if (!write.path.trim() || !write.workspaceFingerprint.trim()
+      || !isAiCoderWorkspaceMutationEvidence(write)) {
       add("WRITE_EVIDENCE_INVALID", `${write.path || "<blank>"} does not contain valid mutation evidence.`);
     }
     if (!writeIsValidated(write, currentValidations)) add("WRITE_NOT_VALIDATED", `${write.path} has no later successful validation evidence.`);

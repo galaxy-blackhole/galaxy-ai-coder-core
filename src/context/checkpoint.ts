@@ -7,6 +7,52 @@ import { compareAiCoderText } from "../deterministic-order.js";
 
 export const AI_CODER_CHECKPOINT_SCHEMA_VERSION = 1 as const;
 
+export const AI_CODER_WORKSPACE_ENTRY_KINDS = Object.freeze([
+  "directory",
+  "file",
+  "missing",
+  "other",
+  "symlink",
+] as const);
+
+export type AiCoderWorkspaceEntryKind = typeof AI_CODER_WORKSPACE_ENTRY_KINDS[number];
+
+export function isAiCoderWorkspaceEntryKind(value: unknown): value is AiCoderWorkspaceEntryKind {
+  return typeof value === "string"
+    && (AI_CODER_WORKSPACE_ENTRY_KINDS as readonly string[]).includes(value);
+}
+
+function workspaceStateIsValid(kind: AiCoderWorkspaceEntryKind, hash: string | null): boolean {
+  if (kind === "directory" || kind === "missing") return hash === null;
+  return typeof hash === "string" && hash.trim().length > 0;
+}
+
+/**
+ * Accepts legacy file-only mutations without kinds and the v1-compatible
+ * extended form used for directories, symlinks, and special entries.
+ */
+export function isAiCoderWorkspaceMutationEvidence(value: Readonly<{
+  afterHash: string | null;
+  afterKind?: AiCoderWorkspaceEntryKind;
+  beforeHash: string | null;
+  beforeKind?: AiCoderWorkspaceEntryKind;
+}>): boolean {
+  const beforeValid = value.beforeHash === null
+    || (typeof value.beforeHash === "string" && value.beforeHash.trim().length > 0);
+  const afterValid = value.afterHash === null
+    || (typeof value.afterHash === "string" && value.afterHash.trim().length > 0);
+  if (!beforeValid || !afterValid) return false;
+  if (value.beforeKind === undefined && value.afterKind === undefined) {
+    return !(value.beforeHash === null && value.afterHash === null)
+      && value.beforeHash !== value.afterHash;
+  }
+  if (!isAiCoderWorkspaceEntryKind(value.beforeKind)
+    || !isAiCoderWorkspaceEntryKind(value.afterKind)) return false;
+  return workspaceStateIsValid(value.beforeKind, value.beforeHash)
+    && workspaceStateIsValid(value.afterKind, value.afterHash)
+    && (value.beforeKind !== value.afterKind || value.beforeHash !== value.afterHash);
+}
+
 export type AiCoderCheckpointReason =
   | "app_shutdown"
   | "context_threshold"
@@ -41,14 +87,17 @@ export type AiCoderCheckpointPhase =
 export type AiCoderCheckpointFile = Readonly<{
   contentHash: string | null;
   endLine?: number;
+  kind?: AiCoderWorkspaceEntryKind;
   path: string;
   reason?: string;
   startLine?: number;
 }>;
 
 export type AiCoderCheckpointEdit = Readonly<{
-  afterHash: string;
+  afterHash: string | null;
+  afterKind?: AiCoderWorkspaceEntryKind;
   beforeHash: string | null;
+  beforeKind?: AiCoderWorkspaceEntryKind;
   path: string;
   sequence: number;
   toolCallId: string;
@@ -94,6 +143,16 @@ export type AiCoderCheckpointAcceptanceCriterion = Readonly<{
   text: string;
 }>;
 
+export type AiCoderCheckpointNoProgress = Readonly<{
+  episodes: number;
+  failedToolFamilies: readonly Readonly<{ count: number; key: string }>[];
+  previousTool: Readonly<{
+    argumentsHash: string;
+    name: string;
+    repetitions: number;
+  }> | null;
+}>;
+
 export type AiCoderRunCheckpointPayload = Readonly<{
   acceptanceCriteria: readonly AiCoderCheckpointAcceptanceCriterion[];
   approvals: readonly string[];
@@ -119,6 +178,7 @@ export type AiCoderRunCheckpointPayload = Readonly<{
   goal: string;
   lastToolCalls: readonly AiCoderCheckpointToolCall[];
   nextAction: string;
+  noProgress?: AiCoderCheckpointNoProgress;
   openProblems: readonly string[];
   pendingApprovals: readonly Readonly<{
     requestId: string;
@@ -312,7 +372,9 @@ export function sanitizeAiCoderCheckpointPayload(
     delivery: Object.freeze({ attachmentsDelivered: payload.delivery.attachmentsDelivered }),
     edits: Object.freeze(payload.edits.map((item) => Object.freeze({
       afterHash: item.afterHash,
+      ...(item.afterKind !== undefined ? { afterKind: item.afterKind } : {}),
       beforeHash: item.beforeHash,
+      ...(item.beforeKind !== undefined ? { beforeKind: item.beforeKind } : {}),
       path: item.path,
       sequence: item.sequence,
       toolCallId: item.toolCallId,
@@ -328,6 +390,18 @@ export function sanitizeAiCoderCheckpointPayload(
       toolCallId: item.toolCallId,
     }))),
     nextAction: redactAiCoderCheckpointText(payload.nextAction),
+    ...(payload.noProgress === undefined ? {} : {
+      noProgress: Object.freeze({
+        episodes: payload.noProgress.episodes,
+        failedToolFamilies: Object.freeze(payload.noProgress.failedToolFamilies.map((item) => Object.freeze({
+          count: item.count,
+          key: item.key,
+        }))),
+        previousTool: payload.noProgress.previousTool === null
+          ? null
+          : Object.freeze({ ...payload.noProgress.previousTool }),
+      }),
+    }),
     openProblems: redactList(payload.openProblems),
     pendingApprovals: Object.freeze(payload.pendingApprovals.map((item) => Object.freeze({
       requestId: item.requestId,
@@ -365,6 +439,7 @@ export function sanitizeAiCoderCheckpointPayload(
       activeFiles: Object.freeze(payload.workspace.activeFiles.map((item) => Object.freeze({
         contentHash: item.contentHash,
         ...(item.endLine !== undefined ? { endLine: item.endLine } : {}),
+        ...(item.kind !== undefined ? { kind: item.kind } : {}),
         path: item.path,
         ...(item.reason !== undefined ? { reason: redactAiCoderCheckpointText(item.reason) } : {}),
         ...(item.startLine !== undefined ? { startLine: item.startLine } : {}),
@@ -421,7 +496,7 @@ async function validateCheckpointSnapshot(
   };
   rejectUnknown(checkpoint, "", [
     "acceptanceCriteria", "approvals", "compatibility", "completionEvidence", "constraints", "contentHash",
-    "createdAt", "decisions", "delivery", "edits", "executionBudget", "goal", "lastToolCalls", "nextAction", "openProblems",
+    "createdAt", "decisions", "delivery", "edits", "executionBudget", "goal", "lastToolCalls", "nextAction", "noProgress", "openProblems",
     "pendingApprovals", "phase", "plan", "reason", "runId", "schemaVersion", "seenToolCallIds", "taskId",
     "tokenLedgerRef", "totals", "validation", "workspace",
   ]);
@@ -465,6 +540,38 @@ async function validateCheckpointSnapshot(
     ["seenToolCallIds", checkpoint.seenToolCallIds],
   ] as const) {
     if (!stringArray(valueAtPath)) issue(path, `${path} must be a string array.`);
+  }
+  if (checkpoint.noProgress !== undefined) {
+    if (!checkpoint.noProgress || typeof checkpoint.noProgress !== "object") {
+      issue("noProgress", "noProgress must be an object when present.");
+    } else {
+      rejectUnknown(checkpoint.noProgress, "noProgress", ["episodes", "failedToolFamilies", "previousTool"]);
+      if (!nonNegativeInteger(checkpoint.noProgress.episodes)) {
+        issue("noProgress.episodes", "episodes must be a non-negative integer.");
+      }
+      if (!Array.isArray(checkpoint.noProgress.failedToolFamilies)) {
+        issue("noProgress.failedToolFamilies", "failedToolFamilies must be an array.");
+      } else checkpoint.noProgress.failedToolFamilies.forEach((family, index) => {
+        if (!family || typeof family !== "object") {
+          issue(`noProgress.failedToolFamilies[${index}]`, "Failure family must be an object.");
+          return;
+        }
+        rejectUnknown(family, `noProgress.failedToolFamilies[${index}]`, ["count", "key"]);
+        if (!nonEmptyString(family.key)) issue(`noProgress.failedToolFamilies[${index}].key`, "Failure family key is required.");
+        if (!positiveIntegerValue(family.count)) issue(`noProgress.failedToolFamilies[${index}].count`, "Failure family count must be positive.");
+      });
+      const previousTool = checkpoint.noProgress.previousTool;
+      if (previousTool !== null) {
+        if (!previousTool || typeof previousTool !== "object") {
+          issue("noProgress.previousTool", "previousTool must be an object or null.");
+        } else {
+          rejectUnknown(previousTool, "noProgress.previousTool", ["argumentsHash", "name", "repetitions"]);
+          if (!nonEmptyString(previousTool.argumentsHash)) issue("noProgress.previousTool.argumentsHash", "argumentsHash is required.");
+          if (!nonEmptyString(previousTool.name)) issue("noProgress.previousTool.name", "name is required.");
+          if (!positiveIntegerValue(previousTool.repetitions)) issue("noProgress.previousTool.repetitions", "repetitions must be positive.");
+        }
+      }
+    }
   }
   if (!Array.isArray(checkpoint.acceptanceCriteria)) {
     issue("acceptanceCriteria", "acceptanceCriteria must be an array.");
@@ -546,11 +653,21 @@ async function validateCheckpointSnapshot(
     if (!stringArray(checkpoint.workspace.instructions)) issue("workspace.instructions", "workspace.instructions must be a string array.");
     if (!Array.isArray(checkpoint.workspace.activeFiles)) issue("workspace.activeFiles", "workspace.activeFiles must be an array.");
     else checkpoint.workspace.activeFiles.forEach((file, index) => {
-      rejectUnknown(file, `workspace.activeFiles[${index}]`, ["contentHash", "endLine", "path", "reason", "startLine"]);
+      rejectUnknown(file, `workspace.activeFiles[${index}]`, ["contentHash", "endLine", "kind", "path", "reason", "startLine"]);
       if (!file || typeof file !== "object" || !nonEmptyString(file.path)) issue(`workspace.activeFiles[${index}].path`, "Active file path is required.");
       else {
         if (file.contentHash !== null && !nonEmptyString(file.contentHash)) {
           issue(`workspace.activeFiles[${index}].contentHash`, "contentHash must be a non-empty string or null.");
+        }
+        if (file.kind !== undefined && !isAiCoderWorkspaceEntryKind(file.kind)) {
+          issue(`workspace.activeFiles[${index}].kind`, "kind must be a supported workspace entry kind.");
+        }
+        if ((file.kind === "directory" || file.kind === "missing") && file.contentHash !== null) {
+          issue(`workspace.activeFiles[${index}].contentHash`, `${file.kind} entries cannot carry a content hash.`);
+        }
+        if ((file.kind === "file" || file.kind === "symlink" || file.kind === "other")
+          && !nonEmptyString(file.contentHash)) {
+          issue(`workspace.activeFiles[${index}].contentHash`, `${file.kind} entries require a content hash.`);
         }
         if (file.startLine !== undefined && !positiveIntegerValue(file.startLine)) {
           issue(`workspace.activeFiles[${index}].startLine`, "startLine must be a positive integer.");
@@ -571,15 +688,15 @@ async function validateCheckpointSnapshot(
   else checkpoint.edits.forEach((edit, index) => {
     if (!edit || typeof edit !== "object") issue(`edits[${index}]`, "Edit must be an object.");
     else {
-      rejectUnknown(edit, `edits[${index}]`, ["afterHash", "beforeHash", "path", "sequence", "toolCallId", "workspaceFingerprint"]);
+      rejectUnknown(edit, `edits[${index}]`, ["afterHash", "afterKind", "beforeHash", "beforeKind", "path", "sequence", "toolCallId", "workspaceFingerprint"]);
       if (!nonEmptyString(edit.path)) issue(`edits[${index}].path`, "Edit path is required.");
       if (!nonEmptyString(edit.toolCallId)) issue(`edits[${index}].toolCallId`, "Edit toolCallId is required.");
       if (!nonNegativeInteger(edit.sequence)) issue(`edits[${index}].sequence`, "Edit sequence must be non-negative.");
       if (edit.beforeHash !== null && !nonEmptyString(edit.beforeHash)) issue(`edits[${index}].beforeHash`, "beforeHash must be a non-empty string or null.");
-      if (!nonEmptyString(edit.afterHash)) issue(`edits[${index}].afterHash`, "afterHash must be a non-empty string.");
+      if (edit.afterHash !== null && !nonEmptyString(edit.afterHash)) issue(`edits[${index}].afterHash`, "afterHash must be a non-empty string or null.");
       if (!nonEmptyString(edit.workspaceFingerprint)) issue(`edits[${index}].workspaceFingerprint`, "workspaceFingerprint is required.");
-      if (nonEmptyString(edit.beforeHash) && edit.beforeHash === edit.afterHash) {
-        issue(`edits[${index}].afterHash`, "Edit hashes must prove a state change.");
+      if (!isAiCoderWorkspaceMutationEvidence(edit as AiCoderCheckpointEdit)) {
+        issue(`edits[${index}].afterHash`, "Edit kinds and hashes must prove a valid workspace state change.");
       }
     }
   });

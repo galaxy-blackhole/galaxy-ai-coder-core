@@ -17,6 +17,7 @@ export const AI_CODER_STATIC_PROMPT_TOKEN_BUDGET = 8_000;
 
 export type { AiCoderTaskMode } from "../ports/execution-context.js";
 export type AiCoderTaskComplexity = "simple" | "standard" | "complex";
+export type AiCoderPromptAccess = "allowed" | "denied" | "policy_gated";
 
 export type AiCoderPromptModule = Readonly<{
   content: string;
@@ -38,7 +39,12 @@ export type AiCoderPromptSnapshot = Readonly<{
 }>;
 
 export type AiCoderTaskContract = Readonly<{
-  acceptanceCriteria: readonly Readonly<{ inferred: boolean; text: string }>[];
+  acceptanceCriteria: readonly Readonly<{
+    id: string;
+    inferred: boolean;
+    required: boolean;
+    text: string;
+  }>[];
   complexity: AiCoderTaskComplexity;
   constraints: readonly string[];
   mode: AiCoderTaskMode;
@@ -61,17 +67,21 @@ export type AiCoderTrustedWorkspaceInstruction = Readonly<{
   source: string;
 }>;
 
-export type AiCoderPromptAssemblerOptions = Readonly<{
+/** Host-owned prompt inputs. Runtime-owned fields are deliberately absent. */
+export type AiCoderPromptConfiguration = Readonly<{
   approvalProfile: AiCoderApprovalProfile;
-  capabilities: ModelCapabilities;
-  complexity: string;
+  complexity: AiCoderTaskComplexity;
   dirtyStateSummary?: string;
-  mode: string;
-  networkAccess?: "allowed" | "denied" | "policy_gated";
-  registrySnapshotHash?: string;
-  taskId: string;
+  networkAccess: AiCoderPromptAccess;
   trustedWorkspaceInstructions?: readonly AiCoderTrustedWorkspaceInstruction[];
-  writeAccess?: "allowed" | "denied" | "policy_gated";
+  writeAccess: AiCoderPromptAccess;
+}>;
+
+export type AiCoderPromptAssemblerOptions = AiCoderPromptConfiguration & Readonly<{
+  capabilities: ModelCapabilities;
+  mode: AiCoderTaskMode;
+  registrySnapshotHash: string;
+  taskId: string;
   workspacePath: string | null;
 }>;
 
@@ -215,7 +225,12 @@ function capabilityContent(capabilities: ModelCapabilities) {
     : capabilities.input.image === "unsupported" ? "text_or_perception_tool_required" : "capability_probe_required";
   return `MODEL CAPABILITY SNAPSHOT\n${JSON.stringify({
     contextWindow: capabilities.contextWindow,
-    evidence: capabilities.evidence,
+    // Probe time is diagnostic metadata. Keeping it in executable prompt text
+    // would invalidate a checkpoint merely because the same probe ran later.
+    evidence: capabilities.evidence.map((item) => ({
+      source: item.source,
+      verified: item.verified,
+    })),
     imageRoute,
     input: capabilities.input,
     maxImages: capabilities.maxImages,
@@ -242,8 +257,8 @@ function scopeContent(options: AiCoderPromptAssemblerOptions, mode: AiCoderTaskM
     approvalProfile: options.approvalProfile,
     complexity,
     mode,
-    networkAccess: options.networkAccess ?? "policy_gated",
-    registrySnapshotHash: options.registrySnapshotHash ?? "resolved_by_runtime",
+    networkAccess: options.networkAccess,
+    registrySnapshotHash: options.registrySnapshotHash,
     taskId: options.taskId,
     workspacePath: options.workspacePath,
     writeAccess,
@@ -278,7 +293,10 @@ async function sha256Text(value: string) {
 }
 
 export function createAiCoderTaskContract(input: Readonly<{
-  acceptanceCriteria?: readonly string[];
+  acceptanceCriteria?: readonly (
+    | string
+    | Readonly<{ id: string; required?: boolean; text: string }>
+  )[];
   complexity: string;
   constraints?: readonly string[];
   mode: string;
@@ -288,11 +306,20 @@ export function createAiCoderTaskContract(input: Readonly<{
   workspacePath: string | null;
 }>): AiCoderTaskContract {
   const originalRequest = input.originalRequest.trim() || "Inspect the workspace and report its current state.";
-  const explicitCriteria = (input.acceptanceCriteria ?? []).map((text) => text.trim()).filter(Boolean);
+  const explicitCriteria = (input.acceptanceCriteria ?? []).flatMap((criterion, index) => {
+    const text = (typeof criterion === "string" ? criterion : criterion.text).trim();
+    if (!text) return [];
+    const id = typeof criterion === "string" ? `criterion-${index + 1}` : criterion.id.trim();
+    if (!id) return [];
+    return [Object.freeze({
+      id,
+      inferred: false,
+      required: typeof criterion === "string" ? true : criterion.required ?? true,
+      text,
+    })];
+  });
   return Object.freeze({
-    acceptanceCriteria: Object.freeze(explicitCriteria.length > 0
-      ? explicitCriteria.map((text) => Object.freeze({ inferred: false, text }))
-      : [Object.freeze({ inferred: true, text: "The requested outcome is present and relevant validation evidence is reported." })]),
+    acceptanceCriteria: Object.freeze(explicitCriteria),
     complexity: normalizeComplexity(input.complexity),
     constraints: Object.freeze([...(input.constraints ?? [])].filter(Boolean)),
     mode: normalizeMode(input.mode),

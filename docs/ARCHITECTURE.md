@@ -10,13 +10,27 @@ sharing platform APIs.
 The current baseline is deliberately single-agent. Subagents may be added only
 after deterministic single-agent fixtures remain stable across all hosts.
 
+## Prompt ownership
+
+Hosts provide `AiCoderPromptConfiguration`, never free-form system text or a
+claimed hash/version. After capability probing and registry resolution, the
+runtime calls `assembleAiCoderPrompt` and retains the immutable snapshot. It
+also builds the sole P0 user task through `createAiCoderTaskContract` and
+`formatAiCoderUserTask`.
+
+When lazy activation changes the registry snapshot, runtime assembly runs again
+and atomically replaces the context manager's system-policy item. Checkpoint
+compatibility always uses the current core-produced snapshot. See
+[PROMPT_CONTRACT.md](PROMPT_CONTRACT.md).
+
 ## Trust boundaries
 
-There are four distinct input classes:
+There are five distinct input classes:
 
 | Input | Trust | Runtime treatment |
 | --- | --- | --- |
-| System prompt and workspace policy | trusted host policy | versioned and hashed |
+| Structured prompt configuration | trusted host metadata | validated before asynchronous work |
+| Core-assembled system prompt | trusted core policy | versioned, hashed, and immutable per registry snapshot |
 | User task | trusted user request | separated from workspace/tool content |
 | Workspace, command, web, and MCP text | untrusted data | bounded observation only |
 | Host-declared tool effects | trusted host assertion | schema, identity, and capability checked |
@@ -24,7 +38,9 @@ There are four distinct input classes:
 `effectsAuthority: "host"` is necessary but not sufficient. The runtime also
 requires the tool result's canonical ID to match the active model-name mapping
 and requires each effect category to appear in that canonical tool's declared
-effect capability set.
+effect capability set. The result type and runtime validator also prohibit
+success effects on `ok=false`; only a correlated host approval denial may
+accompany a failed result.
 
 ## One-round protocol
 
@@ -47,16 +63,57 @@ The host supplies an active tool set containing:
 
 - model-visible definitions;
 - a complete model-name-to-canonical-ID mapping;
-- canonical-tool effect capabilities;
+- the versioned canonical core-tool effect profile;
 - a deterministic registry snapshot hash.
+
+All built-in tools use `AI_CODER_CORE_TOOL_EFFECT_PROFILE`. Hosts derive both
+the active model-name mapping and stable full effect policy with
+`createAiCoderCoreToolEffectMetadata(activeDescriptors)`; they must not keep a
+local copy. Runtime startup fails closed when a built-in tool omits or changes
+its canonical capabilities. Extension and MCP canonical IDs may declare their
+own versioned host profile.
 
 Before an observation enters context, the runtime verifies result correlation,
 success/error consistency, effect authority, mode restrictions, effect shapes,
 and effect capabilities. Oversized output is bounded; an optional spill adapter
 must receive the run context and honor cancellation/deadline.
 
+A host adapter that throws instead of returning a structured result has an
+unknown side-effect outcome. The runtime records that outcome in the failure
+checkpoint and terminates the run; it never converts the throw into a harmless
+tool observation that the model can talk past.
+
 Tool output strings can explain what happened, but never satisfy inspection,
 write, validation, diff, approval, or acceptance criteria by themselves.
+
+Generic command tools may report `write` only when the host independently
+captures exact changed paths and state hashes. Creation uses a null before hash;
+deletion uses a null after hash. Non-file transitions additionally carry
+`beforeKind`/`afterKind` (`missing`, `directory`, `symlink`, or `other`), so a
+directory create/delete may validly have two null content hashes while its kinds
+prove the change. Symlink and special-entry hashes bind their entry state.
+Merely parsing stdout or assuming command success changed a path is
+insufficient.
+
+## No-progress guards
+
+The runtime bounds several loops that are semantically equivalent even when
+their call JSON is not byte-identical:
+
+- the same tool and arguments repeated on one state;
+- different failed mutation arguments against one canonical tool, path, and
+  state (for example, repeatedly guessing stale edit fragments);
+- a file returning to a prior content hash, such as A→B→A→B;
+- one stable validation ID failing repeatedly on the same workspace
+  fingerprint.
+
+The first incidents add trusted corrective feedback. Two no-progress episodes
+without a materially different inspection or state transition pause the run
+and persist a checkpoint. Write-state and validation history are reconstructed,
+while exact-repeat and failed-mutation-family counters are explicitly persisted
+and restored on resume; the model cannot erase them with prose.
+Successful validation also removes superseded failure details, while repeated
+identical open problems are deduplicated to keep checkpoints bounded.
 
 ## Completion evidence
 
@@ -101,6 +158,11 @@ checkpoint-persistence grace are retained in the checkpoint for audit.
 SHA-256 detects accidental or workspace-level tampering; it is not a signature.
 The `AiCoderRunStore.checkpointTrust` contract therefore requires checkpoint
 storage to be isolated from model/workspace-controlled writes.
+
+Provider token counting runs before each model request when supported. If the
+provider reports overflow, the runtime checkpoints, compacts, rebuilds the
+round, and counts again. A still-over-budget round fails with a checkpoint
+rather than silently truncating mandatory task, evidence, or tool-policy state.
 
 ## Cancellation semantics
 

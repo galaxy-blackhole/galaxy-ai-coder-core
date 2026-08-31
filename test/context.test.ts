@@ -96,6 +96,11 @@ function checkpointPayload(): AiCoderRunCheckpointPayload {
       toolCallId: "call-read",
     })]),
     nextAction: "Report",
+    noProgress: Object.freeze({
+      episodes: 2,
+      failedToolFamilies: Object.freeze([Object.freeze({ count: 2, key: "workspace.edit:stale:sha256:workspace" })]),
+      previousTool: Object.freeze({ argumentsHash: "hash:args", name: "workspace_read", repetitions: 2 }),
+    }),
     openProblems: Object.freeze([]),
     pendingApprovals: Object.freeze([]),
     phase: "reviewing",
@@ -152,19 +157,46 @@ test("checkpoint validation snapshots caller input and never throws on malformed
   assert.notEqual(asserted.goal, mutable.goal);
   assert.ok(Object.isFrozen(asserted));
   assert.ok(Object.isFrozen(asserted.workspace.activeFiles));
+  assert.ok(Object.isFrozen(asserted.noProgress?.failedToolFamilies));
 
   const malformed: unknown[] = [
     { ...original, acceptanceCriteria: [null] },
     { ...original, pendingApprovals: "bad" },
     { ...original, seenToolCallIds: 42 },
     { ...original, workspace: { activeFiles: [null] } },
+    { ...original, noProgress: { episodes: -1, failedToolFamilies: [{ count: 0, key: "" }], previousTool: null } },
     Object.assign(Object.create(null), { self: null }),
   ];
-  (malformed[4] as { self: unknown }).self = malformed[4];
+  (malformed[5] as { self: unknown }).self = malformed[5];
   for (const value of malformed) {
     const issues = await validateAiCoderRunCheckpoint(value);
     assert.ok(issues.length > 0);
   }
+});
+
+test("checkpoint mutation evidence accepts deletion and rejects absent state", async () => {
+  const deletionPayload = checkpointPayload();
+  const deletion = await createAiCoderRunCheckpoint(Object.freeze({
+    ...deletionPayload,
+    edits: Object.freeze(deletionPayload.edits.map((edit) => Object.freeze({
+      ...edit,
+      afterHash: null,
+      beforeHash: "sha256:deleted-content",
+    }))),
+  }), "pause", () => "2026-08-28T00:00:00.000Z");
+  assert.equal((await validateAiCoderRunCheckpoint(deletion)).length, 0);
+  assert.equal(deletion.edits[0]?.afterHash, null);
+
+  const absentState = await createAiCoderRunCheckpoint(Object.freeze({
+    ...deletionPayload,
+    edits: Object.freeze(deletionPayload.edits.map((edit) => Object.freeze({
+      ...edit,
+      afterHash: null,
+      beforeHash: null,
+    }))),
+  }), "pause", () => "2026-08-28T00:00:00.000Z");
+  const issues = await validateAiCoderRunCheckpoint(absentState);
+  assert.equal(issues.some((issue) => issue.path.endsWith("afterHash")), true);
 });
 
 test("tool output is bounded and points to the complete artifact", async () => {
