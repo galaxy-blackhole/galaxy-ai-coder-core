@@ -53,6 +53,14 @@ Each provider stream must:
 5. preserve the configured model identity;
 6. use a non-empty, run-unique `toolCallId`.
 
+A `completed` terminal event with blank visible content and no tool call is a
+malformed provider turn, even when the provider reports a normal stop reason
+or includes private thinking. The runtime fails it as `INVALID_MODEL_STREAM`
+instead of spending the remaining turn budget retrying an impossible
+completion report. Provider adapters should detect this earlier when their
+wire protocol permits an empty terminal payload, but the core check remains a
+provider-neutral last line of defense.
+
 Multiple calls are rejected for now. Sequential execution disguised as a
 parallel batch creates ambiguous approval and partial-result behavior, so batch
 support needs a separate versioned protocol.

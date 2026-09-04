@@ -540,6 +540,21 @@ test("runtime rejects multiple tool calls until batch and approval semantics are
   assert.equal(result.error?.code, "INVALID_MODEL_STREAM");
 });
 
+test("empty completed responses without tools fail immediately instead of entering a completion loop", async () => {
+  for (const [index, content] of ["", " \n\t"].entries()) {
+    const model = new ScriptedModel([Object.freeze([done(content)])]);
+    const result = await new AiCoderRunController({
+      model,
+      toolExecutor: new DeterministicExecutor(),
+    }).start(request(`run-empty-terminal-${index}`)).result;
+
+    assert.equal(result.state, "failed");
+    assert.equal(result.error?.code, "INVALID_MODEL_STREAM");
+    assert.match(result.error?.message ?? "", /no visible content and no tool call/);
+    assert.equal(model.requests.length, 1);
+  }
+});
+
 test("run controller completes a correlated read-only tool loop", async () => {
   const model = new ScriptedModel([
     Object.freeze([tool("workspace_list", "call-inspect"), done("", "tool_calls")]),

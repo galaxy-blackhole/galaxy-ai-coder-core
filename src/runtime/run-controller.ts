@@ -1351,6 +1351,12 @@ export class AiCoderRunController {
         content = done.content || content;
         thinking = done.thinking || thinking;
         usage = done.usage ?? usage;
+        if (done.stopReason === "completed" && content.trim().length === 0) {
+          throw new AiCoderRuntimeError(
+            "INVALID_MODEL_STREAM",
+            "Model returned a completed response with no visible content and no tool call.",
+          );
+        }
         const assistant = Object.freeze({
           role: "assistant" as const,
           content,

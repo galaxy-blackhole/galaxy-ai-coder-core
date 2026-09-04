@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 const core = await import("@galaxy/ai-coder-core");
 const ports = await import("@galaxy/ai-coder-core/ports");
@@ -14,3 +15,13 @@ assert.equal(core.isAiCoderWorkspaceMutationEvidence({
   afterHash: null,
 }), true);
 assert.deepEqual(ports.portSuccess("ready"), { ok: true, data: "ready" });
+
+const distributedRunController = await readFile(
+  new URL("../dist/runtime/run-controller.js", import.meta.url),
+  "utf8",
+);
+assert.match(
+  distributedRunController,
+  /completed response with no visible content and no tool call/,
+  "the published runtime must include the empty-terminal fail-closed guard",
+);
