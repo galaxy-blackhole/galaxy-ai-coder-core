@@ -1,4 +1,8 @@
-import { AiCoderContextManager, type AiCoderToolObservation } from "../context/context-manager.js";
+import {
+  AiCoderContextBudgetError,
+  AiCoderContextManager,
+  type AiCoderToolObservation,
+} from "../context/context-manager.js";
 import { compareAiCoderText } from "../deterministic-order.js";
 import {
   assertAiCoderRunCheckpoint,
@@ -1183,11 +1187,24 @@ export class AiCoderRunController {
       );
       const promptChanged = await this.adoptToolSet(session, nextToolSet);
       if (promptChanged) await this.emitPromptSnapshot(session);
-      session.contextManager.replaceMandatoryState(mandatoryState(session), session.modelTurns);
-      let prepared = await this.awaitInterruptible(session, session.contextManager.prepareRound({
-        tools: session.toolSet.definitions,
-        turn: session.modelTurns,
-      }));
+      const contextManager = session.contextManager;
+      const roundToolSet = session.toolSet;
+      contextManager.replaceMandatoryState(mandatoryState(session), session.modelTurns);
+      const prepareContext = async (forceCheckpointReason?: AiCoderCheckpointReason) => {
+        try {
+          return await this.awaitInterruptible(session, contextManager.prepareRound({
+            ...(forceCheckpointReason === undefined ? {} : { forceCheckpointReason }),
+            tools: roundToolSet.definitions,
+            turn: session.modelTurns,
+          }));
+        } catch (error) {
+          if (error instanceof AiCoderContextBudgetError) {
+            throw new AiCoderRuntimeError("CONTEXT_BUDGET", `${error.code}: ${error.message}`);
+          }
+          throw error;
+        }
+      };
+      let prepared = await prepareContext();
       // CodingModelAdapter requests are provider-neutral and may be stateless;
       // resend attachment payloads with every reconstructed round so vision
       // evidence never disappears after retry, compaction, or resume.
@@ -1208,11 +1225,7 @@ export class AiCoderRunController {
             `Provider token count ${tokenCount.data.tokens} remains above hard input ${prepared.budget.hardInputTokens} after compaction.`,
           );
         }
-        prepared = await this.awaitInterruptible(session, session.contextManager.prepareRound({
-          forceCheckpointReason: "provider_overflow",
-          tools: session.toolSet.definitions,
-          turn: session.modelTurns,
-        }));
+        prepared = await prepareContext("provider_overflow");
       }
       const round = await this.runModelRound(
         session,
@@ -1995,14 +2008,22 @@ export class AiCoderRunController {
     const persistenceOnly = gate.issues.every((item) => item.code === "FINAL_REPORT_NOT_STORED");
     if (gate.ok || persistenceOnly) {
       if (this.dependencies.store) {
-        await this.awaitInterruptible(session, this.dependencies.store.saveFinalReport(Object.freeze({
-          completedAt: this.clock.timestamp(),
-          content,
-          runId: session.context.runId,
-          taskId: session.context.taskId,
-          validation: Object.freeze([...session.evidence.validations]),
-          writes: Object.freeze([...session.evidence.writes]),
-        }), session.context));
+        try {
+          await this.awaitInterruptible(session, this.dependencies.store.saveFinalReport(Object.freeze({
+            completedAt: this.clock.timestamp(),
+            content,
+            runId: session.context.runId,
+            taskId: session.context.taskId,
+            validation: Object.freeze([...session.evidence.validations]),
+            writes: Object.freeze([...session.evidence.writes]),
+          }), session.context));
+        } catch (error) {
+          if (error instanceof AiCoderRuntimeError) throw error;
+          throw new AiCoderRuntimeError(
+            "PERSISTENCE_ERROR",
+            `Final report persistence failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
         finalReportStored = true;
         this.checkControl(session);
       }
@@ -2198,9 +2219,18 @@ export class AiCoderRunController {
         stateFingerprint: workspaceSnapshot.stateFingerprint,
       }),
     }), reason, this.clock.timestamp));
-    const stored = this.dependencies.store
-      ? await wait(this.dependencies.store.saveCheckpoint(checkpoint, persistenceContext))
-      : Object.freeze({});
+    let stored: Readonly<{ artifactRef?: string }> = Object.freeze({});
+    if (this.dependencies.store) {
+      try {
+        stored = await wait(this.dependencies.store.saveCheckpoint(checkpoint, persistenceContext));
+      } catch (error) {
+        if (error instanceof AiCoderRuntimeError) throw error;
+        throw new AiCoderRuntimeError(
+          "PERSISTENCE_ERROR",
+          `Checkpoint persistence failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
     session.latestCheckpoint = checkpoint;
     if (persistenceContext === session.context) {
       await session.trace.emit("checkpoint", Object.freeze({

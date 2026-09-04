@@ -9,6 +9,7 @@ export type AiCoderRuntimeErrorCode =
   | "MAX_TURNS"
   | "NO_PROGRESS"
   | "PAUSED"
+  | "PERSISTENCE_ERROR"
   | "PROVIDER_ERROR"
   | "TOOL_EXECUTION";
 

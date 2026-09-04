@@ -168,6 +168,12 @@ verified checkpoint. Raw reasoning is intentionally disposable; goal,
 registry compatibility, writes, validation, diff review, approvals, plan,
 open problems, and no-progress counters are durable state.
 
+Runtime error domains remain distinct: model/capability failures are provider
+errors, context assembly failures are `CONTEXT_BUDGET`, and checkpoint or final
+report storage acknowledgement failures are `PERSISTENCE_ERROR`. A storage
+operation that commits and then throws still fails closed because the runtime
+cannot prove durable acknowledgement.
+
 ## Cancellation semantics
 
 The core races model, tool, persistence, spill, and trace waits against the run

@@ -130,7 +130,15 @@ Each host should run equivalent fixtures for:
 37. hard token exhaustion after a write resumes from durable edit evidence and
     does not execute the mutation a second time;
 38. oversized accumulated tool output checkpoints before the next model
-    request while retaining the task and checkpoint hash.
+    request while retaining the task and checkpoint hash;
+39. seeded checkpoint and registry permutations remain deterministic, sorted,
+    redacted, and tamper-evident;
+40. checkpoint/final-report persistence acknowledgement failures fail closed,
+    including when the underlying write committed before throwing;
+41. trace write/flush and workspace-evidence capture failures cannot produce a
+    completed run;
+42. context assembly limits report `CONTEXT_BUDGET`, while durable-storage
+    failures report `PERSISTENCE_ERROR` rather than a provider failure.
 
 ## Integration order
 

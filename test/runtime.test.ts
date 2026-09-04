@@ -774,6 +774,34 @@ test("configured trace must durably flush before completion", async () => {
   assert.equal(result.error?.code, "NO_PROGRESS");
 });
 
+test("a thrown trace write remains unhealthy even when the later flush succeeds", async () => {
+  let emits = 0;
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "inspect-trace-write"), done("", "tool_calls")]),
+    Object.freeze([done("Should not complete after losing trace evidence.")]),
+  ]);
+  const baseRequest = request("run-trace-write-fault");
+  const result = await new AiCoderRunController({
+    model,
+    toolExecutor: new DeterministicExecutor(),
+    trace: Object.freeze({
+      async emit() {
+        emits += 1;
+        if (emits === 1) throw new Error("trace sink disconnected");
+        return portSuccess(undefined);
+      },
+      async flush() { return portSuccess(undefined); },
+    }),
+  }).start({
+    ...baseRequest,
+    budget: Object.freeze({ ...baseRequest.budget, maxCompletionRejections: 1 }),
+  }).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "NO_PROGRESS");
+  assert.equal(emits > 1, true);
+});
+
 test("hash-return cycles are paused before an edit can toggle forever", async () => {
   class CyclingWriteExecutor extends DeterministicExecutor {
     private readonly mutations = [
@@ -1263,6 +1291,108 @@ test("oversized accumulated tool output checkpoints before the next model reques
     true,
   );
   assert.equal(model.requests[1]?.messages.some((message) => message.content.includes(request().goal)), true);
+});
+
+test("context assembly failures are classified as context budget errors", async () => {
+  const oversized = request("run-mandatory-context-overflow");
+  const model = new ScriptedModel([Object.freeze([done("must not run")])]);
+  const result = await new AiCoderRunController({
+    model,
+    toolExecutor: new DeterministicExecutor(),
+  }).start({ ...oversized, goal: `Implement ${"x".repeat(300_000)}` }).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "CONTEXT_BUDGET");
+  assert.match(result.error?.message ?? "", /MANDATORY_CONTEXT_TOO_LARGE/);
+  assert.equal(model.requests.length, 0);
+});
+
+test("checkpoint persistence failure aborts compaction without reaching the model", async () => {
+  class FailingCheckpointStore extends MemoryStore {
+    override async saveCheckpoint(checkpoint: AiCoderRunCheckpoint): Promise<never> {
+      await super.saveCheckpoint(checkpoint);
+      throw new Error("checkpoint disk unavailable");
+    }
+  }
+  const store = new FailingCheckpointStore();
+  const model = new ScriptedModel([Object.freeze([done("must not run")])], [1_000_000]);
+  const result = await new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+  }).start(request("run-checkpoint-persistence-fault")).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "PERSISTENCE_ERROR");
+  assert.match(result.error?.message ?? "", /checkpoint disk unavailable/);
+  assert.equal(model.requests.length, 0);
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), ["provider_overflow", "failure"]);
+  assert.equal(result.checkpoint, null, "an unacknowledged checkpoint must not be trusted even if storage committed it");
+});
+
+test("final report persistence failure cannot be reported as completion", async () => {
+  class FailingFinalReportStore extends MemoryStore {
+    override async saveFinalReport(report: AiCoderFinalReport): Promise<never> {
+      await super.saveFinalReport(report);
+      throw new Error("final report disk unavailable");
+    }
+  }
+  const store = new FailingFinalReportStore();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "persistence-inspect"), done("", "tool_calls")]),
+    Object.freeze([done("This report must not be accepted as completed.")]),
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+  }).start(request("run-final-report-persistence-fault")).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "PERSISTENCE_ERROR");
+  assert.match(result.error?.message ?? "", /final report disk unavailable/);
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), ["failure"]);
+  assert.equal(store.reports.length, 1, "a post-commit acknowledgement failure must still fail closed");
+});
+
+test("workspace evidence capture failure after a write blocks compaction and resume", async () => {
+  let captures = 0;
+  const verifier: AiCoderResumeWorkspaceVerifier = Object.freeze({
+    consistency: "serialized_workspace" as const,
+    async capture(input: Parameters<AiCoderResumeWorkspaceVerifier["capture"]>[0]) {
+      captures += 1;
+      if (captures > 1) {
+        return portFailure({ code: "IO_ERROR", message: "snapshot storage unavailable", retryable: false });
+      }
+      return portSuccess(Object.freeze({
+        activeFiles: input.activeFiles,
+        dirtyStateSummary: input.dirtyStateSummary,
+        stateFingerprint: "sha256:captured-after-write",
+      }));
+    },
+    async verify(snapshot: Parameters<AiCoderResumeWorkspaceVerifier["verify"]>[0]) {
+      return portSuccess(Object.freeze({ currentFingerprint: snapshot.stateFingerprint, matches: true }));
+    },
+  });
+  const store = new MemoryStore();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "capture-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "capture-write"), done("", "tool_calls")]),
+    Object.freeze([done("must not run")]),
+  ], [500, 500, 1_000_000]);
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: verifier,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+  }).start(request("run-workspace-capture-fault")).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "CHECKPOINT_INCOMPATIBLE");
+  assert.match(result.error?.message ?? "", /snapshot storage unavailable/);
+  assert.equal(result.writes.length, 1);
+  assert.equal(model.requests.length, 2);
+  assert.equal(store.checkpoints.length, 0);
 });
 
 test("cancel propagates to an active model stream", async () => {

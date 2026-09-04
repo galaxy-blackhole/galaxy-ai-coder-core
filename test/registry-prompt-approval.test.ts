@@ -113,6 +113,66 @@ test("catalog and active-turn hashes are deterministic and represent different s
   );
 });
 
+function seededShuffle<T>(values: readonly T[], seed: number): T[] {
+  const output = [...values];
+  let state = seed >>> 0;
+  const random = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 0x1_0000_0000;
+  };
+  for (let index = output.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1));
+    [output[index], output[target]] = [output[target]!, output[index]!];
+  }
+  return output;
+}
+
+test("seeded registry permutations cannot change hashes, ordering, or activation results", () => {
+  const allPermissions = [...new Set(AI_CODER_CORE_TOOL_CATALOG.flatMap((tool) => tool.permissions))];
+  const modes: ToolExecutionContext["mode"][] = ["auto", "refactor", "review_only", "scaffold", "validate_only"];
+  for (let seed = 1; seed <= 128; seed += 1) {
+    const descriptors = seededShuffle(AI_CODER_CORE_TOOL_CATALOG, seed);
+    const available = seededShuffle(
+      AI_CODER_CORE_TOOL_CATALOG.filter((_tool, index) => ((seed * 31 + index * 17) % 5) !== 0).map((tool) => tool.id),
+      seed ^ 0xa5a5,
+    );
+    const permissions = seededShuffle(
+      allPermissions.filter((_permission, index) => ((seed * 13 + index * 7) % 4) !== 0),
+      seed ^ 0x5a5a,
+    );
+    const mode = modes[seed % modes.length] ?? "auto";
+    const create = (
+      descriptorOrder: readonly AiCoderToolDescriptor[],
+      availableOrder: readonly string[],
+      permissionOrder: readonly string[],
+    ) => createAiCoderToolRegistrySnapshot({
+      availableToolIds: new Set(availableOrder),
+      capabilities: CAPABILITIES,
+      descriptors: descriptorOrder,
+      grantedPermissions: new Set(permissionOrder),
+      mode,
+    });
+    const first = create(descriptors, available, permissions);
+    const reversed = create([...descriptors].reverse(), [...available].reverse(), [...permissions].reverse());
+
+    assert.equal(first.catalogHash, reversed.catalogHash, `catalog seed ${seed}`);
+    assert.equal(first.hash, reversed.hash, `snapshot seed ${seed}`);
+    assert.deepEqual(first.descriptors.map((tool) => tool.id), reversed.descriptors.map((tool) => tool.id), `tools seed ${seed}`);
+    assert.deepEqual(first.diagnostics, reversed.diagnostics, `diagnostics seed ${seed}`);
+    assert.deepEqual(first.descriptors.map((tool) => tool.id), [...first.descriptors.map((tool) => tool.id)].sort(), `sort seed ${seed}`);
+
+    const left = new AiCoderToolRegistry(first);
+    const right = new AiCoderToolRegistry(reversed);
+    for (const id of seededShuffle(first.descriptors.map((tool) => tool.id), seed ^ 0x1234)) left.activate(id);
+    for (const id of seededShuffle(reversed.descriptors.map((tool) => tool.id), seed ^ 0x4321)) right.activate(id);
+    assert.equal(left.activeHash, right.activeHash, `activation seed ${seed}`);
+    assert.deepEqual(left.definitions, right.definitions, `definitions seed ${seed}`);
+    assert.equal(new Set(left.definitions.map((definition) => definition.function.name)).size, left.definitions.length);
+  }
+});
+
 test("task mode removes prohibited tools before they reach the model", () => {
   const review = fullSnapshot(AI_CODER_CORE_TOOL_CATALOG, "review_only");
   assert.equal(review.descriptors.every((tool) => tool.mutability === "read"), true);

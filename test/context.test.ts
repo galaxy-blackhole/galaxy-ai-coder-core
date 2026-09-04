@@ -199,6 +199,53 @@ test("checkpoint mutation evidence accepts deletion and rejects absent state", a
   assert.equal(issues.some((issue) => issue.path.endsWith("afterHash")), true);
 });
 
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 0x1_0000_0000;
+  };
+}
+
+test("seeded checkpoint fuzz preserves determinism, redaction, and tamper evidence", async () => {
+  const alphabet = ["alpha", "βeta", "đường/dẫn", "space value", "emoji-🛰️", "quote-\"-slash-\\"];
+  for (let seed = 1; seed <= 96; seed += 1) {
+    const random = seededRandom(seed);
+    const sample = () => alphabet[Math.floor(random() * alphabet.length)] ?? "fallback";
+    const secret = `seed-${seed}-private-value`;
+    const base = checkpointPayload();
+    const payload: AiCoderRunCheckpointPayload = Object.freeze({
+      ...base,
+      constraints: Object.freeze([`password=${secret}`, sample(), sample()]),
+      decisions: Object.freeze([`decision:${sample()}`, `seed:${seed}`]),
+      goal: `Fuzz ${sample()} with api_key=${secret}`,
+      nextAction: `inspect:${sample()}:${Math.floor(random() * 10_000)}`,
+      plan: Object.freeze({
+        completed: Object.freeze([`completed:${sample()}`]),
+        inProgress: `active:${sample()}`,
+        pending: Object.freeze([`pending:${sample()}`, `pending:${sample()}`]),
+      }),
+      workspace: Object.freeze({
+        ...base.workspace,
+        instructions: Object.freeze([`password=${secret}`, `instruction:${sample()}`]),
+      }),
+    });
+    const timestamp = () => "2026-09-04T00:00:00.000Z";
+    const first = await createAiCoderRunCheckpoint(payload, "milestone", timestamp);
+    const replay = await createAiCoderRunCheckpoint(payload, "milestone", timestamp);
+
+    assert.equal(first.contentHash, replay.contentHash, `seed ${seed}`);
+    assert.deepEqual(first, replay, `seed ${seed}`);
+    assert.equal((await validateAiCoderRunCheckpoint(first)).length, 0, `seed ${seed}`);
+    assert.equal(JSON.stringify(first).includes(secret), false, `seed ${seed} leaked a secret`);
+    assert.equal(Object.isFrozen(first), true, `seed ${seed}`);
+    const tampered = await validateAiCoderRunCheckpoint({ ...first, nextAction: `${first.nextAction}:tampered` });
+    assert.equal(tampered.some((issue) => issue.code === "HASH_MISMATCH"), true, `seed ${seed}`);
+  }
+});
+
 test("tool output is bounded and points to the complete artifact", async () => {
   const artifacts: string[] = [];
   const bounded = await boundAiCoderToolOutput({
