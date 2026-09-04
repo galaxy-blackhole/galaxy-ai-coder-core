@@ -120,11 +120,17 @@ Each host should run equivalent fixtures for:
 32. invalid UTF-8 is rejected by text mutation paths without rewriting bytes or
     replacing the inode;
 33. project detection ignores directory names that resemble manifests/source
-    files and discloses host traversal exclusions.
+    files and discloses host traversal exclusions;
 34. malformed adapter output after a real write/edit and an unexpected throw
-    after a commit both terminate as durable unknown side-effect outcomes.
+    after a commit both terminate as durable unknown side-effect outcomes;
 35. `ok=false` plus host-attested write/validation/state effects cannot be
-    ignored or followed by a successful final response.
+    ignored or followed by a successful final response;
+36. repeated provider compaction preserves the original task and progressively
+    accumulated write, validation, and final-diff evidence;
+37. hard token exhaustion after a write resumes from durable edit evidence and
+    does not execute the mutation a second time;
+38. oversized accumulated tool output checkpoints before the next model
+    request while retaining the task and checkpoint hash.
 
 ## Integration order
 

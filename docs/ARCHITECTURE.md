@@ -163,6 +163,10 @@ Provider token counting runs before each model request when supported. If the
 provider reports overflow, the runtime checkpoints, compacts, rebuilds the
 round, and counts again. A still-over-budget round fails with a checkpoint
 rather than silently truncating mandatory task, evidence, or tool-policy state.
+Repeated compactions retain the immutable task envelope plus the latest
+verified checkpoint. Raw reasoning is intentionally disposable; goal,
+registry compatibility, writes, validation, diff review, approvals, plan,
+open problems, and no-progress counters are durable state.
 
 ## Cancellation semantics
 

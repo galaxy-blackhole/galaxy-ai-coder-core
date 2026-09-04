@@ -1148,6 +1148,123 @@ test("provider token count triggers checkpoint compaction before a model request
   assert.ok(store.checkpoints.some((item) => item.reason === "provider_overflow"));
 });
 
+test("repeated provider compaction preserves the task and progressive mutation evidence", async () => {
+  const store = new MemoryStore();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "compact-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "compact-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "compact-validate"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "compact-diff"), done("", "tool_calls")]),
+    Object.freeze([done("The compacted mutation was validated and reviewed.")]),
+  ], [
+    500,
+    500,
+    1_000_000, 500,
+    1_000_000, 500,
+    1_000_000, 500,
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+  }).start(request("run-repeated-compaction")).result;
+
+  assert.equal(result.state, "completed");
+  assert.equal(result.writes.length, 1);
+  assert.equal(result.validation.at(-1)?.status, "passed");
+  assert.equal(store.checkpoints.length, 3);
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), [
+    "provider_overflow",
+    "provider_overflow",
+    "provider_overflow",
+  ]);
+  assert.deepEqual(store.checkpoints.map((item) => item.totals.compactionCount), [1, 2, 3]);
+  assert.deepEqual(store.checkpoints.map((item) => item.edits.length), [1, 1, 1]);
+  assert.deepEqual(store.checkpoints.map((item) => item.validation.length), [0, 1, 1]);
+  assert.deepEqual(store.checkpoints.map((item) => item.completionEvidence.diffReview !== null), [false, false, true]);
+
+  const taskText = request("run-repeated-compaction").goal;
+  assert.equal(model.requests.every((item) => item.messages.some((message) => message.content.includes(taskText))), true);
+  for (const checkpoint of store.checkpoints) {
+    assert.equal(
+      model.requests.some((item) => item.messages.some((message) => message.content.includes(checkpoint.contentHash))),
+      true,
+      `checkpoint ${checkpoint.contentHash} was never delivered to a later model request`,
+    );
+  }
+});
+
+test("hard token exhaustion after a write resumes with durable edit evidence", async () => {
+  const store = new MemoryStore();
+  const executor = new DeterministicExecutor();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "exhaust-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "exhaust-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "exhaust-validate"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "exhaust-diff"), done("", "tool_calls")]),
+    Object.freeze([done("Resumed the written workspace, validated it, and reviewed the diff.")]),
+  ], [500, 500, 1_000_000, 1_000_000, 500, 500, 500]);
+  const firstController = new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    store,
+    toolExecutor: executor,
+  });
+  const failed = await firstController.start(request("run-write-exhaustion")).result;
+  assert.equal(failed.state, "failed");
+  assert.equal(failed.error?.code, "CONTEXT_BUDGET");
+  assert.deepEqual(failed.checkpoint?.edits.map((item) => item.path), ["src/a.ts"]);
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), ["provider_overflow", "failure"]);
+
+  const resumed = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    store,
+    toolExecutor: executor,
+  }).resume({ ...request("run-write-exhaustion"), runId: "run-write-exhaustion" }).result;
+  assert.equal(resumed.state, "completed");
+  assert.equal(resumed.writes.length, 1);
+  assert.equal(resumed.validation.at(-1)?.status, "passed");
+  assert.equal(executor.calls.filter((item) => item.name === "workspace_write").length, 1);
+  assert.equal(
+    model.requests.slice(2).every((item) => item.messages.some((message) => message.content.includes("src/a.ts"))),
+    true,
+  );
+});
+
+test("oversized accumulated tool output checkpoints before the next model request", async () => {
+  class LargeOutputExecutor extends DeterministicExecutor {
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      const result = await super.execute(call, context);
+      if (call.name !== "workspace_list") return result;
+      return Object.freeze({
+        ...result,
+        content: "x".repeat(80_000),
+        outputLimits: Object.freeze({ maxBytes: 100_000, maxTokens: 30_000, tailFraction: 0.25 }),
+      });
+    }
+  }
+  const store = new MemoryStore();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "large-inspect"), done("", "tool_calls")]),
+    Object.freeze([done("Completed after tool-result compaction.")]),
+  ], [], Object.freeze({ ...CAPABILITIES, contextWindow: 262_144 }));
+  const result = await new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new LargeOutputExecutor(),
+  }).start(request("run-tool-result-pressure")).result;
+
+  assert.equal(result.state, "completed");
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), ["tool_result_pressure"]);
+  assert.equal(
+    model.requests[1]?.messages.some((message) => message.content.includes(store.checkpoints[0]!.contentHash)),
+    true,
+  );
+  assert.equal(model.requests[1]?.messages.some((message) => message.content.includes(request().goal)), true);
+});
+
 test("cancel propagates to an active model stream", async () => {
   let startedResolve: (() => void) | null = null;
   const started = new Promise<void>((resolve) => { startedResolve = resolve; });
