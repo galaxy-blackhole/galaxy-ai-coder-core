@@ -452,6 +452,12 @@ test("prompt uses the provider-neutral capability contract and never names legac
   assert.equal(prompt.moduleVersions["research-policy"], "1.1.0");
   assert.match(prompt.systemPrompt, /Cite the source URLs actually returned by successful research tools/);
   assert.match(prompt.systemPrompt, /Never transmit credentials, private source code, private logs/);
+  assert.equal(prompt.moduleVersions["code-minimalism-policy"], "1.0.0");
+  assert.equal(prompt.moduleVersions["evidence-provenance-policy"], "1.0.0");
+  assert.match(prompt.systemPrompt, /resolve these levels in order and stop at the first that satisfies the task/);
+  assert.match(prompt.systemPrompt, /Never remove or weaken validation, security handling, accessibility support/);
+  assert.match(prompt.systemPrompt, /EXTRACTED: read directly in this workspace during this run/);
+  assert.match(prompt.systemPrompt, /Do not present inferred relationships as verified facts/);
   assert.equal(prompt.systemPrompt.includes("/workspace"), false);
   assert.equal(prompt.systemPrompt.includes("tool_catalog_search"), false);
   assert.equal(prompt.systemPrompt.includes("workspace_read_text"), false);

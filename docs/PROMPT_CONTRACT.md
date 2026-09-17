@@ -100,6 +100,15 @@ under context pressure. The text grants no network authority: availability and
 approval remain host-enforced. It does not turn model-authored source summaries
 into durable host evidence.
 
+Prompt version `ai-coder-single/2.6.0` adds two static modules. `code-minimalism-policy`
+gives the model an ordered resolution ladder before writing new code (unnecessary
+behavior, repository, standard library, platform, installed dependency, focused
+one-line change) and forbids weakening validation, security handling,
+accessibility, or error reporting to reduce size. `evidence-provenance-policy`
+requires EXTRACTED, INFERRED, or AMBIGUOUS labels for non-obvious internal code
+claims, extending the research-policy separation of sourced facts and inference
+to the codebase itself.
+
 ## User task lifecycle
 
 The runtime creates one `AiCoderTaskContract` from goal, mode, complexity,

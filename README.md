@@ -119,6 +119,12 @@ npm install
 npm run verify
 ```
 
+Optional fast pre-push gate:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 `npm run verify` runs strict TypeScript checks, all source tests, a clean build,
 and a public `dist` smoke test. `npm pack --dry-run` should also be checked
 before publishing or consuming the package from another repository.

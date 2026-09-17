@@ -432,6 +432,40 @@ test("completion gate owns research call, domain, and citation requirements", ()
   );
 });
 
+test("completion gate rejects citations to URLs that were never successfully fetched", () => {
+  const base = Object.freeze({
+    acceptanceCriteria: Object.freeze([]),
+    finalDiffReview: null,
+    finalReport: "Sources: https://docs.example.com/guide and https://sqlite.org/atomiccommit.html",
+    finalReportStored: true,
+    finalWorkspaceFingerprint: null,
+    inspectedWorkspace: true,
+    pendingApprovals: 0,
+    researchSources: Object.freeze([
+      Object.freeze({ contentHash: "sha256:guide", kind: "fetch" as const, toolCallId: "fetch-1", url: "https://docs.example.com/guide" }),
+    ]),
+    runningToolCalls: 0,
+    tokenLedgerFinalized: true,
+    traceFinalized: true,
+    validations: Object.freeze([]),
+    writes: Object.freeze([]),
+  });
+  const requirements = Object.freeze({
+    research: Object.freeze({ minFetchCalls: 1, requireCitations: true }),
+  });
+  const rejected = evaluateAiCoderCompletion(base, requirements);
+  assert.equal(rejected.ok, false);
+  assert.deepEqual(
+    rejected.issues.map((issue) => issue.code),
+    ["RESEARCH_CITATION_UNSUPPORTED"],
+  );
+  assert.match(rejected.issues[0]!.detail, /sqlite\.org\/atomiccommit\.html/);
+  assert.equal(evaluateAiCoderCompletion(Object.freeze({
+    ...base,
+    finalReport: "Source: https://docs.example.com/guide",
+  }), requirements).ok, true);
+});
+
 test("completion gate rejects waived required criteria, stale evidence, and later same-sequence failures", () => {
   const fingerprint = "sha256:workspace-final";
   const base = Object.freeze({

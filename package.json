@@ -1,8 +1,8 @@
 {
   "name": "@galaxy-stack/ai-coder-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
-  "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Consumed by galaxy-desktop (Tauri), galaxy-code (terminal CLI), and galaxy-vscode-extension.",
+  "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Core exception under @galaxy-stack, versioned by the galaxy-blackhole organization. Consumed by galaxy-code (Blackhole CLI), galaxy-vscode-extension, and galaxy-desktop.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -67,10 +67,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/buikevin/galaxy-ai-coder-core.git"
+    "url": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core.git"
   },
   "bugs": {
-    "url": "https://github.com/buikevin/galaxy-ai-coder-core/issues"
+    "url": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core/issues"
   },
-  "homepage": "https://github.com/buikevin/galaxy-ai-coder-core#readme"
+  "homepage": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core#readme"
 }

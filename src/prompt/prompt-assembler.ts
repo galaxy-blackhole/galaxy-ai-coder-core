@@ -12,7 +12,7 @@ import type { ModelCapabilities } from "../ports/capability-port.js";
 import type { AiCoderTaskMode } from "../ports/execution-context.js";
 import type { AiCoderApprovalProfile } from "../tools/settings-types.js";
 
-export const AI_CODER_PROMPT_VERSION = "ai-coder-single/2.5.0";
+export const AI_CODER_PROMPT_VERSION = "ai-coder-single/2.6.0";
 export const AI_CODER_STATIC_PROMPT_TOKEN_BUDGET = 8_000;
 
 export type { AiCoderTaskMode } from "../ports/execution-context.js";
@@ -174,6 +174,18 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
 - Keep concise findings and source URLs in task checkpoints before context pressure, preserving uncertainty and next steps.`,
   }),
   Object.freeze({
+    id: "evidence-provenance-policy",
+    version: "1.0.0",
+    priority: 56,
+    kind: "static" as const,
+    content: `CODE FACT PROVENANCE
+When reporting how the codebase works, label each non-obvious claim:
+- EXTRACTED: read directly in this workspace during this run from file content, diffs, command output, or validation results.
+- INFERRED: concluded from naming, structure, or partial evidence; state the basis briefly.
+- AMBIGUOUS: not confirmed by current evidence; say what would confirm it.
+Do not present inferred relationships as verified facts. Research-policy governs external sources; these labels govern internal code claims.`,
+  }),
+  Object.freeze({
     id: "editing-command-policy",
     version: "2.1.0",
     priority: 60,
@@ -190,6 +202,17 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
 - Do not assume a utility exists merely because the OS normally ships it. Inspect the project toolchain or probe availability when needed.
 - Do not run destructive commands, privilege escalation, remote script pipes, or commands unrelated to the task.
 - Distinguish pre-existing failures from regressions introduced by this run.`,
+  }),
+  Object.freeze({
+    id: "code-minimalism-policy",
+    version: "1.0.0",
+    priority: 62,
+    kind: "static" as const,
+    content: `CODE SIZE POLICY
+Before creating code, resolve these levels in order and stop at the first that satisfies the task: the behavior is unnecessary, the repository already provides it, the standard library provides it, the platform provides it, an installed dependency provides it, or a focused one-line change suffices. Write the minimal new code only after the earlier levels fail.
+- Reuse existing local patterns, helpers, and tests instead of duplicating them.
+- Remove dead code a task touches. Do not add abstractions, wrappers, configuration surfaces, or speculative options without concrete need.
+- Never remove or weaken validation, security handling, accessibility support, or error reporting to reduce size.`,
   }),
   Object.freeze({
     id: "context-policy",

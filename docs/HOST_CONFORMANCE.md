@@ -199,6 +199,44 @@ Each host should run equivalent fixtures for:
 54. shell-sensitive host-generated commands and Git path arguments remain data
     on every supported OS, including metacharacter-like filenames.
 
+## Optional MCP port — Definition/Provider/Consumer checklist
+
+MCP joins the runtime as one ordinary port, following the three-role checklist
+below. All roles are required before any scenario counts as covered; a
+Definition without a Provider, or a Consumer without an effect policy, is not a
+complete port.
+
+1. **Definition (core):** declare the `mcp` port interface in `ports/` with
+   `PortResult` semantics: server lifecycle (`list`, `connect`, `disconnect`),
+   tool discovery with stable server-qualified tool IDs, bounded tool
+   invocation, cancellation through the run context signal, and structured
+   errors. Tool schemas join the registry snapshot like any other definition;
+   MCP content is level-6 untrusted data and never grants capability.
+2. **Effect policy (core):** every discovered MCP tool carries an explicit
+   capability set from the host (inspect, write, validate, or research class).
+   Default is read-only inspect; mutation-class MCP tools require the same
+   approval, precondition, and before/after evidence as built-in writes. A tool
+   with no declared capability policy is rejected at registry admission.
+3. **Provider (host):** one host adapter per transport (stdio first), owning
+   process lifecycle, working directory, environment allowlist, and bounded
+   output. The provider never reads or forwards credentials beyond its
+   configured environment, and it reports transport failures as structured
+   `PortResult` errors so the runtime classifies retryability.
+4. **Consumer (core runtime):** discovered MCP tools join `search_tools`
+   discovery exactly like built-in tools; model-facing names follow the same
+   mapping contract, and every call correlates to a canonical ID in the tool
+   journal and trace.
+5. **Conformance scenarios (host + fixtures):** at minimum — discovery lists
+   only capability-cleared tools; untrusted MCP output cannot manufacture
+   completion evidence or mutate trusted state; cancellation kills the server
+   child; transport failure mid-call is a structured unknown-outcome like any
+   other host effect; replay fixtures cover a discovery-plus-invocation
+   session; and every scenario runs in the same deterministic laboratory that
+   gates built-in tools.
+6. **Activation order:** MCP stays behind an explicit capability flag until its
+   scenario matrix is green in `galaxy-code`, and the `search_tools` discovery
+   path must not regress existing tool conformance.
+
 ## Integration order
 
 1. Keep `galaxy-code` v2 green as the reference laboratory.

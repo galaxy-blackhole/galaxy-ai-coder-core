@@ -2,6 +2,7 @@ import {
   isAiCoderWorkspaceMutationEvidence,
   type AiCoderWorkspaceEntryKind,
 } from "../context/checkpoint.js";
+import { canonicalResearchUrl, researchCitations } from "./research-citations.js";
 
 export type AiCoderCompletionWrite = Readonly<{
   afterHash: string | null;
@@ -84,6 +85,7 @@ export type AiCoderCompletionIssue = Readonly<{
     | "OPEN_PROBLEMS"
     | "PENDING_APPROVAL"
     | "RESEARCH_CITATION_MISSING"
+    | "RESEARCH_CITATION_UNSUPPORTED"
     | "RESEARCH_EVIDENCE_MISSING"
     | "RUNNING_TOOL_CALL"
     | "TOKEN_LEDGER_NOT_FINALIZED"
@@ -152,6 +154,20 @@ export function evaluateAiCoderCompletion(
     if (research.requireCitations
       && !fetched.some((source) => snapshot.finalReport.includes(source.url))) {
       add("RESEARCH_CITATION_MISSING", "The final report must cite at least one successfully fetched source URL.");
+    }
+    if (research.requireCitations && fetched.length) {
+      // Every cited URL must carry successful fetch evidence. Citing a
+      // plausible-but-unfetched URL presents an unverified source as
+      // evidence; the rejection feedback lets the model rewrite the report
+      // with fetched citations inside the completion-rejection budget.
+      const fetchedUrls = new Set(fetched.map((source) => canonicalResearchUrl(source.url)));
+      const cited = researchCitations(snapshot.finalReport).filter((url) => !fetchedUrls.has(url));
+      if (cited.length) {
+        add(
+          "RESEARCH_CITATION_UNSUPPORTED",
+          `The final report cites ${cited.length} URL(s) without successful fetch evidence: ${cited.slice(0, 8).join(", ")}. Cite only URLs returned by successful fetch calls.`,
+        );
+      }
     }
   }
   if (snapshot.openProblems?.length) {
