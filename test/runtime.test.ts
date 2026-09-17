@@ -11,12 +11,14 @@ import {
   formatAiCoderUserTask,
 } from "../src/prompt/prompt-assembler.js";
 import type {
+  CodingAssistantMessage,
   CodingModelAdapter,
   CodingRoundEvent,
   CodingRoundRequest,
   CodingTokenCountInput,
   CodingToolCall,
 } from "../src/tools/coding-messages.js";
+import { CodingProviderError } from "../src/tools/coding-messages.js";
 import { evaluateAiCoderCompletion } from "../src/runtime/completion-gate.js";
 import { AiCoderRunController } from "../src/runtime/run-controller.js";
 import {
@@ -26,10 +28,12 @@ import {
 import type {
   AiCoderFinalReport,
   AiCoderResumeWorkspaceVerifier,
+  AiCoderRunHandle,
   AiCoderRunRequest,
   AiCoderRunStore,
   AiCoderRuntimeToolExecutor,
   AiCoderRuntimeToolResult,
+  AiCoderRuntimeToolSet,
 } from "../src/runtime/runtime-types.js";
 
 const IDENTITY: ModelIdentity = Object.freeze({
@@ -129,7 +133,7 @@ class DeterministicExecutor implements AiCoderRuntimeToolExecutor {
     })),
   ]);
 
-  async getToolSet() {
+  async getToolSet(): Promise<AiCoderRuntimeToolSet> {
     return Object.freeze({
       canonicalToolIds: Object.freeze({
         git_diff: "git.diff",
@@ -213,6 +217,20 @@ function request(runId = "run-test"): AiCoderRunRequest {
     prompt: Object.freeze({
       approvalProfile: "balanced",
       complexity: "standard",
+      hostEnvironment: Object.freeze({
+        architecture: "arm64",
+        command: Object.freeze({
+          argumentsPrefix: Object.freeze(["-c"]),
+          commandMode: "shell_string" as const,
+          executable: "/bin/zsh",
+          interactive: false as const,
+          pathStyle: "posix" as const,
+          shell: "zsh" as const,
+          stdin: "closed" as const,
+          tty: false as const,
+        }),
+        operatingSystem: "darwin" as const,
+      }),
       networkAccess: "denied",
       writeAccess: "allowed",
     }),
@@ -221,6 +239,64 @@ function request(runId = "run-test"): AiCoderRunRequest {
     workspaceRoot: "/workspace",
   });
 }
+
+test("retry feedback reaches the immediate request and thinking-only failures retry without hidden thinking", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError(
+        "MALFORMED_STREAM",
+        "thinking alone produced no visible content or tool call",
+        true,
+        "without_thinking",
+      ),
+    })]),
+    Object.freeze([tool("workspace_list", "inspect-after-thinking"), done("", "tool_calls")]),
+    Object.freeze([done("Recovered after the bounded retry and inspected the workspace.")]),
+  ]);
+  const retryRequest = Object.freeze({
+    ...request("run-thinking-only-retry"),
+    budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 1, maxToolCalls: 20, maxTurns: 12 }),
+  });
+
+  const result = await new AiCoderRunController({ model, toolExecutor: new DeterministicExecutor() })
+    .start(retryRequest).result;
+
+  assert.equal(result.state, "completed");
+  assert.equal(model.requests.length, 3);
+  assert.equal(model.requests[0]?.think, true);
+  assert.equal(model.requests[1]?.think, false);
+  assert.equal(model.requests[1]?.messages.length, (model.requests[0]?.messages.length ?? 0) + 1);
+  assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /hidden thinking disabled/);
+  assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /failure_detail_untrusted/);
+});
+
+test("retry cannot disable thinking when the provider requires it", async () => {
+  const requiredThinking = Object.freeze({ ...CAPABILITIES, thinking: "required" as const });
+  const model = new ScriptedModel([
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError(
+        "MALFORMED_STREAM",
+        "required thinking produced no visible result",
+        true,
+        "without_thinking",
+      ),
+    })]),
+    Object.freeze([tool("workspace_list", "required-thinking-inspect"), done("", "tool_calls")]),
+    Object.freeze([done("Recovered while preserving required thinking.")]),
+  ], [], requiredThinking);
+  const result = await new AiCoderRunController({ model, toolExecutor: new DeterministicExecutor() })
+    .start(Object.freeze({
+      ...request("run-required-thinking-retry"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 1, maxToolCalls: 20, maxTurns: 12 }),
+    })).result;
+
+  assert.equal(result.state, "completed");
+  assert.equal(model.requests[0]?.think, true);
+  assert.equal(model.requests[1]?.think, true);
+  assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /preserving required or unverified thinking behavior/);
+});
 
 test("operational states allow evidence-driven phase changes and terminals remain closed", () => {
   const operational: AiCoderRunState[] = ["inspecting", "planning", "executing", "validating", "reviewing"];
@@ -243,6 +319,7 @@ test("completion gate permits inspected read-only work and requires validation p
     finalReportStored: true,
     inspectedWorkspace: true,
     pendingApprovals: 0,
+    researchSources: Object.freeze([]),
     runningToolCalls: 0,
     tokenLedgerFinalized: true,
     traceFinalized: true,
@@ -278,6 +355,24 @@ test("completion gate permits inspected read-only work and requires validation p
     writes: Object.freeze([write]),
   });
   assert.deepEqual(new Set(missing.issues.map((item) => item.code)), new Set(["WRITE_NOT_VALIDATED", "DIFF_NOT_REVIEWED"]));
+  const sameCallValidation = evaluateAiCoderCompletion({
+    ...base,
+    finalDiffReview: Object.freeze({
+      diffHash: "sha256:final-diff",
+      sequence: 3,
+      workspaceFingerprint: "sha256:workspace-final",
+    }),
+    validations: Object.freeze([Object.freeze({
+      detail: "build produced an output while validating",
+      id: "build",
+      scope: "workspace" as const,
+      sequence: 2,
+      status: "passed" as const,
+      workspaceFingerprint: "sha256:workspace-final",
+    })]),
+    writes: Object.freeze([write]),
+  });
+  assert.deepEqual(sameCallValidation.issues.map((item) => item.code), ["WRITE_NOT_VALIDATED"]);
   const complete = evaluateAiCoderCompletion({
     ...base,
     finalDiffReview: Object.freeze({
@@ -298,6 +393,45 @@ test("completion gate permits inspected read-only work and requires validation p
   assert.equal(complete.ok, true);
 });
 
+test("completion gate owns research call, domain, and citation requirements", () => {
+  const base = Object.freeze({
+    acceptanceCriteria: Object.freeze([]),
+    finalDiffReview: null,
+    finalReport: "Recommendation based on https://docs.example.com/guide",
+    finalReportStored: true,
+    finalWorkspaceFingerprint: null,
+    inspectedWorkspace: true,
+    pendingApprovals: 0,
+    researchSources: Object.freeze([
+      Object.freeze({ contentHash: null, kind: "search" as const, toolCallId: "search-1", url: "https://search.example.net/result" }),
+      Object.freeze({ contentHash: "sha256:guide", kind: "fetch" as const, toolCallId: "fetch-1", url: "https://docs.example.com/guide" }),
+    ]),
+    runningToolCalls: 0,
+    tokenLedgerFinalized: true,
+    traceFinalized: true,
+    validations: Object.freeze([]),
+    writes: Object.freeze([]),
+  });
+  const requirements = Object.freeze({
+    research: Object.freeze({
+      minFetchCalls: 1,
+      minSearchCalls: 1,
+      requireCitations: true,
+      requiredDomains: Object.freeze(["example.com"]),
+    }),
+  });
+  assert.equal(evaluateAiCoderCompletion(base, requirements).ok, true);
+  const missing = evaluateAiCoderCompletion(Object.freeze({
+    ...base,
+    finalReport: "Recommendation without source link",
+    researchSources: Object.freeze(base.researchSources.filter((source) => source.kind === "search")),
+  }), requirements);
+  assert.deepEqual(
+    new Set(missing.issues.map((issue) => issue.code)),
+    new Set(["RESEARCH_CITATION_MISSING", "RESEARCH_EVIDENCE_MISSING"]),
+  );
+});
+
 test("completion gate rejects waived required criteria, stale evidence, and later same-sequence failures", () => {
   const fingerprint = "sha256:workspace-final";
   const base = Object.freeze({
@@ -314,6 +448,7 @@ test("completion gate rejects waived required criteria, stale evidence, and late
     finalWorkspaceFingerprint: fingerprint,
     inspectedWorkspace: true,
     pendingApprovals: 0,
+    researchSources: Object.freeze([]),
     runningToolCalls: 0,
     tokenLedgerFinalized: true,
     traceFinalized: true,
@@ -367,6 +502,7 @@ test("completion evidence distinguishes create, edit, and delete mutations", () 
     finalWorkspaceFingerprint: fingerprint,
     inspectedWorkspace: true,
     pendingApprovals: 0,
+    researchSources: Object.freeze([]),
     runningToolCalls: 0,
     tokenLedgerFinalized: true,
     traceFinalized: true,
@@ -526,18 +662,345 @@ test("post-dispatch effect failures become durable unknown outcomes and cannot r
   assert.doesNotMatch(resumed.content, /must not complete/);
 });
 
-test("runtime rejects multiple tool calls until batch and approval semantics are explicit", async () => {
+test("workspace capture failure does not commit any staged host effects", async () => {
+  class AtomicEffectsExecutor implements AiCoderRuntimeToolExecutor {
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ atomic_effect: "test.atomic_effect" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({
+            description: "return every workspace-bound host effect together",
+            name: "atomic_effect",
+            parameters: Object.freeze({ type: "object" }),
+          }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({
+          "test.atomic_effect": Object.freeze([
+            "criterion_satisfy" as const,
+            "diff_review" as const,
+            "inspect" as const,
+            "plan" as const,
+            "state_version" as const,
+            "validate" as const,
+            "write" as const,
+          ]),
+        }),
+        snapshotHash: "sha256:atomic-effects",
+      });
+    }
+
+    async execute(): Promise<AiCoderRuntimeToolResult> {
+      return Object.freeze({
+        canonicalToolId: "test.atomic_effect",
+        content: JSON.stringify({ ok: true }),
+        effects: Object.freeze({
+          acceptanceCriteriaSatisfied: Object.freeze(["criterion-a"]),
+          diffReview: Object.freeze({ diffHash: "sha256:staged-diff" }),
+          inspectedPaths: Object.freeze(["staged/inspection.ts"]),
+          nextAction: "staged next action",
+          plan: Object.freeze({
+            completed: Object.freeze(["staged completed step"]),
+            inProgress: "staged current step",
+            pending: Object.freeze(["staged pending step"]),
+          }),
+          stateVersion: "sha256:staged-state",
+          validations: Object.freeze([Object.freeze({
+            detail: "staged validation passed",
+            id: "staged-validation",
+            scope: "workspace" as const,
+            status: "passed" as const,
+          })]),
+          writes: Object.freeze([Object.freeze({
+            afterHash: "sha256:after",
+            beforeHash: "sha256:before",
+            path: "src/a.ts",
+          })]),
+        }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: "Returned staged host effects.",
+        trust: "trusted" as const,
+      });
+    }
+  }
+
+  const capturedActiveFiles: Array<readonly Readonly<{ contentHash: string | null; path: string }>[]> = [];
+  const verifier: AiCoderResumeWorkspaceVerifier = Object.freeze({
+    consistency: "serialized_workspace" as const,
+    async capture(input: Parameters<AiCoderResumeWorkspaceVerifier["capture"]>[0]) {
+      capturedActiveFiles.push(input.activeFiles);
+      if (capturedActiveFiles.length === 1) {
+        return portFailure({ code: "IO_ERROR", message: "atomic capture failed", retryable: false });
+      }
+      return portSuccess(Object.freeze({
+        activeFiles: input.activeFiles,
+        dirtyStateSummary: input.dirtyStateSummary,
+        stateFingerprint: "sha256:failure-checkpoint",
+      }));
+    },
+    async verify(snapshot: Parameters<AiCoderResumeWorkspaceVerifier["verify"]>[0]) {
+      return portSuccess(Object.freeze({ currentFingerprint: snapshot.stateFingerprint, matches: true }));
+    },
+  });
+  const result = await new AiCoderRunController({
+    model: new ScriptedModel([
+      Object.freeze([toolWithArguments("atomic_effect", "atomic-call", {}), done("", "tool_calls")]),
+    ]),
+    resumeWorkspaceVerifier: verifier,
+    toolExecutor: new AtomicEffectsExecutor(),
+  }).start(Object.freeze({
+    ...request("run-atomic-effect-capture"),
+    acceptanceCriteria: Object.freeze([Object.freeze({
+      id: "criterion-a",
+      required: true,
+      text: "Criterion must remain pending when capture fails",
+    })]),
+  })).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "TOOL_EXECUTION");
+  assert.match(result.error?.message ?? "", /atomic capture failed/);
+  assert.deepEqual(capturedActiveFiles[0]?.map((item) => item.path), ["src/a.ts", "staged/inspection.ts"]);
+  assert.deepEqual(capturedActiveFiles[1], [], "failure checkpoint must not contain partially committed inspection or write effects");
+  assert.deepEqual(result.writes, []);
+  assert.deepEqual(result.validation, []);
+  assert.equal(result.checkpoint?.completionEvidence.diffReview, null);
+  assert.deepEqual(result.checkpoint?.plan, { completed: [], inProgress: null, pending: [] });
+  assert.equal(result.checkpoint?.nextAction, "Inspect the workspace and choose the smallest evidence-backed action.");
+  assert.deepEqual(result.checkpoint?.acceptanceCriteria, [Object.freeze({
+    evidenceIds: Object.freeze([]),
+    id: "criterion-a",
+    required: true,
+    status: "pending",
+    text: "Criterion must remain pending when capture fails",
+  })]);
+});
+
+test("runtime executes same-name tool calls sequentially and preserves every correlation", async () => {
   const model = new ScriptedModel([
     Object.freeze([
-      tool("workspace_list", "first"),
-      tool("workspace_list", "second"),
+      toolWithArguments("workspace_list", "first", { path: "src" }),
+      toolWithArguments("workspace_list", "second", { path: "test" }),
       done("", "tool_calls"),
     ]),
+    Object.freeze([done("Both workspace paths were inspected.")]),
   ]);
-  const result = await new AiCoderRunController({ model, toolExecutor: new DeterministicExecutor() })
+  const executor = new DeterministicExecutor();
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
     .start(request("run-multiple-tools")).result;
+  assert.equal(result.state, "completed");
+  assert.deepEqual(executor.calls.map((call) => [call.toolCallId, call.name, call.arguments.path]), [
+    ["first", "workspace_list", "src"],
+    ["second", "workspace_list", "test"],
+  ]);
+  const correlated = model.requests[1]?.messages.filter((message) => message.role === "tool") ?? [];
+  assert.deepEqual(correlated.map((message) => message.toolCallId), ["first", "second"]);
+  const assistant = model.requests[1]?.messages.find(
+    (message): message is CodingAssistantMessage => message.role === "assistant" && Boolean(message.toolCalls?.length),
+  );
+  assert.deepEqual(assistant?.toolCalls?.map((call) => call.toolCallId), ["first", "second"]);
+});
+
+test("runtime rejects duplicate batch ids before executing any tool", async () => {
+  const executor = new DeterministicExecutor();
+  const model = new ScriptedModel([Object.freeze([
+    toolWithArguments("workspace_list", "duplicate", { path: "src" }),
+    toolWithArguments("workspace_list", "duplicate", { path: "test" }),
+    done("", "tool_calls"),
+  ])]);
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(request("run-duplicate-batch-id")).result;
   assert.equal(result.state, "failed");
   assert.equal(result.error?.code, "INVALID_MODEL_STREAM");
+  assert.deepEqual(executor.calls, []);
+});
+
+test("runtime rejects a batch that exceeds the remaining tool budget before side effects", async () => {
+  const executor = new DeterministicExecutor();
+  const model = new ScriptedModel([Object.freeze([
+    toolWithArguments("workspace_list", "budget-first", { path: "src" }),
+    toolWithArguments("workspace_list", "budget-second", { path: "test" }),
+    done("", "tool_calls"),
+  ])]);
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(Object.freeze({
+      ...request("run-batch-budget"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 1, maxTurns: 12 }),
+    })).result;
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "MAX_TOOL_CALLS");
+  assert.deepEqual(executor.calls, []);
+});
+
+test("runtime preflights the whole batch against the registry snapshot shown to the model", async () => {
+  class ExpandingExecutor implements AiCoderRuntimeToolExecutor {
+    executions = 0;
+    expanded = false;
+
+    async getToolSet() {
+      const names = this.expanded ? ["search_tools", "lazy_read"] : ["search_tools"];
+      return Object.freeze({
+        canonicalToolIds: Object.freeze(Object.fromEntries(names.map((name) => [name, `test.${name}`]))),
+        definitions: Object.freeze(names.map((name) => Object.freeze({
+          function: Object.freeze({ description: "batch registry test", name, parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }))),
+        effectCapabilities: Object.freeze(Object.fromEntries(names.map((name) => [`test.${name}`, Object.freeze([])]))),
+        snapshotHash: this.expanded ? "sha256:expanded-batch" : "sha256:initial-batch",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.executions += 1;
+      this.expanded = true;
+      return Object.freeze({
+        canonicalToolId: `test.${call.name}`,
+        content: "ok",
+        ok: true,
+        summary: "expanded",
+        trust: "trusted",
+      });
+    }
+  }
+  const executor = new ExpandingExecutor();
+  const model = new ScriptedModel([Object.freeze([
+    toolWithArguments("search_tools", "activate", { query: "lazy_read" }),
+    toolWithArguments("lazy_read", "too-early", { path: "src/a.ts" }),
+    done("", "tool_calls"),
+  ])]);
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(request("run-batch-registry-snapshot")).result;
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "INVALID_MODEL_STREAM");
+  assert.match(result.error?.message ?? "", /not active in the registry snapshot/);
+  assert.equal(executor.executions, 0);
+});
+
+test("runtime continues a batch after an ordinary structured tool failure", async () => {
+  class RecoverableBatchExecutor extends DeterministicExecutor {
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.toolCallId !== "recoverable-failure") return super.execute(call, context);
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: "workspace_list",
+        content: JSON.stringify({ error: { code: "READ_FAILED", retryable: true }, ok: false }),
+        error: Object.freeze({ code: "READ_FAILED", message: "Temporary read failure.", retryable: true }),
+        ok: false,
+        summary: "First read failed safely.",
+        trust: "workspace",
+      });
+    }
+  }
+  const executor = new RecoverableBatchExecutor();
+  const model = new ScriptedModel([
+    Object.freeze([
+      toolWithArguments("workspace_list", "recoverable-failure", { path: "src" }),
+      toolWithArguments("workspace_list", "recovered", { path: "test" }),
+      done("", "tool_calls"),
+    ]),
+    Object.freeze([done("The second inspection succeeded.")]),
+  ]);
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(request("run-recoverable-batch")).result;
+  assert.equal(result.state, "completed");
+  assert.deepEqual(executor.calls.map((call) => call.toolCallId), ["recoverable-failure", "recovered"]);
+});
+
+test("runtime stops a batch immediately when a tool outcome is unknown", async () => {
+  class FatalBatchExecutor extends DeterministicExecutor {
+    override async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      throw new Error("transport disappeared after dispatch");
+    }
+  }
+  const executor = new FatalBatchExecutor();
+  const model = new ScriptedModel([Object.freeze([
+    toolWithArguments("workspace_list", "fatal-first", { path: "src" }),
+    toolWithArguments("workspace_list", "must-not-run", { path: "test" }),
+    done("", "tool_calls"),
+  ])]);
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(request("run-fatal-batch")).result;
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "TOOL_EXECUTION");
+  assert.deepEqual(executor.calls.map((call) => call.toolCallId), ["fatal-first"]);
+});
+
+test("runtime correlates but does not execute later batch calls while approval is pending", async () => {
+  class PendingBatchExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet() {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ approval_tool: "test.approval", workspace_list: "test.inspect" }),
+        definitions: Object.freeze(["approval_tool", "workspace_list"].map((name) => Object.freeze({
+          function: Object.freeze({ description: "approval batch test", name, parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }))),
+        effectCapabilities: Object.freeze({
+          "test.approval": Object.freeze(["approval" as const]),
+          "test.inspect": Object.freeze(["inspect" as const]),
+        }),
+        snapshotHash: "sha256:approval-batch",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      if (call.name === "approval_tool") {
+        return Object.freeze({
+          canonicalToolId: "test.approval",
+          content: JSON.stringify({ approvalRequestId: "approval-1", ok: true }),
+          effects: Object.freeze({ approval: "pending" as const, approvalRequestId: "approval-1" }),
+          effectsAuthority: "host",
+          ok: true,
+          summary: "Approval is pending.",
+          trust: "trusted",
+        });
+      }
+      return Object.freeze({
+        canonicalToolId: "test.inspect",
+        content: JSON.stringify({ ok: true }),
+        effects: Object.freeze({ inspectedPaths: Object.freeze(["src"]) }),
+        effectsAuthority: "host",
+        ok: true,
+        summary: "Workspace inspected.",
+        trust: "workspace",
+      });
+    }
+  }
+
+  const executor = new PendingBatchExecutor();
+  const model = new ScriptedModel([
+    Object.freeze([
+      toolWithArguments("approval_tool", "approval-call", { target: "outside" }),
+      toolWithArguments("workspace_list", "blocked-call", { path: "src" }),
+      done("", "tool_calls"),
+    ]),
+    Object.freeze([toolWithArguments("workspace_list", "after-approval", { path: "src" }), done("", "tool_calls")]),
+    Object.freeze([done("Approval was resolved and the workspace was inspected.")]),
+  ]);
+  const resultCodes: string[] = [];
+  let handle!: AiCoderRunHandle;
+  const controller = new AiCoderRunController({
+    model,
+    toolExecutor: executor,
+    onEvent(event) {
+      if (event.type !== "tool_result") return;
+      if (event.call.toolCallId === "blocked-call") {
+        resultCodes.push(event.result.error?.code ?? "success");
+        queueMicrotask(() => void handle.resolveApproval("approval-1", "granted"));
+      }
+    },
+  });
+  handle = controller.start(request("run-pending-approval-batch"));
+  const result = await handle.result;
+  assert.equal(result.state, "completed");
+  assert.deepEqual(executor.calls.map((call) => call.toolCallId), ["approval-call", "after-approval"]);
+  assert.deepEqual(resultCodes, ["BATCH_BLOCKED_BY_APPROVAL"]);
+  const firstBatchResults = model.requests[1]?.messages.filter((message) => message.role === "tool") ?? [];
+  assert.deepEqual(firstBatchResults.map((message) => message.toolCallId), ["approval-call", "blocked-call"]);
 });
 
 test("empty completed responses without tools fail immediately instead of entering a completion loop", async () => {
@@ -575,13 +1038,16 @@ test("run controller completes a correlated read-only tool loop", async () => {
     normalizedOutcome: "Inspect and complete the deterministic task",
     originalRequest: "Inspect and complete the deterministic task",
     taskId: "task-test",
-    workspacePath: "/workspace",
+    workspacePath: ".",
   }));
   assert.equal(model.requests[0]?.messages.find((message) => message.role === "user")?.content, expectedTask);
   const systemPrompt = model.requests[0]?.messages.find((message) => message.role === "system")?.content ?? "";
   assert.match(systemPrompt, /Galaxy AI Coder/);
   assert.match(systemPrompt, /"approvalProfile":"balanced"/);
   assert.match(systemPrompt, /"registrySnapshotHash":"sha256:tool-set"/);
+  assert.match(systemPrompt, /"operatingSystem":"darwin"/);
+  assert.match(systemPrompt, /"workspacePath":"\."/);
+  assert.equal(systemPrompt.includes("/workspace"), false);
   assert.equal(systemPrompt.includes("deterministic Galaxy AI Coder test agent"), false);
 });
 
@@ -597,6 +1063,51 @@ test("runtime rejects legacy prompt injection fields before asynchronous prepara
     toolExecutor: new DeterministicExecutor(),
   });
   assert.throws(() => controller.start(legacy), /no longer accepted/);
+});
+
+test("runtime validates the complete non-interactive command environment contract", () => {
+  const malformed = structuredClone(request("run-malformed-command-environment")) as unknown as {
+    prompt: { hostEnvironment: { command: { interactive: boolean } } };
+  };
+  malformed.prompt.hostEnvironment.command.interactive = true;
+  const controller = new AiCoderRunController({
+    model: new ScriptedModel([]),
+    toolExecutor: new DeterministicExecutor(),
+  });
+  assert.throws(
+    () => controller.start(malformed as unknown as AiCoderRunRequest),
+    /hostEnvironment\.command is malformed/,
+  );
+});
+
+test("runtime refuses an active command.run tool without a concrete shell contract", async () => {
+  class CommandExecutor extends DeterministicExecutor {
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ run_command: "command.run" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "run a command", name: "run_command", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({}),
+        snapshotHash: "sha256:command-tool-set",
+      });
+    }
+  }
+  const missingEnvironment = structuredClone(request("run-command-without-environment")) as unknown as {
+    prompt: Record<string, unknown>;
+  };
+  delete missingEnvironment.prompt.hostEnvironment;
+  const model = new ScriptedModel([]);
+  const result = await new AiCoderRunController({
+    model,
+    toolExecutor: new CommandExecutor(),
+  }).start(missingEnvironment as unknown as AiCoderRunRequest).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "CAPABILITY_MISMATCH");
+  assert.match(result.error?.message ?? "", /requires a concrete hostEnvironment\.command interpreter and shell dialect/);
+  assert.equal(model.requests.length, 0);
 });
 
 test("runtime reassembles its system prompt when lazy tool state changes", async () => {
@@ -708,7 +1219,7 @@ test("trusted diffReview evidence classifies git.exec observations as diff", asy
   assert.deepEqual(observationKinds, ["diff"]);
 });
 
-test("a passing validation closes older open problems with the same stable id", async () => {
+test("a passing validation closes retried diagnostics with the same stable id", async () => {
   class RecoveringValidationExecutor extends DeterministicExecutor {
     private validations = 0;
 
@@ -716,13 +1227,13 @@ test("a passing validation closes older open problems with the same stable id", 
       if (call.name !== "project_validate") return super.execute(call, context);
       this.calls.push(call);
       this.validations += 1;
-      const passed = this.validations > 1;
+      const passed = this.validations > 2;
       return Object.freeze({
         canonicalToolId: "project_validate",
         content: passed ? "validation recovered" : "validation failed",
         effects: Object.freeze({
           validations: Object.freeze([Object.freeze({
-            detail: passed ? "unit tests now pass" : "unit tests failed",
+            detail: passed ? "unit tests now pass" : `unit tests failed after ${this.validations * 17}ms`,
             id: "unit",
             scope: "workspace" as const,
             status: passed ? "passed" as const : "failed" as const,
@@ -748,7 +1259,8 @@ test("a passing validation closes older open problems with the same stable id", 
   const controller = new AiCoderRunController({
     model: new ScriptedModel([
       Object.freeze([tool("workspace_list", "recover-inspect"), done("", "tool_calls")]),
-      Object.freeze([tool("project_validate", "recover-fail"), done("", "tool_calls")]),
+      Object.freeze([tool("project_validate", "recover-fail-1"), done("", "tool_calls")]),
+      Object.freeze([tool("project_validate", "recover-fail-2"), done("", "tool_calls")]),
       Object.freeze([tool("project_validate", "recover-pass"), done("", "tool_calls")]),
       waitRound,
     ]),
@@ -760,8 +1272,65 @@ test("a passing validation closes older open problems with the same stable id", 
   handle.pause("inspect recovered validation state");
   const paused = await handle.result;
   assert.equal(paused.state, "paused");
-  assert.equal(paused.validation.length, 2);
+  assert.equal(paused.validation.length, 2, "same-state failure retries keep only their latest diagnostic");
   assert.equal(paused.validation.at(-1)?.status, "passed");
+  assert.deepEqual(paused.checkpoint?.openProblems, []);
+});
+
+test("pass fail pass on one workspace retains the newest validation status", async () => {
+  class TransitioningValidationExecutor extends DeterministicExecutor {
+    private validations = 0;
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.name !== "project_validate") return super.execute(call, context);
+      this.calls.push(call);
+      this.validations += 1;
+      const passed = this.validations !== 2;
+      return Object.freeze({
+        canonicalToolId: "project_validate",
+        content: passed ? "pass" : "fail",
+        effects: Object.freeze({ validations: Object.freeze([Object.freeze({
+          detail: passed ? `pass ${this.validations}` : "intermittent deterministic failure",
+          id: "unit",
+          scope: "workspace" as const,
+          status: passed ? "passed" as const : "failed" as const,
+        })]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: passed ? "Validation passed." : "Validation failed.",
+        trust: "workspace" as const,
+      });
+    }
+  }
+  let waitingResolve: (() => void) | null = null;
+  const waiting = new Promise<void>((resolve) => { waitingResolve = resolve; });
+  const waitRound = (context: RunExecutionContext): AsyncIterable<CodingRoundEvent> => (async function* stream() {
+    waitingResolve?.();
+    await new Promise<never>((_resolve, reject) => {
+      const abort = () => reject(context.signal.reason);
+      if (context.signal.aborted) abort();
+      else context.signal.addEventListener("abort", abort, { once: true });
+    });
+  })();
+  const controller = new AiCoderRunController({
+    model: new ScriptedModel([
+      Object.freeze([tool("workspace_list", "transition-inspect"), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("project_validate", "transition-pass-1", { attempt: 1 }), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("project_validate", "transition-fail", { attempt: 2 }), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("project_validate", "transition-pass-2", { attempt: 3 }), done("", "tool_calls")]),
+      waitRound,
+    ]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: new TransitioningValidationExecutor(),
+  });
+  const handle = controller.start(request("run-validation-status-transition"));
+  await waiting;
+  handle.pause("inspect newest validation status");
+  const paused = await handle.result;
+
+  assert.equal(paused.state, "paused");
+  assert.equal(paused.validation.length, 2);
+  assert.equal(paused.validation.reduce((latest, item) => item.sequence > latest.sequence ? item : latest).status, "passed");
   assert.deepEqual(paused.checkpoint?.openProblems, []);
 });
 
@@ -786,7 +1355,8 @@ test("configured trace must durably flush before completion", async () => {
     budget: Object.freeze({ ...baseRequest.budget, maxCompletionRejections: 1 }),
   }).result;
   assert.equal(result.state, "failed");
-  assert.equal(result.error?.code, "NO_PROGRESS");
+  assert.equal(result.error?.code, "PERSISTENCE_ERROR");
+  assert.match(result.error?.message ?? "", /TRACE_NOT_FINALIZED/);
 });
 
 test("a thrown trace write remains unhealthy even when the later flush succeeds", async () => {
@@ -813,7 +1383,8 @@ test("a thrown trace write remains unhealthy even when the later flush succeeds"
   }).result;
 
   assert.equal(result.state, "failed");
-  assert.equal(result.error?.code, "NO_PROGRESS");
+  assert.equal(result.error?.code, "PERSISTENCE_ERROR");
+  assert.match(result.error?.message ?? "", /TRACE_NOT_FINALIZED/);
   assert.equal(emits > 1, true);
 });
 
@@ -955,6 +1526,199 @@ test("different stale edit arguments still share one bounded failure family", as
   assert.equal(result.writes.length, 0);
 });
 
+test("interleaved identical reads dispatch with an advisory nudge and stay bounded", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:observation-tools",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const paths = ["src/a.ts", "src/b.ts", "src/c.ts", "src/a.ts", "src/b.ts", "src/c.ts", "src/a.ts"];
+  const model = new ScriptedModel([
+    ...paths.map((path, index) => Object.freeze([
+      toolWithArguments("read_file", `read-${index}`, { path }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([done("Used the retained workspace evidence and stopped repeated inspection.")]),
+  ]);
+  const executor = new ObservationExecutor();
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(Object.freeze({
+      ...request("run-interleaved-observation-bound"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 16 }),
+    })).result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(executor.calls.length, 7, "the third identical observation dispatches with an advisory nudge");
+});
+
+test("observation and no-progress budget fields raise the block and pause thresholds", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+    readonly blocked: string[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:observation-thresholds",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const paths = ["src/a.ts", "src/a.ts", "src/a.ts", "src/a.ts", "done"];
+  const model = new ScriptedModel([
+    ...paths.slice(0, 4).map((path, index) => Object.freeze([
+      toolWithArguments("read_file", `repeat-${index}`, { path }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([done("Stopped repeated inspection with the retained evidence.")]),
+  ]);
+  const executor = new ObservationExecutor();
+  const completed = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(Object.freeze({
+      ...request("run-raised-observation-repeat"),
+      budget: Object.freeze({
+        maxCompletionRejections: 3, maxNoProgressEpisodes: 3, maxObservationRepeats: 4, maxRepeatedToolRequests: 4, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12,
+      }),
+    })).result;
+  assert.equal(completed.state, "completed", JSON.stringify(completed.error));
+  assert.equal(executor.calls.length, 4, "the raised observation budget dispatches all four identical reads");
+
+  const pausedModel = new ScriptedModel([
+    Object.freeze([toolWithArguments("read_file", "once", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "twice", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "thrice", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([done("unused")]),
+  ]);
+  const pausedExecutor = new ObservationExecutor();
+  const paused = await new AiCoderRunController({ model: pausedModel, toolExecutor: pausedExecutor })
+    .start(Object.freeze({
+      ...request("run-lowered-no-progress-pause"),
+      budget: Object.freeze({
+        maxCompletionRejections: 3, maxNoProgressEpisodes: 1, maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12,
+      }),
+    })).result;
+  assert.equal(paused.state, "paused");
+  assert.equal(pausedExecutor.calls.length, 3, "the nudged third read dispatches and the first episode pauses");
+});
+
+test("two blocked observations in one model round count as one no-progress episode", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:observation-round-dedupe",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const readRound = (path: string, id: string) => Object.freeze([
+    toolWithArguments("read_file", id, { path }),
+    done("", "tool_calls"),
+  ]);
+  const model = new ScriptedModel([
+    readRound("package.json", "a1"), readRound("test.mjs", "b1"),
+    readRound("package.json", "a2"), readRound("test.mjs", "b2"),
+    Object.freeze([
+      toolWithArguments("read_file", "a3", { path: "package.json" }),
+      toolWithArguments("read_file", "b3", { path: "test.mjs" }),
+      done("", "tool_calls"),
+    ]),
+    Object.freeze([done("Used the retained workspace evidence and wrote the requested file.")]),
+  ]);
+  const executor = new ObservationExecutor();
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(Object.freeze({
+      ...request("run-same-round-blocks"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12 }),
+    })).result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.deepEqual(result.transitions.map((transition) => `${transition.from}->${transition.to}`),
+    ["created->preparing", "preparing->inspecting", "inspecting->reviewing", "reviewing->completed"],
+    "the same-round double block pauses nothing");
+  assert.equal(executor.calls.length, 5, "the nudged a3 dispatches; the interleaved b3 stays bounded by the cycle guard");
+
+  const pausedModel = new ScriptedModel([
+    readRound("package.json", "p1"), readRound("test.mjs", "q1"),
+    readRound("package.json", "p2"), readRound("test.mjs", "q2"),
+    Object.freeze([
+      toolWithArguments("read_file", "p3", { path: "package.json" }),
+      toolWithArguments("read_file", "q3", { path: "test.mjs" }),
+      done("", "tool_calls"),
+    ]),
+    Object.freeze([done("unused")]),
+  ]);
+  const pausedExecutor = new ObservationExecutor();
+  const paused = await new AiCoderRunController({ model: pausedModel, toolExecutor: pausedExecutor })
+    .start(Object.freeze({
+      ...request("run-same-round-blocks-pause"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1, maxToolCalls: 20, maxTurns: 12 }),
+    })).result;
+  assert.equal(paused.state, "paused");
+  assert.equal(paused.checkpoint?.noProgress?.episodes, 1, "the same-round incidents carry exactly one episode");
+  assert.equal(pausedExecutor.calls.length, 5, "the pause keeps both nudged dispatches and the cycle-blocked b3");
+});
+
 test("repeated failed validation on one workspace fingerprint is paused and deduplicated", async () => {
   class FailingValidationExecutor extends DeterministicExecutor {
     override async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
@@ -989,8 +1753,273 @@ test("repeated failed validation on one workspace fingerprint is paused and dedu
   }).start(request("run-validation-loop")).result;
   assert.equal(result.state, "paused");
   assert.equal(executor.calls.length, 4);
-  assert.equal(result.validation.length, 4);
+  assert.equal(result.validation.length, 1);
   assert.deepEqual(result.checkpoint?.openProblems, ["unit test src/a.test.ts failed"]);
+});
+
+test("runtime blocks an alternating successful tool cycle before exhausting the tool budget", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet() {
+      const names = ["probe_a", "probe_b"];
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ probe_a: "test.probe_a", probe_b: "test.probe_b" }),
+        definitions: Object.freeze(names.map((name) => Object.freeze({
+          function: Object.freeze({ description: "read-only diagnostic probe", name, parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }))),
+        effectCapabilities: Object.freeze({
+          "test.probe_a": Object.freeze([]),
+          "test.probe_b": Object.freeze([]),
+        }),
+        snapshotHash: "sha256:observation-cycle",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: `test.${call.name}`,
+        content: JSON.stringify({ ok: true }),
+        ok: true,
+        summary: `${call.name} observed the same state`,
+        trust: "trusted" as const,
+      });
+    }
+  }
+  const rounds = Array.from({ length: 6 }, (_, index) => Object.freeze([
+    toolWithArguments(index % 2 === 0 ? "probe_a" : "probe_b", `cycle-probe-${index}`, { path: "." }),
+    done("", "tool_calls"),
+  ]));
+  const model = new ScriptedModel(rounds);
+  const executor = new ObservationExecutor();
+  const result = await new AiCoderRunController({ model, toolExecutor: executor }).start(Object.freeze({
+    ...request("run-observation-cycle"),
+    acceptanceCriteria: Object.freeze([Object.freeze({ id: "unresolved", required: true, text: "Need independent evidence" })]),
+  })).result;
+
+  assert.equal(result.state, "paused");
+  assert.equal(executor.calls.length, 3, "the fourth and fifth repeating calls must be blocked before dispatch");
+  assert.ok((result.checkpoint?.noProgress?.episodes ?? 0) >= 2);
+});
+
+test("fresh-host resume preserves an incomplete alternating successful tool cycle", async () => {
+  class ResumeObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const names = ["probe_a", "probe_b"];
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ probe_a: "test.probe_a", probe_b: "test.probe_b" }),
+        definitions: Object.freeze(names.map((name) => Object.freeze({
+          function: Object.freeze({ description: "read-only diagnostic probe", name, parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }))),
+        effectCapabilities: Object.freeze({
+          "test.probe_a": Object.freeze([]),
+          "test.probe_b": Object.freeze([]),
+        }),
+        snapshotHash: "sha256:resume-observation-cycle",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: `test.${call.name}`,
+        content: JSON.stringify({ ok: true }),
+        ok: true,
+        summary: `${call.name} observed the same state`,
+        trust: "trusted" as const,
+      });
+    }
+  }
+  let waitingResolve: (() => void) | null = null;
+  const waiting = new Promise<void>((resolve) => { waitingResolve = resolve; });
+  const blockingRound = (context: RunExecutionContext): AsyncIterable<CodingRoundEvent> => (async function* stream() {
+    waitingResolve?.();
+    await new Promise<never>((_resolve, reject) => {
+      const abort = () => reject(context.signal.reason);
+      if (context.signal.aborted) abort();
+      else context.signal.addEventListener("abort", abort, { once: true });
+    });
+  })();
+  const executor = new ResumeObservationExecutor();
+  const cycleRequest = Object.freeze({
+    ...request("run-resume-observation-cycle"),
+    acceptanceCriteria: Object.freeze([Object.freeze({ id: "unresolved", required: true, text: "Need independent evidence" })]),
+  });
+  const firstController = new AiCoderRunController({
+    model: new ScriptedModel([
+      Object.freeze([toolWithArguments("probe_a", "resume-probe-a1", { path: "." }), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("probe_b", "resume-probe-b1", { path: "." }), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("probe_a", "resume-probe-a2", { path: "." }), done("", "tool_calls")]),
+      blockingRound,
+    ]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  });
+  const first = firstController.start(cycleRequest);
+  await waiting;
+  first.pause("checkpoint incomplete successful tool cycle");
+  const paused = await first.result;
+  assert.equal(paused.state, "paused");
+  assert.ok(paused.checkpoint);
+  assert.equal(executor.calls.length, 3);
+
+  const blockedCodes: string[] = [];
+  const resumed = await new AiCoderRunController({
+    model: new ScriptedModel([
+      Object.freeze([toolWithArguments("probe_b", "resume-probe-b2", { path: "." }), done("", "tool_calls")]),
+    ]),
+    onEvent(event) {
+      if (event.type === "tool_result" && event.call.toolCallId === "resume-probe-b2") {
+        blockedCodes.push(event.result.error?.code ?? "success");
+      }
+    },
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).resume({
+    ...cycleRequest,
+    checkpoint: paused.checkpoint!,
+    checkpointTrust: "trusted_host",
+    runId: "run-resume-observation-cycle",
+  }).result;
+  assert.equal(resumed.state, "failed");
+  assert.equal(executor.calls.length, 3, "the resumed B call must complete the persisted A-B-A-B cycle and be blocked");
+  assert.deepEqual(blockedCodes, ["NO_PROGRESS"]);
+});
+
+test("semantic evidence keeps latest causal observations without manufacturing progress", async () => {
+  class SemanticEvidenceExecutor extends DeterministicExecutor {
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const base = await super.getToolSet();
+      const criterion = Object.freeze({
+        function: Object.freeze({ description: "mark deterministic criterion evidence", name: "criterion_mark", parameters: Object.freeze({ type: "object" }) }),
+        type: "function" as const,
+      });
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ ...base.canonicalToolIds, criterion_mark: "test.criterion_mark" }),
+        definitions: Object.freeze([...base.definitions, criterion]),
+        effectCapabilities: Object.freeze({
+          ...base.effectCapabilities,
+          "test.criterion_mark": Object.freeze(["criterion_satisfy" as const]),
+        }),
+        snapshotHash: "sha256:semantic-evidence",
+      });
+    }
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.name !== "criterion_mark") return super.execute(call, context);
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: "test.criterion_mark",
+        content: JSON.stringify({ ok: true }),
+        effects: Object.freeze({ acceptanceCriteriaSatisfied: Object.freeze(["criterion-a"]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: "criterion-a satisfied",
+        trust: "trusted" as const,
+      });
+    }
+  }
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("criterion_mark", "criterion-1", { attempt: 1 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("criterion_mark", "criterion-2", { attempt: 2 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("project_validate", "validate-1", { attempt: 1 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("project_validate", "validate-2", { attempt: 2 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("git_diff", "diff-1", { attempt: 1 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("git_diff", "diff-2", { attempt: 2 }), done("", "tool_calls")]),
+    Object.freeze([done("Cannot finish while criterion-b is pending.")]),
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: new SemanticEvidenceExecutor(),
+  }).start(Object.freeze({
+    ...request("run-semantic-deduplication"),
+    acceptanceCriteria: Object.freeze([
+      Object.freeze({ id: "criterion-a", required: true, text: "First criterion" }),
+      Object.freeze({ id: "criterion-b", required: true, text: "Remain pending for test" }),
+    ]),
+    budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 7 }),
+  })).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "MAX_TURNS");
+  assert.equal(result.validation.length, 1);
+  assert.equal(result.validation[0]?.sequence, 4, "the latest validation observation remains available to causal gates");
+  assert.equal(result.checkpoint?.completionEvidence.diffReview?.sequence, 6);
+  const criterion = result.checkpoint?.acceptanceCriteria.find((item) => item.id === "criterion-a");
+  assert.deepEqual(criterion?.evidenceIds, ["criterion-1"]);
+});
+
+test("a later identical validation certifies an artifact removed by the prior validation call", async () => {
+  class ValidationArtifactExecutor extends DeterministicExecutor {
+    private validations = 0;
+
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const base = await super.getToolSet();
+      return Object.freeze({
+        ...base,
+        effectCapabilities: Object.freeze({
+          ...base.effectCapabilities,
+          project_validate: Object.freeze(["validate" as const, "write" as const]),
+        }),
+      });
+    }
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.name !== "project_validate") return super.execute(call, context);
+      this.calls.push(call);
+      this.validations += 1;
+      return Object.freeze({
+        canonicalToolId: "project_validate",
+        content: JSON.stringify({ ok: true }),
+        effects: Object.freeze({
+          ...(this.validations === 1
+            ? { writes: Object.freeze([Object.freeze({
+              afterHash: null,
+              afterKind: "missing" as const,
+              beforeHash: "compiled-artifact",
+              beforeKind: "file" as const,
+              path: ".galaxy-rust-test",
+            })]) }
+            : {}),
+          validations: Object.freeze([Object.freeze({
+            detail: "all project tests pass",
+            id: "project.validate:test:.",
+            scope: "workspace" as const,
+            status: "passed" as const,
+          })]),
+        }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: "project tests passed",
+        trust: "workspace" as const,
+      });
+    }
+  }
+
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "artifact-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "artifact-source-write"), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("project_validate", "artifact-validate-1", { attempt: 1 }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("project_validate", "artifact-validate-2", { attempt: 2 }), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "artifact-diff"), done("", "tool_calls")]),
+    Object.freeze([done("Implemented and validated after build artifact cleanup.")]),
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: new ValidationArtifactExecutor(),
+  }).start(request("run-validation-artifact-ordering")).result;
+
+  assert.equal(result.state, "completed", JSON.stringify({ error: result.error, validation: result.validation, writes: result.writes }));
+  assert.equal(result.validation.length, 1);
+  assert.equal(result.validation[0]?.sequence, 4);
+  assert.equal(result.checkpoint, null);
 });
 
 test("mutation cannot complete until a later validation and final diff review", async () => {
@@ -1020,6 +2049,103 @@ test("mutation cannot complete until a later validation and final diff review", 
   assert.ok(rejected[0]?.some((item) => item.startsWith("WRITE_NOT_VALIDATED")));
   assert.ok(rejected[0]?.some((item) => item.startsWith("DIFF_NOT_REVIEWED")));
   assert.deepEqual(rejected[1]?.map((item) => item.split(":")[0]), ["DIFF_NOT_REVIEWED"]);
+  const actionableFeedback = model.requests
+    .flatMap((request) => request.messages)
+    .find((message) => message.role === "user" && message.content.includes("DIFF_NOT_REVIEWED next action"));
+  assert.ok(actionableFeedback);
+  assert.match(actionableFeedback.content, /git_operation/);
+  assert.match(actionableFeedback.content, /search_tools/);
+  assert.match(actionableFeedback.content, /run_command.*does not provide trusted diff_review evidence/);
+  assert.deepEqual(model.requests.at(-1)?.tools, [], "the evidence-ready final report turn must expose no tools");
+});
+
+test("one tool call during tool-free finalization is ignored and retried without dispatch", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "finalization-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "finalization-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "finalization-validate"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "finalization-diff"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "finalization-loop"), done("", "tool_calls")]),
+    Object.freeze([done("Implemented, validated, and reviewed without another tool call.")]),
+  ]);
+  const executor = new DeterministicExecutor();
+  const completionIssues: string[][] = [];
+  const result = await new AiCoderRunController({
+    model,
+    onEvent(event) {
+      if (event.type === "completion_rejected") completionIssues.push([...event.issues]);
+    },
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).start(request("run-tool-free-finalization")).result;
+
+  assert.equal(result.state, "completed");
+  assert.equal(result.error, null);
+  assert.equal(executor.calls.length, 4);
+  assert.deepEqual(model.requests.at(-2)?.tools, []);
+  assert.deepEqual(model.requests.at(-1)?.tools, []);
+  const finalizationMessages = model.requests.at(-1)?.messages ?? [];
+  assert.equal(finalizationMessages.some((message) => message.role === "assistant" && Boolean(message.toolCalls?.length)), false);
+  assert.equal(finalizationMessages.some((message) => message.role === "user" && message.content.includes('\"phase\":\"finalizing\"')), true);
+  assert.equal(finalizationMessages.some((message) => message.role === "user" && message.content.includes('\"nextAction\":\"Inspect')), false);
+  assert.deepEqual(completionIssues, [["FINALIZATION_TOOL_CALLS_IGNORED: Model requested 1 tool call(s) during a tool-free finalization turn; none were dispatched."]]);
+});
+
+test("repeated tool calls during tool-free finalization fail closed at the rejection budget", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "bounded-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "bounded-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "bounded-validate"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "bounded-diff"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "bounded-finalization-1"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "bounded-finalization-2"), done("", "tool_calls")]),
+  ]);
+  const executor = new DeterministicExecutor();
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).start(Object.freeze({ ...request("run-bounded-tool-free-finalization"),
+    budget: Object.freeze({ maxCompletionRejections: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 8 }),
+  })).result;
+
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "INVALID_MODEL_STREAM");
+  assert.match(result.error?.message ?? "", /finalization 2 times/);
+  assert.equal(executor.calls.length, 4);
+  assert.deepEqual(model.requests.at(-1)?.tools, []);
+});
+
+test("runtime never asks the model to satisfy host-owned final report persistence", async () => {
+  const store = new MemoryStore();
+  const mutableCompletionIssues: string[][] = [];
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "persist-boundary-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "persist-boundary-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "persist-boundary-validate"), done("", "tool_calls")]),
+    Object.freeze([done("Candidate report before final diff review.")]),
+    Object.freeze([tool("git_diff", "persist-boundary-diff"), done("", "tool_calls")]),
+    Object.freeze([done("The change was validated and the final diff was reviewed.")]),
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    onEvent(event) {
+      if (event.type === "completion_rejected") mutableCompletionIssues.push([...event.issues]);
+    },
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+  }).start(request("run-final-report-boundary")).result;
+
+  assert.equal(result.state, "completed");
+  assert.equal(store.reports.length, 1);
+  assert.equal(mutableCompletionIssues.length, 1);
+  assert.equal(mutableCompletionIssues[0]?.some((issue) => issue.startsWith("DIFF_NOT_REVIEWED:")), true);
+  assert.equal(mutableCompletionIssues.flat().some((issue) => issue.includes("FINAL_REPORT_NOT_STORED")), false);
+  const leakedFeedback = model.requests
+    .flatMap((item) => item.messages)
+    .find((message) => message.role === "user" && message.content.includes("FINAL_REPORT_NOT_STORED"));
+  assert.equal(leakedFeedback, undefined, JSON.stringify(leakedFeedback));
 });
 
 test("delete effects retain a null after-state in workspace fingerprint inputs", async () => {
@@ -1226,6 +2352,7 @@ test("repeated provider compaction preserves the task and progressive mutation e
   assert.deepEqual(store.checkpoints.map((item) => item.edits.length), [1, 1, 1]);
   assert.deepEqual(store.checkpoints.map((item) => item.validation.length), [0, 1, 1]);
   assert.deepEqual(store.checkpoints.map((item) => item.completionEvidence.diffReview !== null), [false, false, true]);
+  assert.deepEqual(store.checkpoints.map((item) => item.phase), ["executing", "validating", "reviewing"]);
 
   const taskText = request("run-repeated-compaction").goal;
   assert.equal(model.requests.every((item) => item.messages.some((message) => message.content.includes(taskText))), true);
@@ -1276,6 +2403,37 @@ test("hard token exhaustion after a write resumes with durable edit evidence", a
   );
 });
 
+test("hard exhaustion after final evidence resumes directly in tool-free finalization", async () => {
+  const store = new MemoryStore();
+  const executor = new DeterministicExecutor();
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_list", "final-resume-inspect"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "final-resume-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "final-resume-validate"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "final-resume-diff"), done("", "tool_calls")]),
+    Object.freeze([done("Resumed directly into the final report without another tool opportunity.")]),
+  ], [500, 500, 500, 500, 1_000_000, 1_000_000, 500]);
+  const dependencies = {
+    model,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    store,
+    toolExecutor: executor,
+  } as const;
+  const failed = await new AiCoderRunController(dependencies)
+    .start(request("run-finalization-exhaustion")).result;
+  assert.equal(failed.state, "failed");
+  assert.equal(failed.error?.code, "CONTEXT_BUDGET");
+  assert.ok(failed.checkpoint?.completionEvidence.diffReview);
+
+  const resumed = await new AiCoderRunController(dependencies).resume({
+    ...request("run-finalization-exhaustion"),
+    runId: "run-finalization-exhaustion",
+  }).result;
+  assert.equal(resumed.state, "completed");
+  assert.deepEqual(model.requests.at(-1)?.tools, []);
+  assert.equal(executor.calls.filter((item) => item.name === "workspace_write").length, 1);
+});
+
 test("oversized accumulated tool output checkpoints before the next model request", async () => {
   class LargeOutputExecutor extends DeterministicExecutor {
     override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
@@ -1306,6 +2464,73 @@ test("oversized accumulated tool output checkpoints before the next model reques
     true,
   );
   assert.equal(model.requests[1]?.messages.some((message) => message.content.includes(request().goal)), true);
+});
+
+test("research evidence survives tool-result compaction without immediately compacting the retained transcript again", async () => {
+  class ResearchOutputExecutor extends DeterministicExecutor {
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const base = await super.getToolSet();
+      const definitions = Object.freeze([
+        ...base.definitions,
+        Object.freeze({
+          function: Object.freeze({ description: "fetch public source", name: "fetch_url", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }),
+      ]);
+      return Object.freeze({
+        ...base,
+        canonicalToolIds: Object.freeze({ ...base.canonicalToolIds, fetch_url: "research.fetch" }),
+        definitions,
+        effectCapabilities: Object.freeze({
+          ...base.effectCapabilities,
+          "research.fetch": Object.freeze(["approval" as const, "research" as const]),
+        }),
+        snapshotHash: "sha256:research-tool-set",
+      });
+    }
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.name !== "fetch_url") return super.execute(call, context);
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: "research.fetch",
+        content: "x".repeat(80_000),
+        effects: Object.freeze({
+          researchSources: Object.freeze([Object.freeze({
+            contentHash: "sha256:node-fetch",
+            kind: "fetch" as const,
+            summary: "Node fetch resolves HTTP error responses; inspect response.ok.",
+            title: "Node fetch documentation",
+            truncated: true,
+            url: "https://nodejs.org/api/globals.html",
+          })]),
+        }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        outputLimits: Object.freeze({ maxBytes: 100_000, maxTokens: 30_000, tailFraction: 0.25 }),
+        summary: "Fetched Node documentation.",
+        trust: "external" as const,
+      });
+    }
+  }
+
+  const store = new MemoryStore();
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("fetch_url", "research-fetch", { url: "https://nodejs.org/api/globals.html" }), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "inspect-after-research"), done("", "tool_calls")]),
+    Object.freeze([done("Completed from durable research evidence after compaction.")]),
+  ], [], Object.freeze({ ...CAPABILITIES, contextWindow: 262_144 }));
+  const result = await new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new ResearchOutputExecutor(),
+  }).start(request("run-research-tool-result-pressure")).result;
+
+  assert.equal(result.state, "completed");
+  assert.deepEqual(store.checkpoints.map((item) => item.reason), ["tool_result_pressure"]);
+  assert.equal(store.checkpoints[0]?.researchSources?.[0]?.url, "https://nodejs.org/api/globals.html");
+  assert.equal(model.requests[1]?.messages.some((message) => message.content.includes("Node fetch resolves HTTP error responses")), true);
+  assert.equal(model.requests.length, 3);
 });
 
 test("context assembly failures are classified as context budget errors", async () => {

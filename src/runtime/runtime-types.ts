@@ -27,7 +27,17 @@ export type AiCoderRuntimeToolError = Readonly<{
   code: string;
   message: string;
   retryable: boolean;
+  status?: number;
   suggestedAction?: string;
+}>;
+
+export type AiCoderRuntimeResearchSource = Readonly<{
+  contentHash: string | null;
+  kind: "fetch" | "search";
+  summary: string;
+  title?: string;
+  truncated: boolean;
+  url: string;
 }>;
 
 export type AiCoderRuntimeToolEffects = Readonly<{
@@ -40,9 +50,11 @@ export type AiCoderRuntimeToolEffects = Readonly<{
   nextAction?: string;
   plan?: Readonly<{
     completed: readonly string[];
+    decisions?: readonly string[];
     inProgress: string | null;
     pending: readonly string[];
   }>;
+  researchSources?: readonly AiCoderRuntimeResearchSource[];
   stateVersion?: string;
   validations?: readonly Readonly<{
     detail: string;
@@ -81,6 +93,7 @@ export type AiCoderRuntimeFailureEffects = Readonly<{
   inspectedPaths?: never;
   nextAction?: never;
   plan?: never;
+  researchSources?: never;
   stateVersion?: never;
   validations?: never;
   writes?: never;
@@ -174,7 +187,10 @@ export type AiCoderRuntimeClock = Readonly<{
 export type AiCoderRunBudget = Readonly<{
   deadlineMs: number;
   maxCompletionRejections: number;
+  maxNoProgressEpisodes: number;
+  maxObservationRepeats: number;
   maxModelRetries: number;
+  maxRepeatedToolRequests: number;
   maxToolCalls: number;
   maxTurns: number;
   persistenceGraceMs: number;
@@ -283,6 +299,10 @@ export type AiCoderMutableRunEvidence = {
     inProgress: string | null;
     pending: string[];
   };
+  researchSources: Array<AiCoderRuntimeResearchSource & Readonly<{
+    sequence: number;
+    toolCallId: string;
+  }>>;
   seenToolCallIds: Set<string>;
   validations: AiCoderCompletionValidation[];
   writes: AiCoderCompletionWrite[];

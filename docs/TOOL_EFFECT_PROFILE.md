@@ -22,7 +22,7 @@ return {
 contains the complete 21-tool profile so its integrity hash remains stable when
 `catalog.search` lazily activates another built-in tool.
 
-The profile is version `1.0.0` and covers the complete 21-tool core catalog.
+The profile is version `1.1.0` and covers the complete 21-tool core catalog.
 
 | Canonical tool ID | Allowed host effects | Evidence boundary |
 | --- | --- | --- |
@@ -37,8 +37,8 @@ The profile is version `1.0.0` and covers the complete 21-tool core catalog.
 | `preview.manage` | `approval`, `state_version` | Preview-session state only |
 | `project.detect` | `approval`, `inspect` | Deterministically inspected project root |
 | `project.validate` | `approval`, `state_version`, `validate`, `write` | High-risk repository scripts require approval/containment; generated writes require independent typed inventory |
-| `research.fetch` | `approval` | External content remains untrusted observation |
-| `research.search` | `approval` | External content remains untrusted observation |
+| `research.fetch` | `approval`, `research` | Host records bounded, untrusted source evidence durably |
+| `research.search` | `approval`, `research` | Host records bounded, untrusted source discovery durably |
 | `task.checkpoint` | `approval`, `plan`, `state_version` | Bounded durable task state |
 | `user.ask` | `approval` | Correlated answers; no implicit criterion waiver |
 | `workspace.edit` | `approval`, `state_version`, `write` | Exact edit plus before/after hashes |
@@ -60,6 +60,10 @@ The profile is version `1.0.0` and covers the complete 21-tool core catalog.
   use a host-defined deterministic hash. The before/after typed states must
   differ. In the legacy kind-less form, create is `null -> hash`, edit is
   `hash -> different hash`, delete is `hash -> null`, and both-null is invalid.
+- A metadata fingerprint for generated or dependency state is not a file
+  content hash and must never be emitted as `write` evidence. Hosts may report
+  those changes separately as bounded derived mutations and advance
+  `state_version`; only byte-verifiable durable paths belong in `write`.
 - A generic command exit code or stdout statement is not validation. Use
   `project.validate` for structured validation evidence.
 - No built-in tool currently has `criterion_satisfy` or `criterion_waive`.

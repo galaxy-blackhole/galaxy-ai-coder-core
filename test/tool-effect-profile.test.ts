@@ -13,7 +13,7 @@ import {
 import { AI_CODER_CORE_TOOL_CATALOG } from "../src/tools/tool-registry.js";
 
 test("canonical effect profile covers the complete core catalog without drift", () => {
-  assert.equal(AI_CODER_CORE_TOOL_EFFECT_PROFILE_VERSION, "1.0.0");
+  assert.equal(AI_CODER_CORE_TOOL_EFFECT_PROFILE_VERSION, "1.1.0");
   assert.deepEqual(validateAiCoderCoreToolEffectProfile(), []);
   assert.doesNotThrow(() => assertAiCoderCoreToolEffectProfile());
   assert.deepEqual(
@@ -69,7 +69,7 @@ test("profile validation reports missing, extra, duplicated, unordered, and unkn
 test("active metadata derives canonical ids and retains the stable full profile", () => {
   const active = AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault);
   const metadata = createAiCoderCoreToolEffectMetadata([...active].reverse());
-  assert.equal(Object.keys(metadata.canonicalToolIds).length, 12);
+  assert.equal(Object.keys(metadata.canonicalToolIds).length, 13);
   assert.equal(Object.keys(metadata.effectCapabilities).length, 21);
   assert.equal(metadata.canonicalToolIds.read_file, "workspace.read");
   assert.deepEqual(metadata.effectCapabilities["workspace.read"], ["approval", "inspect"]);

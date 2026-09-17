@@ -5,7 +5,7 @@ Trạng thái: research lịch sử + đối chiếu triển khai hiện tại �
 
 ## 1. Mục đích
 
-Trước khi copy code từ `galaxy-desktop` sang `@galaxy/ai-coder-core`, phải chốt tool registry chuẩn. Registry hiện tại của galaxy-desktop có 30+ descriptor. Registry của galaxy-code (legacy multi-agent) có subagent-specific tools, không phù hợp làm chuẩn. Tài liệu này rút chuẩn từ 5 CLI production để trả lời:
+Trước khi copy code từ `galaxy-desktop` sang `@galaxy-stack/ai-coder-core`, phải chốt tool registry chuẩn. Registry hiện tại của galaxy-desktop có 30+ descriptor. Registry của galaxy-code (legacy multi-agent) có subagent-specific tools, không phù hợp làm chuẩn. Tài liệu này rút chuẩn từ 5 CLI production để trả lời:
 
 1. Bao nhiêu tool cần là **bootstrap** (luôn active trong context)?
 2. Bao nhiêu tool có thể **lazy load** qua dynamic search?
@@ -139,11 +139,11 @@ MUTATOR_KINDS = [Edit, Delete, Move, Execute];
 READ_ONLY_KINDS = [Read, Search, Fetch];
 ```
 
-Rút chuẩn: dùng tương tự cho `@galaxy/ai-coder-core`, đơn giản hơn `mutability: read | write | execute | external_side_effect` hiện tại. `Kind` bao hàm cả category và mutability.
+Rút chuẩn: dùng tương tự cho `@galaxy-stack/ai-coder-core`, đơn giản hơn `mutability: read | write | execute | external_side_effect` hiện tại. `Kind` bao hàm cả category và mutability.
 
-## 4. Đề xuất core set cho `@galaxy/ai-coder-core`
+## 4. Đề xuất core set cho `@galaxy-stack/ai-coder-core`
 
-### 4.1. Bootstrap set — 12 tool luôn active
+### 4.1. Bootstrap set — 13 tool luôn active khi host hỗ trợ
 
 Đây là tối thiểu để một single-agent hoàn thành task coding end-to-end. Model không cần `catalog.search` cho những task thường ngày.
 
@@ -161,8 +161,9 @@ Rút chuẩn: dùng tương tự cho `@galaxy/ai-coder-core`, đơn giản hơn 
 | `task.checkpoint`  | `update_checkpoint` | Plan    | `task.checkpoint.update` + `task.checkpoint.read` (gộp 2→1) | Gộp read/write qua `action` field |
 | `research.fetch`   | `fetch_url`         | Fetch   | `research.extract`                                          | Đổi tên gần Claude Code           |
 | `catalog.search`   | `search_tools`      | Other   | `catalog.search`                                            | Dynamic lazy load                 |
+| `git.exec`         | `git_operation`     | Read    | `git.status/diff/log` gộp                                   | Bắt buộc cho trusted final review |
 
-Tổng token cho 12 tool definition mục tiêu <8K (baseline Claude Code 10-15 tool <10K).
+Tổng token cho 13 tool definition mục tiêu <8K (baseline Claude Code 10-15 tool <10K).
 
 ### 4.2. Optional set — lazy load qua `catalog.search`
 
@@ -171,14 +172,13 @@ Chỉ active khi model gọi `catalog.search` với query khớp. Không consume
 | ID                                                    | Khi cần                                                                                                                                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `command.session`                                     | Long-running process (dev server, watch mode). Gộp `start/read/write/interrupt/kill/list` thành **1 tool** với `action` field                                          |
-| `git.exec`                                            | Git operations có cấu trúc (thay vì raw `command.run`). Gộp `git.status`, `git.diff`, `git.log` thành **1 tool** với `subcommand` field                                |
 | `research.search`                                     | Web search khi user hỏi kiến thức ngoài repo                                                                                                                           |
 | `preview.open` / `preview.close`                      | UI preview cho FE task                                                                                                                                                 |
 | `perception.analyze`                                  | Gộp `vision.analyze` + `vision.ocr` + `image.metadata` thành **1 tool** với `mode` field. `screen.capture` + `screen.analyze` là host action, không expose model tool. |
 | `artifact.create` / `artifact.list` / `artifact.read` | Artifact management khi cần persist bounded output                                                                                                                     |
 | `ask_user`                                            | Non-interactive mode cần hỏi user; interactive mode dùng UI trực tiếp                                                                                                  |
 
-Optional set = ~9 tool descriptor (đã gộp) thay vì ~20 hiện tại.
+Optional set = 8 tool descriptor (đã gộp) thay vì ~20 hiện tại.
 
 ### 4.3. Loại bỏ hoàn toàn
 
@@ -189,7 +189,7 @@ Các tool này ở Galaxy hiện tại nhưng không CLI production nào có, v�
 - `workspace.mkdir`, `workspace.move`, `workspace.copy`, `workspace.delete` — làm bằng `command.run` với approval gate
 - `screen.capture`, `screen.analyze` — host action (button trong UI), không phải model tool
 
-Tổng: giảm từ **30+ descriptor → 12 bootstrap + 9 optional = 21 tool**.
+Tổng: giảm từ **30+ descriptor → 13 bootstrap + 8 optional = 21 tool**.
 
 ## 5. Naming convention rút chuẩn
 
@@ -291,17 +291,17 @@ Galaxy đã có convention này trong prompt assembler (`INSTRUCTION PRIORITY AN
 - **Task checkpoint / todo tool** là chuẩn (3/5 CLI có).
 - **Project detect/validate** là **Galaxy signature** không CLI khác có, mang giá trị deterministic — giữ.
 
-### 10.2. Kế hoạch áp dụng vào `@galaxy/ai-coder-core`
+### 10.2. Kế hoạch áp dụng vào `@galaxy-stack/ai-coder-core`
 
 1. **Sprint 2 phần còn lại** (song song với Track A fix Phase 1–5):
-   - Chốt 12 bootstrap tool descriptor với schema mới (kind-based, không modality).
-   - Chốt 9 optional tool descriptor.
+   - Chốt 13 bootstrap tool descriptor với schema mới (kind-based, không modality).
+   - Chốt 8 optional tool descriptor.
    - Định nghĩa Port interfaces: `WorkspacePort`, `CommandPort`, `PersistencePort`, `ApprovalPort`, `TracePort`, `ArtifactPort`, `CapabilityPort`.
-2. **Sprint 3 extract** copy code từ [galaxy-desktop/src/features/extensions/lib/](../../galaxy-desktop/src/features/extensions/lib/) sang `packages/ai-coder-core/src/`:
-   - `ai-coder-tool-registry.ts` → cắt xuống 12 bootstrap + 9 optional
+2. **Sprint 3 extract** copy code từ [galaxy-desktop/src/features/extensions/lib/](../../galaxy-desktop/src/features/extensions/lib/) sang `packages-stack/ai-coder-core/src/`:
+   - `ai-coder-tool-registry.ts` → cắt xuống 13 bootstrap + 8 optional
    - Đổi `GalaxyCoreSdk` → `HostAdapter`
    - Loại descriptor thừa (stat, readMany, mkdir/move/copy/delete, screen._, vision._, image._, 5 command.session._)
-3. **Sprint 4 galaxy-code v2 test bench**: chạy 20 live task fixture với 12 bootstrap tool, xác nhận đủ dùng. Nếu fail, biết chính xác optional nào cần lazy load.
+3. **Sprint 4 galaxy-code v2 test bench**: chạy live task fixture với bootstrap tool, xác nhận đủ dùng. Nếu fail, biết chính xác optional nào cần lazy load.
 
 ### 10.3. Danh sách quyết định cần confirm
 
@@ -313,17 +313,18 @@ Galaxy đã có convention này trong prompt assembler (`INSTRUCTION PRIORITY AN
 - [ ] Chấp nhận bỏ `screen.capture/analyze` khỏi model tool (làm host action)?
 - [ ] Chấp nhận thêm `ask_user` cho non-interactive mode?
 
-Trả lời "yes" cho 7 câu = bootstrap set 12 tool và optional set 9 tool ở phần 4.
+Các quyết định ban đầu tạo ra 12 bootstrap + 9 optional; live Kimi testing sau đó đưa `git.exec` vào bootstrap vì completion bắt buộc trusted diff evidence.
 
-## 11. Trạng thái triển khai hiện tại (2026-08-31)
+## 11. Trạng thái triển khai hiện tại (2026-09-05)
 
 Phần 10.2–10.3 ở trên được giữ lại như lịch sử quyết định. Bảy quyết định đã
 được chấp nhận và **contract core 21 tool đã hoàn thành**:
 
 - catalog có đúng 21 canonical ID, model name không trùng, schema cụ thể và
   snapshot bất biến;
-- 12 descriptor bootstrap + 9 descriptor optional đã được rút gọn/gộp như đề
-  xuất (`command.session`, `git.exec`, `perception.analyze`, `preview.manage`);
+- 13 descriptor bootstrap + 8 descriptor optional đã được rút gọn/gộp; `git.exec`
+  active mặc định khi host cung cấp vì mọi mutation phải có trusted final diff
+  evidence, còn `command.session`, `perception.analyze`, và `preview.manage` vẫn lazy;
 - lazy activation qua `catalog.search` làm runtime lắp lại system prompt và cập
   nhật prompt hash;
 - effect capability của cả 21 tool có một nguồn chuẩn versioned trong core;
@@ -340,9 +341,15 @@ hoàn thành”:
 
 - `galaxy-code` có adapter filesystem, Git, project và command thật cho phòng
   thí nghiệm; command containment production vẫn chưa có backend đạt probe;
-- 9 tool optional hiện có deterministic in-memory contract doubles để chạy đủ
-  một single-agent flow, chưa phải network/session/preview/perception/artifact/
-  user integration thật;
+- `research.search` / `search_web` và `research.fetch` / `fetch_url` đã có
+  adapter Ollama Web Search/Web Fetch thật, bật theo scenario CLI và dùng API
+  key manual hiện có. Transport giả lập kiểm thử schema, timeout, hủy, giới hạn
+  output, credentials và provenance; campaign live research chờ người dùng chạy;
+- `review_only` cho phép hai tool research sau kiểm tra network permission và
+  external approval; không mở quyền command hoặc sửa workspace;
+- 7 tool session/preview/perception/artifact/user còn có deterministic in-memory
+  contract doubles, chưa phải production adapter. Profile `full_contract` vẫn
+  dùng đủ 9 doubles nếu không cấp adapter research thật;
 - VS Code và Desktop chưa được phép tự tuyên bố conformance cho đến khi cùng
   chạy matrix host trong `docs/HOST_CONFORMANCE.md`.
 

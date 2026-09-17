@@ -123,6 +123,22 @@ export type AiCoderCheckpointToolCall = Readonly<{
   toolCallId: string;
 }>;
 
+/**
+ * Bounded, host-attested external evidence that survives compaction. The
+ * summary remains untrusted source data even though the surrounding
+ * checkpoint structure and provenance are verified by the host.
+ */
+export type AiCoderCheckpointResearchSource = Readonly<{
+  contentHash: string | null;
+  kind: "fetch" | "search";
+  sequence: number;
+  summary: string;
+  title?: string;
+  toolCallId: string;
+  truncated: boolean;
+  url: string;
+}>;
+
 export type AiCoderCheckpointCompatibility = Readonly<{
   activeToolNames: readonly string[];
   capabilitiesHash: string;
@@ -146,11 +162,18 @@ export type AiCoderCheckpointAcceptanceCriterion = Readonly<{
 export type AiCoderCheckpointNoProgress = Readonly<{
   episodes: number;
   failedToolFamilies: readonly Readonly<{ count: number; key: string }>[];
+  hostStateVersions?: readonly Readonly<{ key: string; value: string }>[];
+  observationFamilies?: readonly Readonly<{ count: number; key: string }>[];
   previousTool: Readonly<{
     argumentsHash: string;
     name: string;
     repetitions: number;
   }> | null;
+  /** Bounded suffix used to continue alternating-cycle detection after resume. */
+  toolCycleSuffix?: readonly Readonly<{
+    argumentsHash: string;
+    name: string;
+  }>[];
 }>;
 
 export type AiCoderRunCheckpointPayload = Readonly<{
@@ -192,6 +215,7 @@ export type AiCoderRunCheckpointPayload = Readonly<{
     inProgress: string | null;
     pending: readonly string[];
   }>;
+  researchSources?: readonly AiCoderCheckpointResearchSource[];
   runId: string;
   schemaVersion: typeof AI_CODER_CHECKPOINT_SCHEMA_VERSION;
   seenToolCallIds: readonly string[];
@@ -397,9 +421,27 @@ export function sanitizeAiCoderCheckpointPayload(
           count: item.count,
           key: item.key,
         }))),
+        ...(payload.noProgress.hostStateVersions === undefined ? {} : {
+          hostStateVersions: Object.freeze(payload.noProgress.hostStateVersions.map((item) => Object.freeze({
+            key: item.key,
+            value: item.value,
+          }))),
+        }),
+        ...(payload.noProgress.observationFamilies === undefined ? {} : {
+          observationFamilies: Object.freeze(payload.noProgress.observationFamilies.map((item) => Object.freeze({
+            count: item.count,
+            key: item.key,
+          }))),
+        }),
         previousTool: payload.noProgress.previousTool === null
           ? null
           : Object.freeze({ ...payload.noProgress.previousTool }),
+        ...(payload.noProgress.toolCycleSuffix === undefined ? {} : {
+          toolCycleSuffix: Object.freeze(payload.noProgress.toolCycleSuffix.map((item) => Object.freeze({
+            argumentsHash: item.argumentsHash,
+            name: item.name,
+          }))),
+        }),
       }),
     }),
     openProblems: redactList(payload.openProblems),
@@ -414,6 +456,18 @@ export function sanitizeAiCoderCheckpointPayload(
       completed: redactList(payload.plan.completed),
       inProgress: payload.plan.inProgress === null ? null : redactAiCoderCheckpointText(payload.plan.inProgress),
       pending: redactList(payload.plan.pending),
+    }),
+    ...(payload.researchSources === undefined ? {} : {
+      researchSources: Object.freeze(payload.researchSources.map((item) => Object.freeze({
+        contentHash: item.contentHash,
+        kind: item.kind,
+        sequence: item.sequence,
+        summary: redactAiCoderCheckpointText(item.summary),
+        ...(item.title === undefined ? {} : { title: redactAiCoderCheckpointText(item.title) }),
+        toolCallId: item.toolCallId,
+        truncated: item.truncated,
+        url: redactAiCoderCheckpointText(item.url),
+      }))),
     }),
     runId: payload.runId,
     schemaVersion: payload.schemaVersion,
@@ -497,7 +551,7 @@ async function validateCheckpointSnapshot(
   rejectUnknown(checkpoint, "", [
     "acceptanceCriteria", "approvals", "compatibility", "completionEvidence", "constraints", "contentHash",
     "createdAt", "decisions", "delivery", "edits", "executionBudget", "goal", "lastToolCalls", "nextAction", "noProgress", "openProblems",
-    "pendingApprovals", "phase", "plan", "reason", "runId", "schemaVersion", "seenToolCallIds", "taskId",
+    "pendingApprovals", "phase", "plan", "reason", "researchSources", "runId", "schemaVersion", "seenToolCallIds", "taskId",
     "tokenLedgerRef", "totals", "validation", "workspace",
   ]);
   const forbiddenPaths: string[] = [];
@@ -545,7 +599,7 @@ async function validateCheckpointSnapshot(
     if (!checkpoint.noProgress || typeof checkpoint.noProgress !== "object") {
       issue("noProgress", "noProgress must be an object when present.");
     } else {
-      rejectUnknown(checkpoint.noProgress, "noProgress", ["episodes", "failedToolFamilies", "previousTool"]);
+      rejectUnknown(checkpoint.noProgress, "noProgress", ["episodes", "failedToolFamilies", "hostStateVersions", "observationFamilies", "previousTool", "toolCycleSuffix"]);
       if (!nonNegativeInteger(checkpoint.noProgress.episodes)) {
         issue("noProgress.episodes", "episodes must be a non-negative integer.");
       }
@@ -560,6 +614,42 @@ async function validateCheckpointSnapshot(
         if (!nonEmptyString(family.key)) issue(`noProgress.failedToolFamilies[${index}].key`, "Failure family key is required.");
         if (!positiveIntegerValue(family.count)) issue(`noProgress.failedToolFamilies[${index}].count`, "Failure family count must be positive.");
       });
+      if (checkpoint.noProgress.hostStateVersions !== undefined) {
+        if (!Array.isArray(checkpoint.noProgress.hostStateVersions)) {
+          issue("noProgress.hostStateVersions", "hostStateVersions must be an array when present.");
+        } else {
+          if (checkpoint.noProgress.hostStateVersions.length > 128) {
+            issue("noProgress.hostStateVersions", "hostStateVersions must contain at most 128 entries.");
+          }
+          checkpoint.noProgress.hostStateVersions.forEach((entry, index) => {
+            if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+              issue(`noProgress.hostStateVersions[${index}]`, "Host state version must be an object.");
+              return;
+            }
+            rejectUnknown(entry, `noProgress.hostStateVersions[${index}]`, ["key", "value"]);
+            if (!nonEmptyString(entry.key)) issue(`noProgress.hostStateVersions[${index}].key`, "key is required.");
+            if (!nonEmptyString(entry.value)) issue(`noProgress.hostStateVersions[${index}].value`, "value is required.");
+          });
+        }
+      }
+      if (checkpoint.noProgress.observationFamilies !== undefined) {
+        if (!Array.isArray(checkpoint.noProgress.observationFamilies)) {
+          issue("noProgress.observationFamilies", "observationFamilies must be an array when present.");
+        } else {
+          if (checkpoint.noProgress.observationFamilies.length > 128) {
+            issue("noProgress.observationFamilies", "observationFamilies must contain at most 128 entries.");
+          }
+          checkpoint.noProgress.observationFamilies.forEach((family, index) => {
+            if (!family || typeof family !== "object") {
+              issue(`noProgress.observationFamilies[${index}]`, "Observation family must be an object.");
+              return;
+            }
+            rejectUnknown(family, `noProgress.observationFamilies[${index}]`, ["count", "key"]);
+            if (!nonEmptyString(family.key)) issue(`noProgress.observationFamilies[${index}].key`, "Observation family key is required.");
+            if (!positiveIntegerValue(family.count)) issue(`noProgress.observationFamilies[${index}].count`, "Observation family count must be positive.");
+          });
+        }
+      }
       const previousTool = checkpoint.noProgress.previousTool;
       if (previousTool !== null) {
         if (!previousTool || typeof previousTool !== "object") {
@@ -569,6 +659,29 @@ async function validateCheckpointSnapshot(
           if (!nonEmptyString(previousTool.argumentsHash)) issue("noProgress.previousTool.argumentsHash", "argumentsHash is required.");
           if (!nonEmptyString(previousTool.name)) issue("noProgress.previousTool.name", "name is required.");
           if (!positiveIntegerValue(previousTool.repetitions)) issue("noProgress.previousTool.repetitions", "repetitions must be positive.");
+        }
+      }
+      const toolCycleSuffix = checkpoint.noProgress.toolCycleSuffix;
+      if (toolCycleSuffix !== undefined) {
+        if (!Array.isArray(toolCycleSuffix)) {
+          issue("noProgress.toolCycleSuffix", "toolCycleSuffix must be an array when present.");
+        } else {
+          if (toolCycleSuffix.length > 12) {
+            issue("noProgress.toolCycleSuffix", "toolCycleSuffix must contain at most 12 entries.");
+          }
+          toolCycleSuffix.forEach((entry, index) => {
+            if (!entry || typeof entry !== "object") {
+              issue(`noProgress.toolCycleSuffix[${index}]`, "Tool cycle entry must be an object.");
+              return;
+            }
+            rejectUnknown(entry, `noProgress.toolCycleSuffix[${index}]`, ["argumentsHash", "name"]);
+            if (!nonEmptyString(entry.argumentsHash)) {
+              issue(`noProgress.toolCycleSuffix[${index}].argumentsHash`, "argumentsHash is required.");
+            }
+            if (!nonEmptyString(entry.name)) {
+              issue(`noProgress.toolCycleSuffix[${index}].name`, "name is required.");
+            }
+          });
         }
       }
     }
@@ -634,6 +747,38 @@ async function validateCheckpointSnapshot(
     if (!stringArray(checkpoint.plan.pending)) issue("plan.pending", "plan.pending must be a string array.");
     if (checkpoint.plan.inProgress !== null && typeof checkpoint.plan.inProgress !== "string") {
       issue("plan.inProgress", "plan.inProgress must be a string or null.");
+    }
+  }
+  if (checkpoint.researchSources !== undefined) {
+    if (!Array.isArray(checkpoint.researchSources)) {
+      issue("researchSources", "researchSources must be an array when present.");
+    } else {
+      if (checkpoint.researchSources.length > 24) {
+        issue("researchSources", "researchSources must contain at most 24 entries.");
+      }
+      const sourceKeys = new Set<string>();
+      checkpoint.researchSources.forEach((source, index) => {
+        const path = `researchSources[${index}]`;
+        if (!source || typeof source !== "object") {
+          issue(path, "Research source must be an object.");
+          return;
+        }
+        rejectUnknown(source, path, ["contentHash", "kind", "sequence", "summary", "title", "toolCallId", "truncated", "url"]);
+        if (!(source.kind === "fetch" || source.kind === "search")) issue(`${path}.kind`, "Research source kind is invalid.");
+        if (!nonNegativeInteger(source.sequence)) issue(`${path}.sequence`, "Research source sequence must be non-negative.");
+        if (!nonEmptyString(source.summary) || Array.from(source.summary).length > 1_200) issue(`${path}.summary`, "Research source summary must contain 1-1200 characters.");
+        if (source.title !== undefined && (typeof source.title !== "string" || Array.from(source.title).length > 512)) issue(`${path}.title`, "Research source title must contain at most 512 characters.");
+        if (!nonEmptyString(source.toolCallId)) issue(`${path}.toolCallId`, "Research source toolCallId is required.");
+        if (typeof source.truncated !== "boolean") issue(`${path}.truncated`, "Research source truncated must be boolean.");
+        if (!nonEmptyString(source.url) || source.url.length > 4_096 || !/^https?:\/\//u.test(source.url)) issue(`${path}.url`, "Research source URL must be a bounded public HTTP(S) URL.");
+        if (source.contentHash !== null && !nonEmptyString(source.contentHash)) issue(`${path}.contentHash`, "Research source contentHash must be a non-empty string or null.");
+        if (source.kind === "fetch" && !nonEmptyString(source.contentHash)) issue(`${path}.contentHash`, "Fetched research sources require a content hash.");
+        if (nonEmptyString(source.url)) {
+          const sourceKey = `${source.kind}:${source.url}`;
+          if (sourceKeys.has(sourceKey)) issue(`${path}.url`, "Research source kind and URL pairs must be unique.");
+          sourceKeys.add(sourceKey);
+        }
+      });
     }
   }
   if (!(["preparing", "inspecting", "planning", "executing", "validating", "reviewing"] as const).includes(checkpoint.phase as AiCoderCheckpointPhase)) {
@@ -804,6 +949,10 @@ async function validateCheckpointSnapshot(
     });
     if (Array.isArray(checkpoint.validation)) checkpoint.validation.forEach((validation, index) => {
       if (validation.sequence > totalToolCalls) issue(`validation[${index}].sequence`, "Validation sequence exceeds totals.toolCalls.");
+    });
+    if (Array.isArray(checkpoint.researchSources)) checkpoint.researchSources.forEach((source, index) => {
+      if (!seen.has(source.toolCallId)) issue(`researchSources[${index}].toolCallId`, "Research source toolCallId is absent from seenToolCallIds.");
+      if (source.sequence > totalToolCalls) issue(`researchSources[${index}].sequence`, "Research source sequence exceeds totals.toolCalls.");
     });
     if (Array.isArray(checkpoint.lastToolCalls)) checkpoint.lastToolCalls.forEach((call, index) => {
       if (!seen.has(call.toolCallId)) issue(`lastToolCalls[${index}].toolCallId`, "Tool call is absent from seenToolCallIds.");

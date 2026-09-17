@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AiCoderContextManager,
+} from "../src/context/context-manager.js";
+import {
   assertAiCoderRunCheckpoint,
   createAiCoderRunCheckpoint,
   validateAiCoderRunCheckpoint,
@@ -41,6 +44,44 @@ test("context thresholds remain ordered and compaction is reachable on small mod
     assert.equal(classifyAiCoderContextPressure(0, budget.compactionThreshold, budget), "compact");
     assert.equal(classifyAiCoderContextPressure(0, budget.hardInputTokens, budget), "blocked");
   }
+});
+
+test("aged exact evidence remains raw while budget exists and survives finalization projection", async () => {
+  const manager = await AiCoderContextManager.create({
+    capabilities: capabilities(65_536),
+    goalMessage: "Inspect the project and report verified evidence.",
+    profile: "balanced",
+    runId: "run-context-evidence",
+    systemPrompt: "Use tools and retain evidence.",
+    taskId: "task-context-evidence",
+  });
+  const call = Object.freeze({
+    arguments: Object.freeze({ path: "src/critical.ts" }),
+    name: "read_file",
+    toolCallId: "read-critical",
+  });
+  manager.addInteraction(Object.freeze({
+    content: "",
+    role: "assistant" as const,
+    thinking: "",
+    toolCalls: Object.freeze([call]),
+  }), Object.freeze([Object.freeze({
+    call,
+    content: "export const EXACT_SENTINEL = 'must-survive';",
+    kind: "file" as const,
+    summary: "Read src/critical.ts",
+    trust: "workspace" as const,
+  })]), 1);
+
+  const aged = await manager.prepareRound({ tools: Object.freeze([]), turn: 7 });
+  assert.match(aged.messages.map((message) => message.content).join("\n"), /EXACT_SENTINEL/);
+
+  manager.projectForFinalization();
+  const finalizing = await manager.prepareRound({ tools: Object.freeze([]), turn: 8 });
+  assert.match(finalizing.messages.map((message) => message.content).join("\n"), /EXACT_SENTINEL/);
+  assert.equal(finalizing.messages.some((message) => (
+    message.role === "assistant" && Boolean(message.toolCalls?.length)
+  )), false);
 });
 
 function checkpointPayload(): AiCoderRunCheckpointPayload {
@@ -99,12 +140,24 @@ function checkpointPayload(): AiCoderRunCheckpointPayload {
     noProgress: Object.freeze({
       episodes: 2,
       failedToolFamilies: Object.freeze([Object.freeze({ count: 2, key: "workspace.edit:stale:sha256:workspace" })]),
+      hostStateVersions: Object.freeze([Object.freeze({ key: "workspace.read", value: "sha256:host-state" })]),
+      observationFamilies: Object.freeze([Object.freeze({ count: 2, key: "workspace.read:sha256:args" })]),
       previousTool: Object.freeze({ argumentsHash: "hash:args", name: "workspace_read", repetitions: 2 }),
     }),
     openProblems: Object.freeze([]),
     pendingApprovals: Object.freeze([]),
     phase: "reviewing",
     plan: Object.freeze({ completed: Object.freeze(["Implement"]), inProgress: "Review", pending: Object.freeze([]) }),
+    researchSources: Object.freeze([Object.freeze({
+      contentHash: "sha256:source",
+      kind: "fetch" as const,
+      sequence: 4,
+      summary: "Node documentation with api_key=source-secret-value",
+      title: "Node documentation",
+      toolCallId: "call-read",
+      truncated: false,
+      url: "https://nodejs.org/api/globals.html",
+    })]),
     runId: "run-1",
     schemaVersion: 1,
     seenToolCallIds: Object.freeze(["call-read", "call-write"]),
@@ -135,8 +188,9 @@ test("checkpoint is deterministic, redacted and tamper-evident", async () => {
   const second = await createAiCoderRunCheckpoint(checkpointPayload(), "pause", () => "2026-08-28T00:00:00.000Z");
   assert.equal(first.contentHash, second.contentHash);
   assert.equal((await validateAiCoderRunCheckpoint(first)).length, 0);
-  assert.doesNotMatch(JSON.stringify(first), /super-secret-value|secret-value/);
+  assert.doesNotMatch(JSON.stringify(first), /super-secret-value|secret-value|source-secret-value/);
   assert.match(JSON.stringify(first), /REDACTED/);
+  assert.equal(first.researchSources?.[0]?.url, "https://nodejs.org/api/globals.html");
   const issues = await validateAiCoderRunCheckpoint({ ...first, goal: "tampered" });
   assert.ok(issues.some((item) => item.code === "HASH_MISMATCH"));
   const changedReason = await validateAiCoderRunCheckpoint({ ...first, reason: "manual" });
@@ -158,6 +212,8 @@ test("checkpoint validation snapshots caller input and never throws on malformed
   assert.ok(Object.isFrozen(asserted));
   assert.ok(Object.isFrozen(asserted.workspace.activeFiles));
   assert.ok(Object.isFrozen(asserted.noProgress?.failedToolFamilies));
+  assert.ok(Object.isFrozen(asserted.noProgress?.hostStateVersions));
+  assert.ok(Object.isFrozen(asserted.noProgress?.observationFamilies));
 
   const malformed: unknown[] = [
     { ...original, acceptanceCriteria: [null] },

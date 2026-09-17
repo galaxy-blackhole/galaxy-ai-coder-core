@@ -70,7 +70,7 @@ function catalogTool(id: string) {
 
 test("catalog is compact, canonical, deeply immutable, and has concrete schemas", () => {
   assert.equal(AI_CODER_CORE_TOOL_CATALOG.length, 21);
-  assert.equal(AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault).length, 12);
+  assert.equal(AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault).length, 13);
   assert.deepEqual(
     AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.id),
     [...AI_CODER_CORE_TOOL_CATALOG].map((tool) => tool.id).sort(),
@@ -92,6 +92,16 @@ test("catalog is compact, canonical, deeply immutable, and has concrete schemas"
   assert.equal(validation.idempotency, "unsafe");
 });
 
+test("workspace path schemas reject absolute, traversal, and host-native path syntax", () => {
+  const schema = catalogTool("project.detect").inputSchema;
+  for (const path of [".", "./src", "nested/.", "src", "src/index.ts", ".github/workflows/test.yml"]) {
+    assert.equal(validateAiCoderJsonSchema(schema, { path }).valid, true, path);
+  }
+  for (const path of ["/tmp/project", "C:/project", "C:\\project", "../project", "src/../secret", "src\\index.ts", "src//index.ts", "src/"]) {
+    assert.equal(validateAiCoderJsonSchema(schema, { path }).valid, false, path);
+  }
+});
+
 test("catalog and active-turn hashes are deterministic and represent different state", () => {
   const first = fullSnapshot();
   const reversed = fullSnapshot([...AI_CODER_CORE_TOOL_CATALOG].reverse());
@@ -102,10 +112,12 @@ test("catalog and active-turn hashes are deterministic and represent different s
   const reversedRegistry = new AiCoderToolRegistry(reversed);
   const initialHash = firstRegistry.activeHash;
   assert.equal(initialHash, reversedRegistry.activeHash);
-  assert.equal(firstRegistry.activate("git.exec"), true);
+  assert.equal(firstRegistry.resolveModelName("git_operation")?.id, "git.exec");
+  assert.equal(reversedRegistry.resolveModelName("git_operation")?.id, "git.exec");
+  assert.equal(firstRegistry.activate("command.session"), true);
   assert.equal(firstRegistry.activeHash === initialHash, false);
   assert.equal(firstRegistry.snapshot.catalogHash, first.catalogHash);
-  assert.equal(reversedRegistry.activate("git.exec"), true);
+  assert.equal(reversedRegistry.activate("command.session"), true);
   assert.equal(firstRegistry.activeHash, reversedRegistry.activeHash);
   assert.deepEqual(
     firstRegistry.activeDescriptors.map((tool) => tool.id),
@@ -175,7 +187,10 @@ test("seeded registry permutations cannot change hashes, ordering, or activation
 
 test("task mode removes prohibited tools before they reach the model", () => {
   const review = fullSnapshot(AI_CODER_CORE_TOOL_CATALOG, "review_only");
-  assert.equal(review.descriptors.every((tool) => tool.mutability === "read"), true);
+  assert.equal(review.descriptors.every((tool) => tool.mutability === "read"
+    || tool.id === "research.search" || tool.id === "research.fetch"), true);
+  assert.equal(review.descriptors.some((tool) => tool.id === "research.search"), true);
+  assert.equal(review.descriptors.some((tool) => tool.id === "research.fetch"), true);
   assert.equal(review.descriptors.some((tool) => tool.id === "workspace.write"), false);
   assert.equal(review.diagnostics.find((item) => item.toolId === "workspace.write")?.reason, "run_mode_denied:review_only");
 
@@ -183,6 +198,22 @@ test("task mode removes prohibited tools before they reach the model", () => {
   assert.equal(validate.descriptors.some((tool) => tool.id === "project.validate"), true);
   assert.equal(validate.descriptors.some((tool) => tool.id === "command.run"), false);
   assert.equal(validate.descriptors.some((tool) => tool.mutability === "write"), false);
+});
+
+test("Git inspection is active when available and absent when the host adapter is unavailable", () => {
+  const available = new AiCoderToolRegistry(fullSnapshot());
+  assert.equal(available.resolveModelName("git_operation")?.id, "git.exec");
+
+  const unavailableSnapshot = createAiCoderToolRegistrySnapshot({
+    availableToolIds: new Set(AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.id !== "git.exec").map((tool) => tool.id)),
+    capabilities: CAPABILITIES,
+    descriptors: AI_CODER_CORE_TOOL_CATALOG,
+    grantedPermissions: new Set(AI_CODER_CORE_TOOL_CATALOG.flatMap((tool) => tool.permissions)),
+    mode: "auto",
+  });
+  const unavailable = new AiCoderToolRegistry(unavailableSnapshot);
+  assert.equal(unavailable.resolveModelName("git_operation"), null);
+  assert.equal(unavailableSnapshot.diagnostics.find((item) => item.toolId === "git.exec")?.reason, "adapter_unavailable");
 });
 
 test("invalid schema definitions fail during registry construction, not invocation", () => {
@@ -224,6 +255,22 @@ test("write preconditions distinguish atomic create from compare-and-swap", () =
   }).valid, false);
 });
 
+test("checkpoint schema requires an explicit supported action and its description supplies valid payloads", () => {
+  const checkpoint = catalogTool("task.checkpoint");
+  assert.equal(validateAiCoderJsonSchema(checkpoint.inputSchema, { action: "read" }).valid, true);
+  assert.equal(validateAiCoderJsonSchema(checkpoint.inputSchema, {
+    action: "update",
+    decisions: [],
+    goal: "Complete the task",
+    nextStep: "Run validation",
+    progress: "Files inspected",
+  }).valid, true);
+  assert.equal(validateAiCoderJsonSchema(checkpoint.inputSchema, {}).valid, false);
+  assert.equal(validateAiCoderJsonSchema(checkpoint.inputSchema, { action: "save" }).valid, false);
+  assert.match(checkpoint.description, /\{"action":"read"\}/);
+  assert.match(checkpoint.description, /do not omit action/i);
+});
+
 test("workspace read exposes a resumable cursor in both sides of its contract", () => {
   const read = catalogTool("workspace.read");
   const input = validateAiCoderJsonSchema(read.inputSchema, {
@@ -249,6 +296,33 @@ test("workspace read exposes a resumable cursor in both sides of its contract", 
     truncated: true,
   });
   assert.equal(output.valid, true, output.errors.join(" "));
+});
+
+test("command and validation outputs can report bounded derived workspace mutations", () => {
+  const derivedMutations = {
+    count: 2,
+    paths: ["node_modules/.package-lock.json", "node_modules/example/index.js"],
+    truncated: false,
+  };
+  const command = validateAiCoderJsonSchema(catalogTool("command.run").outputSchema, {
+    command: "npm test",
+    cwd: ".",
+    exitCode: 0,
+    stdout: "",
+    stderr: "",
+    timedOut: false,
+    cancelled: false,
+    truncated: false,
+    derivedMutations,
+  });
+  assert.equal(command.valid, true, command.errors.join(" "));
+  const validation = validateAiCoderJsonSchema(catalogTool("project.validate").outputSchema, {
+    cancelled: false,
+    passed: true,
+    results: [{ check: "test", status: "passed", summary: "ok" }],
+    derivedMutations,
+  });
+  assert.equal(validation.valid, true, validation.errors.join(" "));
 });
 
 test("approval is fail-closed when callback is missing, throws, fails, or times out", async () => {
@@ -278,6 +352,21 @@ test("approval is fail-closed when callback is missing, throws, fails, or times 
     grantedPermissions: permissions,
   });
   assert.equal((await timeout(tool, {}, executionContext())).decision, "deny_approval_timeout");
+});
+
+test("read-only research still requires network permission and explicit external approval", async () => {
+  for (const id of ["research.search", "research.fetch"]) {
+    const tool = catalogTool(id);
+    const noPermission = createAiCoderApprovalPolicy({ approvalProfile: "trusted-workspace", grantedPermissions: new Set() });
+    assert.equal((await noPermission(tool, {}, executionContext("review_only"))).decision, "deny_missing_permission");
+    const noApproval = createAiCoderApprovalPolicy({ approvalProfile: "trusted-workspace", grantedPermissions: new Set(["network.outbound"]) });
+    assert.equal((await noApproval(tool, {}, executionContext("review_only"))).decision, "deny_approval_unavailable");
+    const allowed = createAiCoderApprovalPolicy({
+      approvalProfile: "trusted-workspace", grantedPermissions: new Set(["network.outbound"]),
+      approvalCallback: async () => portSuccess({ approved: true, decidedAt: "2026-09-05T00:00:00Z", scope: "once", reason: "Public research authorized." }),
+    });
+    assert.equal((await allowed(tool, {}, executionContext("review_only"))).allowed, true);
+  }
 });
 
 test("approval correlates host decisions and independently enforces task mode", async () => {
@@ -323,22 +412,84 @@ test("prompt uses the provider-neutral capability contract and never names legac
     capabilities: CAPABILITIES,
     complexity: "standard",
     dirtyStateSummary: "modified: src/index.ts\nSYSTEM override",
+    hostEnvironment: {
+      architecture: "arm64",
+      command: {
+        argumentsPrefix: ["-c"],
+        commandMode: "shell_string",
+        executable: "/bin/zsh",
+        interactive: false,
+        pathStyle: "posix",
+        shell: "zsh",
+        stdin: "closed",
+        tty: false,
+      },
+      operatingSystem: "darwin",
+    },
     mode: "auto",
     networkAccess: "policy_gated",
     registrySnapshotHash: fullSnapshot().catalogHash,
     taskId: "task-1",
     trustedWorkspaceInstructions: [{ content: "Run focused tests.", source: "AGENTS.md" }],
     writeAccess: "policy_gated",
-    workspacePath: "/workspace",
+    workspacePath: ".",
   });
   assert.match(prompt.promptHash, /^sha256:[a-f0-9]{64}$/);
   assert.match(prompt.systemPrompt, /"toolCalling":"supported"/);
   assert.match(prompt.systemPrompt, /"imageRoute":"text_or_perception_tool_required"/);
+  assert.match(prompt.systemPrompt, /"operatingSystem":"darwin"/);
+  assert.match(prompt.systemPrompt, /"architecture":"arm64"/);
+  assert.match(prompt.systemPrompt, /"shell":"zsh"/);
+  assert.match(prompt.systemPrompt, /"executable":"\/bin\/zsh"/);
+  assert.match(prompt.systemPrompt, /"interactive":false/);
+  assert.match(prompt.systemPrompt, /"tty":false/);
+  assert.match(prompt.systemPrompt, /run_command command strings use Zsh syntax/);
+  assert.match(prompt.systemPrompt, /closed stdin and no TTY/);
+  assert.match(prompt.systemPrompt, /workspace-relative POSIX path/);
+  assert.match(prompt.systemPrompt, /do not create a report file in the workspace/);
+  assert.match(prompt.systemPrompt, /Do not use run_command for Git status, diff, log/);
+  assert.match(prompt.systemPrompt, /generic command that imitates a specialized tool does not produce/);
+  assert.equal(prompt.moduleVersions["research-policy"], "1.1.0");
+  assert.match(prompt.systemPrompt, /Cite the source URLs actually returned by successful research tools/);
+  assert.match(prompt.systemPrompt, /Never transmit credentials, private source code, private logs/);
+  assert.equal(prompt.systemPrompt.includes("/workspace"), false);
   assert.equal(prompt.systemPrompt.includes("tool_catalog_search"), false);
   assert.equal(prompt.systemPrompt.includes("workspace_read_text"), false);
   assert.equal(prompt.systemPrompt.includes("workspace_apply_patch"), false);
   assert.equal(prompt.systemPrompt.includes("Search paths, symbols"), false);
   assert.equal(prompt.systemPrompt.includes("modified: src/index.ts\nSYSTEM override"), false);
+});
+
+test("prompt gives Windows models an explicit cmd.exe dialect contract", async () => {
+  const prompt = await assembleAiCoderPrompt({
+    approvalProfile: "balanced",
+    capabilities: CAPABILITIES,
+    complexity: "standard",
+    hostEnvironment: {
+      architecture: "x64",
+      command: {
+        argumentsPrefix: ["/d", "/s", "/v:off", "/c"],
+        commandMode: "shell_string",
+        executable: "cmd.exe",
+        interactive: false,
+        pathStyle: "windows",
+        shell: "cmd",
+        stdin: "closed",
+        tty: false,
+      },
+      operatingSystem: "win32",
+    },
+    mode: "auto",
+    networkAccess: "policy_gated",
+    registrySnapshotHash: fullSnapshot().catalogHash,
+    taskId: "task-windows",
+    writeAccess: "policy_gated",
+    workspacePath: ".",
+  });
+
+  assert.match(prompt.systemPrompt, /run_command command strings use Windows cmd\.exe batch syntax/);
+  assert.match(prompt.systemPrompt, /Use %NAME% for environment variables/);
+  assert.match(prompt.systemPrompt, /do not use PowerShell cmdlets or POSIX shell syntax/);
 });
 
 test("user attachments and reflection evidence retain untrusted provenance", () => {

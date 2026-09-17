@@ -21,6 +21,20 @@ const request: AiCoderRunRequest = {
     complexity: "standard",
     networkAccess: "policy_gated",
     writeAccess: "allowed",
+    hostEnvironment: {
+      operatingSystem: "linux",
+      architecture: "x64",
+      command: {
+        executable: "/bin/sh",
+        argumentsPrefix: ["-c"],
+        commandMode: "shell_string",
+        shell: "sh",
+        pathStyle: "posix",
+        interactive: false,
+        stdin: "closed",
+        tty: false,
+      },
+    },
     dirtyStateSummary: "modified: src/parser.ts",
     trustedWorkspaceInstructions: [
       {
@@ -45,6 +59,14 @@ workspace instructions are optional host-validated records with provenance;
 quoted repository content does not become trusted merely because it was read
 from a particular filename.
 
+`hostEnvironment` is optional only for hosts whose active registry does not
+contain `command.run`. When `command.run` is active, runtime preparation fails
+with `CAPABILITY_MISMATCH` unless the host supplies a concrete OS, executable,
+argv prefix, shell dialect, and command-string path style. The prompt states
+the dialect explicitly (for example POSIX `sh` or Windows `cmd.exe`) and also
+records that stdin is closed and no TTY is attached. A terminal emulator or
+the user's login shell is not part of this contract.
+
 The former `systemPrompt`, `promptHash`, `promptVersion`, and
 `workspaceInstructions` request fields are rejected synchronously. Unknown
 request and prompt fields are also rejected so typos cannot silently weaken
@@ -66,6 +88,17 @@ Lazy tool activation changes the active registry hash. The runtime therefore
 reassembles the prompt, atomically replaces the P0 system-policy context item,
 updates its integrity snapshot, and emits another `prompt_snapshot` trace. The
 canonical 21-tool effect profile remains stable across activation.
+If lazy activation introduces `command.run`, the same concrete command-
+environment requirement is checked before the replacement prompt is accepted.
+
+Prompt version `ai-coder-single/2.5.0` strengthens the `research-policy` module. It asks
+the model to inspect the project and fetch primary sources before a user-requested
+research proposal or fix, cite observed URLs, distinguish inference from evidence,
+stop after sufficient primary evidence, and avoid repeating successful queries or fetched URLs recorded in durable run state,
+protect private material in outbound queries and preserve bounded source summaries
+under context pressure. The text grants no network authority: availability and
+approval remain host-enforced. It does not turn model-authored source summaries
+into durable host evidence.
 
 ## User task lifecycle
 

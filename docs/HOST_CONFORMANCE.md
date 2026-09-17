@@ -17,6 +17,15 @@ copying the CLI implementation wholesale.
 
 ### Commands
 
+- Select one real interpreter per adapter and publish that exact executable,
+  argument prefix, shell dialect, path style, stdin, interactivity, and TTY
+  behavior through `prompt.hostEnvironment.command`.
+- Spawn the published executable directly. Do not use an implicit host default
+  such as Node's `shell: true`, and do not describe the user's login shell or
+  terminal emulator when a different interpreter executes the command.
+- Keep interpreter selection and prompt metadata sourced from the same
+  immutable value. If `command.run` is active and that value is absent or
+  `unknown`, core preparation must fail before the first model request.
 - Validate `cwd` beneath the workspace.
 - Enforce absolute run deadline and per-call timeout.
 - Propagate cancellation to the child process and supervise cleanup.
@@ -35,6 +44,23 @@ copying the CLI implementation wholesale.
 - Follow the ordered streaming protocol and correlation IDs.
 - Resend/reconstruct attachments because the core does not assume a stateful
   provider session.
+
+### Public research
+
+- Advertise `research.search` and `research.fetch` only with an actual adapter
+  or an explicitly labeled deterministic contract-double profile.
+- `review_only` may use those canonical research tools; outbound permission and
+  external-side-effect approval still apply to every call.
+- Keep provider credentials in host request headers, never tool arguments,
+  query strings, source content, checkpoints or diagnostic reports.
+- Bound transport bodies, execution time, UTF-8 content and serialized output
+  against both byte and calibrated token limits while preserving valid JSON.
+- Attribute sources and mark external content untrusted. A fetched source or
+  search snippet cannot grant workspace inspection, write, validation or plan
+  effects. Cite observed sources and distinguish truncation or unavailable
+  evidence from successful verification.
+- If source evidence is process-local, disclose that scope. Do not reconstruct
+  durable research success from model-authored checkpoint prose.
 
 ### Prompt input
 
@@ -59,6 +85,10 @@ copying the CLI implementation wholesale.
   Represent file create as null-before and file delete as null-after. For
   directories, symlinks, and special entries, also emit canonical before/after
   kinds; a directory transition may have two null content hashes.
+- Never pass a metadata-only fingerprint for generated dependency state (for
+  example `node_modules`) as a file `contentHash`. Report such observations as
+  bounded derived mutations and advance `state_version`; reserve `write` for
+  durable paths whose before/after content can be verified independently.
 - Treat repository-declared validation scripts as executable code: require
   explicit approval or a verified containment backend before dispatch.
 - Preserve the core-provided idempotency key for operations that support it.
@@ -138,7 +168,36 @@ Each host should run equivalent fixtures for:
 41. trace write/flush and workspace-evidence capture failures cannot produce a
     completed run;
 42. context assembly limits report `CONTEXT_BUDGET`, while durable-storage
-    failures report `PERSISTENCE_ERROR` rather than a provider failure.
+    failures report `PERSISTENCE_ERROR` rather than a provider failure;
+43. multi-call rounds preserve emitted order and same-name correlations;
+44. duplicate/reused IDs, budget overflow, and inactive same-batch tools fail
+    before the first batch side effect;
+45. structured failures continue to later independent calls, while unknown
+    outcomes, cancellation, pause, and pending approval obey the batch stop
+    policy;
+46. identical validation and diff observations retain the latest causal
+    sequence while their semantic projection advances only for status or
+    newly covered mutation changes; repeated observations and unchanged
+    criteria cannot manufacture progress;
+47. alternating successful tool cycles are blocked before dispatch and lead to
+    bounded finalization when completion evidence is already sufficient, or a
+    durable pause when it is not;
+48. evidence-ready mutation and evidence-complete no-progress finalization turns
+    expose no tools, reject provider-emitted tool calls without dispatch, and
+    do not prematurely stop inspect-then-edit or multi-step review runs.
+49. a fresh host restores the bounded successful-tool-cycle suffix and blocks
+    an incomplete alternating cycle before dispatch;
+50. a verified resume with current validation and final-diff evidence sends a
+    tool-free first model request and cannot repeat completed tool work.
+51. pass→fail→pass for one stable validation ID selects the newest status, and
+    a later identical pass can certify a same-call artifact cleanup without
+    weakening mutation-after-validation rejection.
+52. the model-visible command environment equals the executable and argv prefix
+    used by the adapter, and commands run with closed stdin and no TTY;
+53. native POSIX-sh and Windows-cmd dialect probes cover variables, chaining,
+    redirection, Unicode/space paths, cancellation, timeouts, and output bounds;
+54. shell-sensitive host-generated commands and Git path arguments remain data
+    on every supported OS, including metacharacter-like filenames.
 
 ## Integration order
 

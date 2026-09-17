@@ -47,6 +47,12 @@ export type AiCoderCompletionSnapshot = Readonly<{
   inspectedWorkspace: boolean;
   openProblems?: readonly string[];
   pendingApprovals: number;
+  researchSources: readonly Readonly<{
+    contentHash: string | null;
+    kind: "fetch" | "search";
+    toolCallId: string;
+    url: string;
+  }>[];
   runningToolCalls: number;
   tokenLedgerFinalized: boolean;
   traceFinalized: boolean;
@@ -60,6 +66,12 @@ export type AiCoderCompletionRequirements = Readonly<{
   requireTokenLedger?: boolean;
   requireTrace?: boolean;
   requireValidation?: boolean;
+  research?: Readonly<{
+    minFetchCalls?: number;
+    minSearchCalls?: number;
+    requireCitations?: boolean;
+    requiredDomains?: readonly string[];
+  }>;
 }>;
 
 export type AiCoderCompletionIssue = Readonly<{
@@ -71,6 +83,8 @@ export type AiCoderCompletionIssue = Readonly<{
     | "INSPECTION_MISSING"
     | "OPEN_PROBLEMS"
     | "PENDING_APPROVAL"
+    | "RESEARCH_CITATION_MISSING"
+    | "RESEARCH_EVIDENCE_MISSING"
     | "RUNNING_TOOL_CALL"
     | "TOKEN_LEDGER_NOT_FINALIZED"
     | "TRACE_NOT_FINALIZED"
@@ -110,6 +124,36 @@ export function evaluateAiCoderCompletion(
   }
   if (snapshot.runningToolCalls) add("RUNNING_TOOL_CALL", `${snapshot.runningToolCalls} tool call(s) are still running.`);
   if (snapshot.pendingApprovals) add("PENDING_APPROVAL", `${snapshot.pendingApprovals} approval request(s) are still pending.`);
+  const research = requirements.research;
+  if (research !== undefined) {
+    const searched = snapshot.researchSources.filter((source) => source.kind === "search");
+    const fetched = snapshot.researchSources.filter((source) => source.kind === "fetch" && source.contentHash?.trim());
+    const searchCalls = new Set(searched.map((source) => source.toolCallId)).size;
+    const fetchCalls = new Set(fetched.map((source) => source.toolCallId)).size;
+    const missing: string[] = [];
+    if (searchCalls < (research.minSearchCalls ?? 0)) {
+      missing.push(`search calls ${searchCalls}/${research.minSearchCalls}`);
+    }
+    if (fetchCalls < (research.minFetchCalls ?? 0)) {
+      missing.push(`fetch calls ${fetchCalls}/${research.minFetchCalls}`);
+    }
+    for (const requiredDomain of research.requiredDomains ?? []) {
+      const covered = fetched.some((source) => {
+        try {
+          const hostname = new URL(source.url).hostname.toLowerCase();
+          return hostname === requiredDomain || hostname.endsWith(`.${requiredDomain}`);
+        } catch {
+          return false;
+        }
+      });
+      if (!covered) missing.push(`fetched domain ${requiredDomain}`);
+    }
+    if (missing.length) add("RESEARCH_EVIDENCE_MISSING", `Missing research evidence: ${missing.join(", ")}.`);
+    if (research.requireCitations
+      && !fetched.some((source) => snapshot.finalReport.includes(source.url))) {
+      add("RESEARCH_CITATION_MISSING", "The final report must cite at least one successfully fetched source URL.");
+    }
+  }
   if (snapshot.openProblems?.length) {
     add("OPEN_PROBLEMS", `${snapshot.openProblems.length} unresolved problem(s) remain.`);
   }

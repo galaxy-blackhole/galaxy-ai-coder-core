@@ -17,6 +17,7 @@ const EFFECT_CAPABILITY_NAMES = [
   "diff_review",
   "inspect",
   "plan",
+  "research",
   "state_version",
   "validate",
   "write",
@@ -28,7 +29,7 @@ export const AI_CODER_TOOL_EFFECT_CAPABILITIES: readonly AiCoderToolEffectCapabi
   [...EFFECT_CAPABILITY_NAMES],
 );
 
-export const AI_CODER_CORE_TOOL_EFFECT_PROFILE_VERSION = "1.0.0";
+export const AI_CODER_CORE_TOOL_EFFECT_PROFILE_VERSION = "1.1.0";
 
 function effectCapabilities(
   ...values: readonly AiCoderToolEffectCapability[]
@@ -56,8 +57,8 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "preview.manage": effectCapabilities("approval", "state_version"),
   "project.detect": effectCapabilities("approval", "inspect"),
   "project.validate": effectCapabilities("approval", "state_version", "validate", "write"),
-  "research.fetch": effectCapabilities("approval"),
-  "research.search": effectCapabilities("approval"),
+  "research.fetch": effectCapabilities("approval", "research"),
+  "research.search": effectCapabilities("approval", "research"),
   "task.checkpoint": effectCapabilities("approval", "plan", "state_version"),
   "user.ask": effectCapabilities("approval"),
   "workspace.edit": effectCapabilities("approval", "state_version", "write"),

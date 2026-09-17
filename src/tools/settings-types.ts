@@ -61,7 +61,7 @@ export const DEFAULT_AI_CODER_CORE_SETTINGS: AiCoderCoreSettings = Object.freeze
     maxToolCalls: 48,
     maxToolRounds: 24,
     maxTurns: 24,
-    model: "kimi-k2.7-code:cloud",
+    model: "glm-5.3-flash:cloud",
     preserveThinking: true,
     provider: "ollama",
     requestTimeoutMs: 180_000,

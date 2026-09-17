@@ -1,4 +1,4 @@
-# @galaxy/ai-coder-core
+# @galaxy-stack/ai-coder-core
 
 Provider-neutral, platform-neutral runtime for the Galaxy AI Coder single agent.
 The same core is intended for:
@@ -24,12 +24,17 @@ the current runtime baseline.
 ## Non-negotiable invariants
 
 1. One AI owns the run state. There is no hidden planner/reviewer agent.
-2. A model round may emit at most one correlated tool call.
+2. A model round may emit zero or more correlated tool calls. IDs must be
+   non-empty and unique for the run; names may repeat with different arguments.
+   The runtime preflights the complete batch, then executes it sequentially in
+   emitted order.
 3. The model sees model-facing names; every result must match the host's
    model-name-to-canonical-ID mapping.
 4. Hosts provide structured prompt policy only. Runtime assembles and hashes
    the system prompt after capability and registry discovery, then formats the
-   sole user task from `AiCoderTaskContract`.
+   sole user task from `AiCoderTaskContract`. If `command.run` is active, the
+   host must supply the exact concrete non-interactive interpreter contract;
+   the runtime refuses missing/unknown shell metadata before a model request.
 5. Tool text is never parsed into trusted state. Only declared host effects
    can change inspection, write, validation, diff, plan, approval, or criterion
    evidence.
@@ -49,12 +54,20 @@ the current runtime baseline.
 11. Cancellation makes an in-flight side-effect outcome `unknown` unless the
    host returns a structured result. Hosts must honor the supplied signal and
    absolute deadline.
-12. Identical retries, varied failed mutations on one path/state, repeated
-    validation failures on one fingerprint, and returning content hashes are
-    bounded; unresolved no-progress episodes pause with a checkpoint.
+12. Identical retries, alternating successful tool cycles, varied failed
+    mutations on one path/state, repeated validation failures on one
+    fingerprint, and returning content hashes are bounded. Semantically
+    identical validation, diff, and criterion evidence does not manufacture a
+    new state transition; unresolved no-progress episodes pause with a
+    checkpoint.
 13. Provider-reported context overflow checkpoints, compacts, and recounts
     before another model request. Mandatory state is never silently dropped to
     force a round through.
+14. Once a mutation has complete current validation and final-diff evidence,
+    the next model turn is a bounded finalization turn with no tool definitions.
+    Evidence-complete no-progress recovery uses the same boundary; ordinary
+    inspect-then-edit or multi-step review work is not finalized early. A
+    verified resume re-derives this boundary before its first model request.
 
 ## Runtime flow
 
@@ -64,12 +77,15 @@ request
   -> core-owned prompt snapshot + canonical user-task contract
   -> bounded context assembly
   -> one streamed model round
-  -> zero or one correlated tool call
-  -> schema/policy/approval/host adapter
+  -> zero or more correlated tool calls
+  -> atomic batch preflight (IDs, budget, visible registry, canonical JSON)
+  -> sequential per-call schema/policy/approval/host adapter
   -> bounded untrusted observation + trusted declared effects
   -> repeat
+  -> evidence-ready tool-free finalization turn
   -> final report candidate
-  -> final-report persistence (when a store is configured)
+  -> model-actionable evidence gate
+  -> runtime-owned final-report persistence (when a store is configured)
   -> completion-gate trace + durable trace flush (when trace is configured)
   -> fresh workspace fingerprint
   -> deterministic completion gate

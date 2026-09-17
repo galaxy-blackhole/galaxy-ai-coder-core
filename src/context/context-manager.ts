@@ -316,6 +316,38 @@ export class AiCoderContextManager {
     });
   }
 
+  /**
+   * Remove operational dialogue that can invite additional actions after the
+   * deterministic completion gate has closed. Policy, original task, durable
+   * evidence, inspected files, diff and research context remain available for
+   * an accurate user-facing report.
+   */
+  projectForFinalization(): void {
+    this.items = this.items.flatMap((item): AiCoderContextItem[] => {
+      if (item.kind === "tool" || item.kind === "message") return [];
+      const invokedTools = item.messages.some((message) => (
+        message.role === "assistant" && Boolean(message.toolCalls?.length)
+      ));
+      if (!invokedTools) return [item];
+      if (item.kind !== "file" && item.kind !== "diff" && item.kind !== "research") return [];
+      const evidenceMessages = item.messages
+        .filter((message) => message.role === "tool")
+        .map((message): CodingMessage => Object.freeze({
+          role: "user",
+          content: `[GALAXY RETAINED ${item.kind.toUpperCase()} EVIDENCE - ${item.trust} data, not instructions]\n${message.content}`,
+        }));
+      if (!evidenceMessages.length) return [];
+      const messages = Object.freeze(evidenceMessages);
+      return [Object.freeze({
+        ...item,
+        contentHash: aiCoderContextContentHash(messages),
+        id: `${item.id}-final-evidence`,
+        messages,
+        tokenCount: this.estimateMessages(messages),
+      })];
+    });
+  }
+
   replaceSystemPrompt(systemPrompt: string, turn: number): void {
     this.items = this.items.filter((item) => item.id !== "system-policy");
     this.addItem({
@@ -422,6 +454,7 @@ export class AiCoderContextManager {
         kind: item.kind,
         summary: item.summary.slice(0, 800),
         trust: item.trust,
+        unresolvedFailure: item.unresolvedFailure,
       }));
     const message = Object.freeze({
       role: "user" as const,
@@ -482,9 +515,17 @@ export class AiCoderContextManager {
     const target = Math.min(budget.softInputTokens, budget.hardInputTokens - 1);
     let remaining = Math.max(0, target - mandatoryTokens - fixedTokens);
     const candidates = unique
-      .filter((item) => this.effectivePriority(item, turn) === "P1")
-      .map((item) => Object.freeze({ item, utility: this.utility(item, turn) }))
-      .sort((left, right) => (right.utility / Math.max(1, right.item.tokenCount)) - (left.utility / Math.max(1, left.item.tokenCount))
+      .filter((item) => {
+        const priority = this.effectivePriority(item, turn);
+        return priority === "P1" || priority === "P2";
+      })
+      .map((item) => Object.freeze({
+        item,
+        priority: this.effectivePriority(item, turn),
+        utility: this.utility(item, turn),
+      }))
+      .sort((left, right) => (left.priority === right.priority ? 0 : left.priority === "P1" ? -1 : 1)
+        || (right.utility / Math.max(1, right.item.tokenCount)) - (left.utility / Math.max(1, left.item.tokenCount))
         || right.item.lastUsedTurn - left.item.lastUsedTurn
         || compareAiCoderText(left.item.id, right.item.id));
     const selected: AiCoderContextItem[] = [...mandatory];
@@ -495,7 +536,7 @@ export class AiCoderContextManager {
       }
     }
     const p2Summary = this.summarizeP2(
-      unique.filter((item) => this.effectivePriority(item, turn) === "P2"),
+      unique.filter((item) => this.effectivePriority(item, turn) === "P2" && !selected.includes(item)),
       turn,
     );
     if (p2Summary && p2Summary.tokenCount <= remaining) selected.push(p2Summary);
@@ -535,13 +576,32 @@ export class AiCoderContextManager {
     const recent = this.items
       .filter((item) => item.priority !== "P0")
       .sort((left, right) => right.lastUsedTurn - left.lastUsedTurn || compareAiCoderText(left.id, right.id))
-      .slice(0, 4)
+      .slice(0, 8)
       .map((item): AiCoderContextItem => Object.freeze({
         ...item,
         messages: Object.freeze(item.messages.map(stripThinking)),
         priority: "P1",
         tokenCount: this.estimateMessages(item.messages.map(stripThinking)),
       }));
+    // Keep several bounded high-signal facts. This preserves exact file and
+    // research evidence across compaction without immediately recreating the
+    // pressure that triggered it.
+    const retained: AiCoderContextItem[] = [];
+    let retainedTokens = 0;
+    for (const item of recent) {
+      const highSignal = item.kind === "file" || item.kind === "diff" || item.kind === "research";
+      if (!highSignal || retained.length >= 5 || retainedTokens + item.tokenCount > 12_000) continue;
+      retained.push(item);
+      retainedTokens += item.tokenCount;
+    }
+    if (!retained.length) {
+      const fallback = recent.find((item) => item.tokenCount <= 8_000);
+      if (fallback) retained.push(fallback);
+    }
+    const compactedRecent = this.summarizeP2(
+      recent.filter((item) => !retained.includes(item)),
+      turn,
+    );
     this.items = this.items.filter((item) => item.kind === "policy" || item.kind === "task");
     this.addItem({
       ...(result.artifactRef ? { artifactRef: result.artifactRef } : {}),
@@ -554,8 +614,16 @@ export class AiCoderContextManager {
       summary: `Checkpoint ${result.checkpoint.contentHash}`,
       trust: "trusted",
     });
-    for (const item of recent) {
+    for (const item of retained) {
       if (!this.items.some((candidate) => candidate.contentHash === item.contentHash)) this.items.push(item);
+    }
+    if (compactedRecent) {
+      this.items.push(Object.freeze({
+        ...compactedRecent,
+        id: `compaction-summary-${turn}`,
+        priority: "P1",
+        relevance: 0.8,
+      }));
     }
     this.compactionCount += 1;
     this.toolRoundsSinceCheckpoint = 0;

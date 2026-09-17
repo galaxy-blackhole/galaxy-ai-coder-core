@@ -103,6 +103,7 @@ export class CodingProviderError extends Error {
       | "TIMEOUT",
     message: string,
     readonly retryable = false,
+    readonly retryMode: "same_request" | "without_thinking" = "same_request",
   ) {
     super(message);
     this.name = "CodingProviderError";
