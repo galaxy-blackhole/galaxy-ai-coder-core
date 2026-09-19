@@ -1,0 +1,51 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      # npm >= 11.5.1 is required for OIDC trusted publishing.
+      - run: npm install --global npm@^11.5.1
+      - name: Skip when package.json already matches npm
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@galaxy-stack/ai-coder-core@$version" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version $version is already published; nothing to do."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Version $version is new; the gate below will publish it."
+          fi
+      - run: npm ci
+      - run: npm run verify
+      - name: Publish
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          version=$(node -p "require('./package.json').version")
+          # Pre-release versions keep npm install @latest pinned to stable.
+          tag=latest
+          case "$version" in
+            *-*) tag=alpha ;;
+          esac
+          npm publish --tag "$tag" --access public

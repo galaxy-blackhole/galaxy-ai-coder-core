@@ -17,9 +17,32 @@ completion gate are implemented and covered by deterministic tests.
 not copy runtime logic; they should implement the same ports and pass the same
 host conformance fixtures first.
 
-This package is still pre-integration (`0.1.0`, private). Optional MCP,
-semantic retrieval, background terminal sessions, and subagents are outside
-the current runtime baseline.
+This package is still pre-integration: only `galaxy-code` passes the full
+conformance gate today. Optional MCP, semantic retrieval, background terminal
+sessions, and subagents are outside the current runtime baseline.
+
+## Versioning and release policy
+
+All releases before `1.0.0` are development quality. Every release carries an
+explicit semver pre-release tag (`x.y.z-alpha.N`) while the host conformance
+gate is still running; stable-looking `x.y.z` numbers are reserved for
+post-`1.0.0` releases. Publish pre-releases with a dist tag
+(`npm publish --tag alpha`) so `npm install @galaxy-stack/ai-coder-core@latest`
+never upgrades a consumer to an unverified alpha.
+
+Every behavior- or API-level fix lands in [CHANGELOG.d](CHANGELOG.d/README.md)
+as a dated fragment (date, time, area, before/after, regression requirement)
+and is compiled into [CHANGELOG.md](CHANGELOG.md) at release time. When reading
+any audit or live run, compare the recorded `packageVersion` against
+[CHANGELOG.md](CHANGELOG.md) before concluding that a fixed defect recurred.
+
+Publishing is automated through npm trusted publishing (OIDC, no stored npm
+token): every push to `main` runs the conformance gate and
+[.github/workflows/publish.yml](.github/workflows/publish.yml) publishes the
+package only when `package.json` carries a version that npm does not have yet.
+Pre-release versions publish under the `alpha` dist tag, so
+`npm install @galaxy-stack/ai-coder-core@latest` never jumps to an unverified
+alpha.
 
 ## Non-negotiable invariants
 
@@ -59,7 +82,10 @@ the current runtime baseline.
     fingerprint, and returning content hashes are bounded. Semantically
     identical validation, diff, and criterion evidence does not manufacture a
     new state transition; unresolved no-progress episodes pause with a
-    checkpoint.
+    checkpoint. Read-only observations follow the configured `noProgressPolicy`
+    (`advisory` by default: escalating nudges at `observationNudgeThresholds`,
+    blocked only after the final threshold; `strict` preserves the older
+    first-incident accounting).
 13. Provider-reported context overflow checkpoints, compacts, and recounts
     before another model request. Mandatory state is never silently dropped to
     force a round through.
@@ -128,6 +154,11 @@ git config core.hooksPath .githooks
 `npm run verify` runs strict TypeScript checks, all source tests, a clean build,
 and a public `dist` smoke test. `npm pack --dry-run` should also be checked
 before publishing or consuming the package from another repository.
+
+`npm test` writes [TEST_ERROR_LOG.md](TEST_ERROR_LOG.md) and per-run evidence under
+`.galaxy/tests/`: timestamped assertion results, failure stacks, test counts,
+commit and source fingerprint. The reporter is development-only and runs without
+a galaxy-code checkout. Raw `tsx --test` invocations bypass this reporter.
 
 The deterministic end-to-end host gate lives in `galaxy-code`:
 

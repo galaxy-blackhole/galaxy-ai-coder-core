@@ -184,6 +184,14 @@ export type AiCoderRuntimeClock = Readonly<{
   timestamp: () => string;
 }>;
 
+/**
+ * Observation no-progress handling. `advisory` dispatches repeated read-only
+ * observations with escalating nudges at `observationNudgeThresholds` and
+ * blocks only beyond the final threshold. `strict` preserves the older
+ * behavior where the first exceedance nudges and counts a no-progress episode.
+ */
+export type AiCoderNoProgressPolicy = "advisory" | "strict";
+
 export type AiCoderRunBudget = Readonly<{
   deadlineMs: number;
   maxCompletionRejections: number;
@@ -193,6 +201,9 @@ export type AiCoderRunBudget = Readonly<{
   maxRepeatedToolRequests: number;
   maxToolCalls: number;
   maxTurns: number;
+  noProgressPolicy: AiCoderNoProgressPolicy;
+  /** Attempt counts that trigger an advisory observation nudge; strictly increasing after normalization. */
+  observationNudgeThresholds: readonly number[];
   persistenceGraceMs: number;
   toolOutput: AiCoderToolOutputLimits;
 }>;

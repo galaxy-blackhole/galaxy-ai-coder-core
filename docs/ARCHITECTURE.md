@@ -129,8 +129,19 @@ their call JSON is not byte-identical:
   fingerprint;
 - a bounded suffix cycle of two to six successful tool calls whose names,
   arguments, and semantic runtime state repeat.
-- the same stable read/research observation requested more than twice anywhere
-  in one execution segment, even when unrelated calls are interleaved.
+- the same stable read/research observation repeated anywhere in one execution
+  segment, even when unrelated calls are interleaved.
+
+Observation handling follows the configured `noProgressPolicy`. The default
+`advisory` policy dispatches repeated read-only observations and adds trusted
+corrective feedback at each `observationNudgeThreshold` attempt (default
+3/5/8, borrowed from DeepSeek Harness's repeat-tool-reminder design); it blocks
+only when an identical observation is requested beyond the final threshold.
+Advisory nudges do not count as no-progress episodes. The `strict` policy
+preserves the older behavior: the first exceedance nudges and counts one
+no-progress episode, and consecutive identical calls block at
+`maxRepeatedToolRequests`. Mutation, approval, failed-mutation-family, and
+unknown-outcome guards stay deterministic in both policies.
 
 The first incidents add trusted corrective feedback. Two no-progress episodes
 without a materially different inspection or state transition pause the run

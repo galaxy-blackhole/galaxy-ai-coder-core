@@ -25,7 +25,16 @@ export function canonicalResearchUrl(value: unknown): string | null {
 export function researchCitations(content: string): string[] {
   return [...new Set((content.match(/https?:\/\/[^\s<>"`[\]]+/g) ?? [])
     .map((match) => {
-      let url = match.replace(/[,.;!?]+$/, "");
+      let url = match;
+      // Markdown emphasis and list punctuation ride outside the URL
+      // ("**https://example.com/a**:"), so strip trailing decoration before
+      // canonicalizing. Balanced parentheses stay protected below.
+      for (;;) {
+        const withoutPunctuation = url.replace(/[,.;:!?]+$/, "");
+        const withoutEmphasis = withoutPunctuation.replace(/[*_`]+$/, "");
+        if (withoutEmphasis === url) break;
+        url = withoutEmphasis;
+      }
       const open = (url.match(/\(/g) ?? []).length;
       let close = (url.match(/\)/g) ?? []).length;
       while (url.endsWith(")") && close > open) { url = url.slice(0, -1); close--; }

@@ -50,6 +50,7 @@ import {
 import { AiCoderTraceEmitter } from "./trace-emitter.js";
 import type {
   AiCoderMutableRunEvidence,
+  AiCoderNoProgressPolicy,
   AiCoderResumeRequest,
   AiCoderRunBudget,
   AiCoderRunDependencies,
@@ -75,6 +76,8 @@ const DEFAULT_BUDGET: AiCoderRunBudget = Object.freeze({
   maxRepeatedToolRequests: 2,
   maxToolCalls: 128,
   maxTurns: 48,
+  noProgressPolicy: "advisory",
+  observationNudgeThresholds: Object.freeze([3, 5, 8]),
   persistenceGraceMs: 10_000,
   toolOutput: Object.freeze({ maxBytes: 48_000, maxTokens: 12_000, tailFraction: 0.25 }),
 });
@@ -355,6 +358,30 @@ function nonNegativeInteger(value: number, name: string): number {
   return Math.floor(value);
 }
 
+function normalizeNoProgressPolicy(value: unknown): AiCoderNoProgressPolicy {
+  if (value !== "advisory" && value !== "strict") {
+    throw new TypeError(`noProgressPolicy must be "advisory" or "strict"; received ${String(value)}.`);
+  }
+  return value;
+}
+
+function normalizeObservationNudgeThresholds(value: readonly number[] | undefined): readonly number[] {
+  const values = value ?? DEFAULT_BUDGET.observationNudgeThresholds;
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new RangeError("observationNudgeThresholds must be a non-empty array.");
+  }
+  if (values.length > 8) throw new RangeError("observationNudgeThresholds must contain at most 8 thresholds.");
+  const seen = new Set<number>();
+  for (const entry of values) {
+    if (!Number.isSafeInteger(entry) || entry < 2) {
+      throw new RangeError(`observationNudgeThresholds entries must be integers >= 2; received ${String(entry)}.`);
+    }
+    if (seen.has(entry)) throw new RangeError(`observationNudgeThresholds must not contain duplicate threshold ${entry}.`);
+    seen.add(entry);
+  }
+  return Object.freeze([...seen].sort((left, right) => left - right));
+}
+
 function normalizeBudget(input?: Partial<AiCoderRunBudget>): AiCoderRunBudget {
   return Object.freeze({
     deadlineMs: positiveInteger(input?.deadlineMs ?? DEFAULT_BUDGET.deadlineMs, "deadlineMs"),
@@ -365,6 +392,8 @@ function normalizeBudget(input?: Partial<AiCoderRunBudget>): AiCoderRunBudget {
     maxRepeatedToolRequests: positiveInteger(input?.maxRepeatedToolRequests ?? DEFAULT_BUDGET.maxRepeatedToolRequests, "maxRepeatedToolRequests"),
     maxToolCalls: positiveInteger(input?.maxToolCalls ?? DEFAULT_BUDGET.maxToolCalls, "maxToolCalls"),
     maxTurns: positiveInteger(input?.maxTurns ?? DEFAULT_BUDGET.maxTurns, "maxTurns"),
+    noProgressPolicy: normalizeNoProgressPolicy(input?.noProgressPolicy ?? DEFAULT_BUDGET.noProgressPolicy),
+    observationNudgeThresholds: normalizeObservationNudgeThresholds(input?.observationNudgeThresholds),
     persistenceGraceMs: positiveInteger(input?.persistenceGraceMs ?? DEFAULT_BUDGET.persistenceGraceMs, "persistenceGraceMs"),
     toolOutput: Object.freeze({
       maxBytes: positiveInteger(input?.toolOutput?.maxBytes ?? DEFAULT_BUDGET.toolOutput.maxBytes, "toolOutput.maxBytes"),
@@ -1290,6 +1319,16 @@ export class AiCoderRunController {
     if (checkpoint.compatibility.effectCapabilitiesHash !== session.integrity.effectCapabilitiesHash) mismatches.push("effectCapabilitiesHash");
     if (checkpoint.compatibility.systemPromptHash !== session.integrity.systemPromptHash) mismatches.push("systemPromptHash");
     if (checkpoint.compatibility.taskContractHash !== session.integrity.taskContractHash) mismatches.push("taskContractHash");
+    const recordedPolicy = checkpoint.noProgress?.policy;
+    if (recordedPolicy !== undefined && recordedPolicy !== session.budget.noProgressPolicy) {
+      mismatches.push(`noProgressPolicy (${recordedPolicy} vs ${session.budget.noProgressPolicy})`);
+    }
+    const recordedThresholds = checkpoint.noProgress?.observationNudgeThresholds;
+    if (recordedThresholds !== undefined
+      && (recordedThresholds.length !== session.budget.observationNudgeThresholds.length
+        || recordedThresholds.some((threshold, index) => threshold !== session.budget.observationNudgeThresholds[index]))) {
+      mismatches.push(`observationNudgeThresholds (${recordedThresholds.join(",")} vs ${session.budget.observationNudgeThresholds.join(",")})`);
+    }
     if (mismatches.length) {
       throw new AiCoderRuntimeError("CHECKPOINT_INCOMPATIBLE", `Checkpoint is incompatible with this run: ${mismatches.join(", ")}.`);
     }
@@ -1752,6 +1791,42 @@ export class AiCoderRunController {
     ].join("\n"), session.modelTurns);
   }
 
+  /**
+   * Advisory-only nudge: records model-visible feedback and a trace event
+   * without counting a no-progress episode or marking the call as blocked.
+   */
+  private async addObservationNudge(
+    session: RunSession,
+    call: CodingToolCall,
+    canonicalToolId: string,
+    attempt: number,
+    thresholds: readonly number[],
+  ): Promise<void> {
+    session.contextManager?.addFeedback([
+      "[GALAXY OBSERVATION NUDGE - trusted runtime state]",
+      attempt === thresholds[0]
+        ? `observation: ${canonicalToolId} returned this exact result before; the retained copy is already in context.`
+        : `observation: ${canonicalToolId} has been requested ${attempt} times; the retained result has not produced new work.`,
+      `tool: ${call.name}`,
+      `tool_call_id: ${call.toolCallId}`,
+      "next_strategy: use the retained evidence, change the query or path, or perform the next required action",
+      `advisory_thresholds: ${thresholds.join(", ")}`,
+      "avoid: re-requesting identical bounded observations",
+    ].join("\n"), session.modelTurns);
+    await this.tracePolicyDecision(session, Object.freeze({
+      action: "observation_nudge",
+      attempt,
+      canonicalToolId,
+      policy: session.budget.noProgressPolicy,
+      thresholds,
+      toolCallId: call.toolCallId,
+    }));
+  }
+
+  private async tracePolicyDecision(session: RunSession, payload: Readonly<Record<string, unknown>>): Promise<void> {
+    await session.trace.emit("policy_decision", payload);
+  }
+
   private shouldAttemptFinalization(session: RunSession): boolean {
     return session.evidence.writes.length > 0
       || session.noProgressEpisodes > 0
@@ -1850,63 +1925,99 @@ export class AiCoderRunController {
     const observationFamilyCount = observationFamily === null
       ? 0
       : session.observationFamilies.get(observationFamily) ?? 0;
-    if (observationFamily !== null && observationFamilyCount >= session.budget.maxObservationRepeats) {
-      // Advisory nudge for read-only observations: dispatch the call so the
-      // model receives the actual result, then remind it to use retained
-      // evidence. Cross-round repetition stays bounded by the no-progress
-      // episode budget; consecutive identical calls also stay bounded by the
-      // fingerprint guard below.
-      this.nudgeRepeatedObservation(
-        session,
-        call,
-        expectedCanonicalToolId ?? call.name,
-        observationFamilyCount + 1,
-      );
-    }
-    if (session.repeatedToolFingerprint > session.budget.maxRepeatedToolRequests) {
-      this.recordNoProgressIncident(
-        session,
-        call,
-        `${call.name} repeated with identical arguments and workspace state`,
-        "inspect a different source or choose a materially different tool",
-      );
-      const result = Object.freeze({
-        canonicalToolId: roundToolSet.canonicalToolIds[call.name] ?? call.name,
-        content: stableJson({
-          error: { code: "NO_PROGRESS", message: "The same tool and arguments were requested more than twice without a state change.", retryable: false },
+    if (observationFamily !== null && session.budget.noProgressPolicy === "advisory") {
+      const attempt = observationFamilyCount + 1;
+      const thresholds = session.budget.observationNudgeThresholds;
+      if (attempt > (thresholds.at(-1) ?? 0)) {
+        this.recordNoProgressIncident(
+          session,
+          call,
+          `${expectedCanonicalToolId ?? call.name} identical observation requested ${attempt} times, beyond the final advisory nudge threshold ${thresholds.at(-1)}`,
+          "act on the retained evidence or finish; identical observations are now blocked",
+        );
+        await this.tracePolicyDecision(session, Object.freeze({
+          action: "observation_blocked",
+          attempt,
+          canonicalToolId: expectedCanonicalToolId ?? call.name,
+          policy: session.budget.noProgressPolicy,
+          thresholds,
+          toolCallId: call.toolCallId,
+        }));
+        const result = Object.freeze({
+          canonicalToolId: roundToolSet.canonicalToolIds[call.name] ?? call.name,
+          content: stableJson({
+            error: { code: "NO_PROGRESS", message: `The same observation was requested ${attempt} times without using the retained result.`, retryable: false },
+            ok: false,
+          }),
+          error: Object.freeze({ code: "NO_PROGRESS", message: "Repeated observation blocked.", retryable: false }),
           ok: false,
-        }),
-        error: Object.freeze({ code: "NO_PROGRESS", message: "Repeated tool call blocked.", retryable: false }),
-        ok: false,
-        summary: "Repeated tool call blocked by deterministic no-progress policy.",
-        trust: "trusted" as const,
-      });
-      session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "failed" };
-      await this.traceToolResult(session, call, result);
-      return Object.freeze({ call, content: result.content, failed: true, kind: "tool", summary: result.summary, trust: result.trust });
-    }
-    const cyclePeriod = repeatedSuffixPeriod(session.toolCycleHistory);
-    if (cyclePeriod !== null) {
-      this.recordNoProgressIncident(
-        session,
-        call,
-        `a ${cyclePeriod}-call tool cycle repeated without semantic state progress`,
-        "stop repeating successful observations; if required evidence is already present, return the final report",
-      );
-      const result = Object.freeze({
-        canonicalToolId: roundToolSet.canonicalToolIds[call.name] ?? call.name,
-        content: stableJson({
-          error: { code: "NO_PROGRESS", message: "A repeated tool cycle was blocked because semantic state did not change.", retryable: false },
+          summary: "Repeated observation blocked after advisory nudges.",
+          trust: "trusted" as const,
+        });
+        session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "failed" };
+        await this.traceToolResult(session, call, result);
+        return Object.freeze({ call, content: result.content, failed: true, kind: "tool", summary: result.summary, trust: result.trust });
+      }
+      if (thresholds.includes(attempt)) {
+        await this.addObservationNudge(session, call, expectedCanonicalToolId ?? call.name, attempt, thresholds);
+      }
+    } else {
+      if (observationFamily !== null && observationFamilyCount >= session.budget.maxObservationRepeats) {
+        // Strict nudge for read-only observations: dispatch the call so the
+        // model receives the actual result, then remind it to use retained
+        // evidence and count one no-progress episode for the round.
+        this.nudgeRepeatedObservation(
+          session,
+          call,
+          expectedCanonicalToolId ?? call.name,
+          observationFamilyCount + 1,
+        );
+      }
+      if (session.repeatedToolFingerprint > session.budget.maxRepeatedToolRequests) {
+        this.recordNoProgressIncident(
+          session,
+          call,
+          `${call.name} repeated with identical arguments and workspace state`,
+          "inspect a different source or choose a materially different tool",
+        );
+        const result = Object.freeze({
+          canonicalToolId: roundToolSet.canonicalToolIds[call.name] ?? call.name,
+          content: stableJson({
+            error: { code: "NO_PROGRESS", message: "The same tool and arguments were requested more than twice without a state change.", retryable: false },
+            ok: false,
+          }),
+          error: Object.freeze({ code: "NO_PROGRESS", message: "Repeated tool call blocked.", retryable: false }),
           ok: false,
-        }),
-        error: Object.freeze({ code: "NO_PROGRESS", message: "Repeated tool cycle blocked.", retryable: false }),
-        ok: false,
-        summary: "Repeated tool cycle blocked by deterministic no-progress policy.",
-        trust: "trusted" as const,
-      });
-      session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "failed" };
-      await this.traceToolResult(session, call, result);
-      return Object.freeze({ call, content: result.content, failed: true, kind: "tool", summary: result.summary, trust: result.trust });
+          summary: "Repeated tool call blocked by deterministic no-progress policy.",
+          trust: "trusted" as const,
+        });
+        session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "failed" };
+        await this.traceToolResult(session, call, result);
+        return Object.freeze({ call, content: result.content, failed: true, kind: "tool", summary: result.summary, trust: result.trust });
+      }
+      const cyclePeriod = repeatedSuffixPeriod(session.toolCycleHistory);
+      if (cyclePeriod !== null) {
+        this.recordNoProgressIncident(
+          session,
+          call,
+          `a ${cyclePeriod}-call tool cycle repeated without semantic state progress`,
+          "stop repeating successful observations; if required evidence is already present, return the final report",
+        );
+        const result = Object.freeze({
+          canonicalToolId: roundToolSet.canonicalToolIds[call.name] ?? call.name,
+          content: stableJson({
+            error: { code: "NO_PROGRESS", message: "A repeated tool cycle was blocked because semantic state did not change.", retryable: false },
+            ok: false,
+          }),
+          error: Object.freeze({ code: "NO_PROGRESS", message: "Repeated tool cycle blocked.", retryable: false }),
+          ok: false,
+          summary: "Repeated tool cycle blocked by deterministic no-progress policy.",
+          trust: "trusted" as const,
+        });
+        session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "failed" };
+        await this.traceToolResult(session, call, result);
+        return Object.freeze({ call, content: result.content, failed: true, kind: "tool", summary: result.summary, trust: result.trust });
+      }
     }
     const toolContext = Object.freeze({
       ...session.context,
@@ -2015,7 +2126,9 @@ export class AiCoderRunController {
     const noProgressDetected = session.noProgressToolCallIds.has(call.toolCallId);
     const effectCanChangeState = normalizedResult.effectsAuthority === "host"
       && (normalizedResult.ok || normalizedResult.effects?.approval === "denied");
-    if (normalizedResult.ok && observationFamily !== null) {
+    // Count every dispatched identical observation attempt, successful or
+    // failed, so advisory nudges and strict nudges reflect requested work.
+    if (observationFamily !== null) {
       session.observationFamilies.set(observationFamily, (session.observationFamilies.get(observationFamily) ?? 0) + 1);
     }
     if (normalizedResult.ok && normalizedResult.effects?.writes?.length) session.observationFamilies.clear();
@@ -2860,10 +2973,12 @@ export class AiCoderRunController {
           .sort(([left], [right]) => compareAiCoderText(left, right))
           .slice(-128)
           .map(([key, value]) => Object.freeze({ key, value }))),
+        observationNudgeThresholds: session.budget.observationNudgeThresholds,
         observationFamilies: Object.freeze([...session.observationFamilies.entries()]
           .sort(([left], [right]) => compareAiCoderText(left, right))
           .slice(-128)
           .map(([key, count]) => Object.freeze({ count, key }))),
+        policy: session.budget.noProgressPolicy,
         previousTool: repeatedToolIsStillOnCurrentState && lastToolCall !== undefined
           ? Object.freeze({
               argumentsHash: lastToolCall.argumentsHash,

@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-stack/ai-coder-core",
-  "version": "0.2.0",
+  "version": "0.3.0-alpha.1",
   "private": false,
   "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Core exception under @galaxy-stack, versioned by the galaxy-blackhole organization. Consumed by galaxy-code (Blackhole CLI), galaxy-vscode-extension, and galaxy-desktop.",
   "license": "MIT",
@@ -46,12 +46,14 @@
   "files": [
     "dist",
     "docs",
+    "CHANGELOG.md",
+    "CHANGELOG.d",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test": "tsx --test \"test/**/*.test.ts\"",
+    "test": "tsx --test --test-reporter=spec --test-reporter=./scripts/test-journal-reporter.mjs --test-reporter-destination=stdout --test-reporter-destination=stderr \"test/**/*.test.ts\"",
     "test:dist": "node test/dist-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "verify": "npm run typecheck && npm run test && npm run build && npm run test:dist",

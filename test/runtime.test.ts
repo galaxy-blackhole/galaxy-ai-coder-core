@@ -20,6 +20,7 @@ import type {
 } from "../src/tools/coding-messages.js";
 import { CodingProviderError } from "../src/tools/coding-messages.js";
 import { evaluateAiCoderCompletion } from "../src/runtime/completion-gate.js";
+import { researchCitations } from "../src/runtime/research-citations.js";
 import { AiCoderRunController } from "../src/runtime/run-controller.js";
 import {
   AiCoderRunStateMachine,
@@ -464,6 +465,27 @@ test("completion gate rejects citations to URLs that were never successfully fet
     ...base,
     finalReport: "Source: https://docs.example.com/guide",
   }), requirements).ok, true);
+});
+
+test("citation extraction accepts Markdown-emphasized and colon-prefixed URLs from the durable report style", () => {
+  const report = [
+    "- **Fetched — https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch**: fetch rejects on network errors.",
+    "- **Fetched — https://nodejs.org/api/globals.html**: documents AbortSignal.",
+    "- *Italic — https://nodejs.org/api/process.html*: platform globals.",
+    "- `Code — https://example.invalid/docs` stays a distinct unfetched citation.",
+  ].join("\n");
+  assert.deepEqual(researchCitations(report), [
+    "https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch",
+    "https://nodejs.org/api/globals.html",
+    "https://nodejs.org/api/process.html",
+    "https://example.invalid/docs",
+  ]);
+  // A literal trailing asterisk in a path is stripped the same way; citations
+  // remain set-deduplicated and fragment-free.
+  assert.deepEqual(
+    researchCitations("Same again: https://nodejs.org/api/globals.html**:"),
+    ["https://nodejs.org/api/globals.html"],
+  );
 });
 
 test("completion gate rejects waived required criteria, stale evidence, and later same-sequence failures", () => {
@@ -1652,7 +1674,7 @@ test("observation and no-progress budget fields raise the block and pause thresh
     .start(Object.freeze({
       ...request("run-raised-observation-repeat"),
       budget: Object.freeze({
-        maxCompletionRejections: 3, maxNoProgressEpisodes: 3, maxObservationRepeats: 4, maxRepeatedToolRequests: 4, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12,
+        maxCompletionRejections: 3, maxNoProgressEpisodes: 3, maxObservationRepeats: 4, maxRepeatedToolRequests: 4, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict",
       }),
     })).result;
   assert.equal(completed.state, "completed", JSON.stringify(completed.error));
@@ -1669,7 +1691,7 @@ test("observation and no-progress budget fields raise the block and pause thresh
     .start(Object.freeze({
       ...request("run-lowered-no-progress-pause"),
       budget: Object.freeze({
-        maxCompletionRejections: 3, maxNoProgressEpisodes: 1, maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12,
+        maxCompletionRejections: 3, maxNoProgressEpisodes: 1, maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict",
       }),
     })).result;
   assert.equal(paused.state, "paused");
@@ -1724,7 +1746,7 @@ test("two blocked observations in one model round count as one no-progress episo
   const result = await new AiCoderRunController({ model, toolExecutor: executor })
     .start(Object.freeze({
       ...request("run-same-round-blocks"),
-      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12 }),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict" }),
     })).result;
   assert.equal(result.state, "completed", JSON.stringify(result.error));
   assert.deepEqual(result.transitions.map((transition) => `${transition.from}->${transition.to}`),
@@ -1746,11 +1768,220 @@ test("two blocked observations in one model round count as one no-progress episo
   const paused = await new AiCoderRunController({ model: pausedModel, toolExecutor: pausedExecutor })
     .start(Object.freeze({
       ...request("run-same-round-blocks-pause"),
-      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1, maxToolCalls: 20, maxTurns: 12 }),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict" }),
     })).result;
   assert.equal(paused.state, "paused");
   assert.equal(paused.checkpoint?.noProgress?.episodes, 1, "the same-round incidents carry exactly one episode");
   assert.equal(pausedExecutor.calls.length, 5, "the pause keeps both nudged dispatches and the cycle-blocked b3");
+});
+
+test("advisory observations nudge at configured thresholds and block after the final threshold", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:advisory-thresholds",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const policyDecisions: { action: string; attempt: number }[] = [];
+  const blockedCodes: string[] = [];
+  const model = new ScriptedModel([
+    ...Array.from({ length: 9 }, (_, index) => Object.freeze([
+      toolWithArguments("read_file", `advisory-${index}`, { path: "src/a.ts" }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([done("Used the retained evidence and finalized after the bounded block.")]),
+  ]);
+  const executor = new ObservationExecutor();
+  const result = await new AiCoderRunController({
+    model,
+    onEvent(event) {
+      if (event.type === "tool_result" && event.call.toolCallId === "advisory-8") {
+        blockedCodes.push(event.result.error?.code ?? "success");
+      }
+    },
+    toolExecutor: executor,
+    trace: Object.freeze({
+      async emit(event: TraceEvent) {
+        if (event.kind === "policy_decision") {
+          policyDecisions.push({ action: String(event.payload.action), attempt: Number(event.payload.attempt) });
+        }
+        return portSuccess(undefined);
+      },
+      async flush() { return portSuccess(undefined); },
+    }),
+  }).start(request("run-advisory-thresholds")).result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(executor.calls.length, 8, "attempts one through eight dispatch; the ninth identical observation is blocked");
+  assert.deepEqual(blockedCodes, ["NO_PROGRESS"]);
+  assert.deepEqual(policyDecisions, [
+    { action: "observation_nudge", attempt: 3 },
+    { action: "observation_nudge", attempt: 5 },
+    { action: "observation_nudge", attempt: 8 },
+    { action: "observation_blocked", attempt: 9 },
+  ]);
+});
+
+test("advisory nudges do not count no-progress episodes", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:advisory-episode-free",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const paths = ["src/a.ts", "src/b.ts", "src/c.ts", "src/a.ts", "src/b.ts", "src/c.ts", "src/a.ts"];
+  const model = new ScriptedModel([
+    ...paths.map((path, index) => Object.freeze([
+      toolWithArguments("read_file", `nudge-${index}`, { path }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([done("Finished after the advisory nudges without pausing.")]),
+  ]);
+  const executor = new ObservationExecutor();
+  const result = await new AiCoderRunController({ model, toolExecutor: executor })
+    .start(Object.freeze({
+      ...request("run-advisory-episode-decoupling"),
+      budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1, maxToolCalls: 20, maxTurns: 16 }),
+    })).result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(executor.calls.length, 7, "the third identical interleaved observation dispatches with only an advisory nudge");
+});
+
+test("no-progress policy configuration fails loud and is checkpoint-bound on resume", async () => {
+  class ObservationExecutor implements AiCoderRuntimeToolExecutor {
+    readonly calls: CodingToolCall[] = [];
+
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ read_file: "workspace.read" }),
+        definitions: Object.freeze([Object.freeze({
+          function: Object.freeze({ description: "read", name: "read_file", parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        })]),
+        effectCapabilities: Object.freeze({ "workspace.read": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:advisory-config",
+      });
+    }
+
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      const path = String(call.arguments.path);
+      return Object.freeze({
+        canonicalToolId: "workspace.read",
+        content: JSON.stringify({ content: `contents of ${path}`, path }),
+        effects: Object.freeze({ approval: "not_required" as const, inspectedPaths: Object.freeze([path]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `read ${path}`,
+        trust: "workspace" as const,
+      });
+    }
+  }
+  const baseRequest = request("run-advisory-config");
+  assert.throws(
+    () => new AiCoderRunController({ model: new ScriptedModel([]), toolExecutor: new ObservationExecutor() })
+      .start({ ...baseRequest, budget: Object.freeze({ ...baseRequest.budget, noProgressPolicy: "aggressive" as never }) }),
+    /noProgressPolicy/,
+  );
+  assert.throws(
+    () => new AiCoderRunController({ model: new ScriptedModel([]), toolExecutor: new ObservationExecutor() })
+      .start({ ...baseRequest, budget: Object.freeze({ ...baseRequest.budget, observationNudgeThresholds: [3, 3] }) }),
+    /duplicate threshold 3/,
+  );
+
+  const cycleRequest = Object.freeze({
+    ...request("run-advisory-checkpoint-policy"),
+    budget: Object.freeze({
+      maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1,
+      maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxToolCalls: 20, maxTurns: 12,
+      noProgressPolicy: "advisory" as const, observationNudgeThresholds: Object.freeze([3]),
+    }),
+  });
+  const readRound = (id: string) => Object.freeze([toolWithArguments("read_file", id, { path: "src/a.ts" }), done("", "tool_calls")]);
+  const executor = new ObservationExecutor();
+  const paused = await new AiCoderRunController({
+    model: new ScriptedModel([readRound("cp-1"), readRound("cp-2"), readRound("cp-3"), readRound("cp-4"), Object.freeze([done("unused")])]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).start(cycleRequest).result;
+  assert.equal(paused.state, "paused", JSON.stringify(paused.error));
+  assert.equal(paused.checkpoint?.noProgress?.policy, "advisory");
+  assert.deepEqual(paused.checkpoint?.noProgress?.observationNudgeThresholds, [3]);
+
+  const mismatched = await new AiCoderRunController({
+    model: new ScriptedModel([Object.freeze([done("unused")])]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).resume({
+    ...cycleRequest,
+    budget: Object.freeze({
+      ...cycleRequest.budget,
+      observationNudgeThresholds: Object.freeze([5]),
+    }),
+    checkpoint: paused.checkpoint!,
+    checkpointTrust: "trusted_host",
+    runId: "run-advisory-checkpoint-policy",
+  }).result;
+  assert.equal(mismatched.state, "failed");
+  assert.equal(mismatched.error?.code, "CHECKPOINT_INCOMPATIBLE");
+  assert.match(mismatched.error?.message ?? "", /observationNudgeThresholds/);
+
+  const matching = await new AiCoderRunController({
+    model: new ScriptedModel([Object.freeze([done("Completed on the recorded advisory policy.")])]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: executor,
+  }).resume({
+    ...cycleRequest,
+    checkpoint: paused.checkpoint!,
+    checkpointTrust: "trusted_host",
+    runId: "run-advisory-checkpoint-policy",
+  }).result;
+  assert.equal(matching.state, "completed", JSON.stringify(matching.error));
 });
 
 test("repeated failed validation on one workspace fingerprint is paused and deduplicated", async () => {

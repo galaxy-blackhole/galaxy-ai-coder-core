@@ -163,7 +163,10 @@ export type AiCoderCheckpointNoProgress = Readonly<{
   episodes: number;
   failedToolFamilies: readonly Readonly<{ count: number; key: string }>[];
   hostStateVersions?: readonly Readonly<{ key: string; value: string }>[];
+  /** Recorded guard configuration; a resume must use the same values when present. */
+  observationNudgeThresholds?: readonly number[];
   observationFamilies?: readonly Readonly<{ count: number; key: string }>[];
+  policy?: "advisory" | "strict";
   previousTool: Readonly<{
     argumentsHash: string;
     name: string;
@@ -427,12 +430,16 @@ export function sanitizeAiCoderCheckpointPayload(
             value: item.value,
           }))),
         }),
+        ...(payload.noProgress.observationNudgeThresholds === undefined ? {} : {
+          observationNudgeThresholds: Object.freeze([...payload.noProgress.observationNudgeThresholds]),
+        }),
         ...(payload.noProgress.observationFamilies === undefined ? {} : {
           observationFamilies: Object.freeze(payload.noProgress.observationFamilies.map((item) => Object.freeze({
             count: item.count,
             key: item.key,
           }))),
         }),
+        ...(payload.noProgress.policy === undefined ? {} : { policy: payload.noProgress.policy }),
         previousTool: payload.noProgress.previousTool === null
           ? null
           : Object.freeze({ ...payload.noProgress.previousTool }),
@@ -599,7 +606,7 @@ async function validateCheckpointSnapshot(
     if (!checkpoint.noProgress || typeof checkpoint.noProgress !== "object") {
       issue("noProgress", "noProgress must be an object when present.");
     } else {
-      rejectUnknown(checkpoint.noProgress, "noProgress", ["episodes", "failedToolFamilies", "hostStateVersions", "observationFamilies", "previousTool", "toolCycleSuffix"]);
+      rejectUnknown(checkpoint.noProgress, "noProgress", ["episodes", "failedToolFamilies", "hostStateVersions", "observationNudgeThresholds", "observationFamilies", "policy", "previousTool", "toolCycleSuffix"]);
       if (!nonNegativeInteger(checkpoint.noProgress.episodes)) {
         issue("noProgress.episodes", "episodes must be a non-negative integer.");
       }
@@ -647,6 +654,28 @@ async function validateCheckpointSnapshot(
             rejectUnknown(family, `noProgress.observationFamilies[${index}]`, ["count", "key"]);
             if (!nonEmptyString(family.key)) issue(`noProgress.observationFamilies[${index}].key`, "Observation family key is required.");
             if (!positiveIntegerValue(family.count)) issue(`noProgress.observationFamilies[${index}].count`, "Observation family count must be positive.");
+          });
+        }
+      }
+      if (checkpoint.noProgress.policy !== undefined
+        && checkpoint.noProgress.policy !== "advisory"
+        && checkpoint.noProgress.policy !== "strict") {
+        issue("noProgress.policy", "policy must be advisory or strict.");
+      }
+      if (checkpoint.noProgress.observationNudgeThresholds !== undefined) {
+        const thresholds = checkpoint.noProgress.observationNudgeThresholds;
+        if (!Array.isArray(thresholds) || thresholds.length === 0 || thresholds.length > 8) {
+          issue("noProgress.observationNudgeThresholds", "observationNudgeThresholds must contain 1 to 8 thresholds when present.");
+        } else {
+          const seen = new Set<number>();
+          thresholds.forEach((threshold, index) => {
+            if (!Number.isSafeInteger(threshold) || threshold < 2) {
+              issue(`noProgress.observationNudgeThresholds[${index}]`, "Thresholds must be integers >= 2.");
+            } else if (seen.has(threshold)) {
+              issue(`noProgress.observationNudgeThresholds[${index}]`, `Threshold ${threshold} is duplicated.`);
+            } else {
+              seen.add(threshold);
+            }
           });
         }
       }
