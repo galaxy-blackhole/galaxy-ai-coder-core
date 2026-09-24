@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "name": "suite inspect existing project",
+  "task": "Inspect the existing project and report its language, entry point, and declared test command.",
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": { \"test\": \"node --test\" }\n}\n"
+    },
+    { "path": "src/index.ts", "content": "export const entry = true;\n" },
+    { "path": "test/index.test.ts", "content": "// deterministic test marker\n" }
+  ],
+  "rounds": [
+    {
+      "toolCalls": [
+        { "toolCallId": "detect", "toolName": "detect_project", "arguments": { "path": "." } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "read-entry", "toolName": "read_file", "arguments": { "path": "src/index.ts" } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The observed TypeScript entry point is src/index.ts and package.json declares node --test.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "allowedChanges": [],
+    "toolSequence": ["detect_project", "read_file"],
+    "toolResults": [
+      { "canonicalToolId": "project.detect", "ok": true, "contentIncludes": ["TypeScript", "node --test", "\"complete\":true"] },
+      { "canonicalToolId": "workspace.read", "ok": true, "contentIncludes": ["entry = true"] }
+    ],
+    "finalResponseIncludes": ["TypeScript", "src/index.ts", "node --test"]
+  }
+}

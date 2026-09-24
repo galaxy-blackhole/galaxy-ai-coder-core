@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "live progressive 02 python",
+  "task": "Inspect the accumulated project and preserve src/sum.js. Create python/calculator.py defining multiply(a: int, b: int) -> int and returning a * b, run the declared Python unittest with validate_project, review the final diff with the structured Git tool, and report verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Create python/calculator.py and do not change src/sum.js.",
+    "Do not modify package.json or python/test_calculator.py.",
+    "Use validate_project for the declared test and git_operation for final diff review."
+  ],
+  "workspaceInstructions": [
+    "This is stage 2 of one progressive workspace. JavaScript output from stage 1 is accumulated evidence and must remain unchanged."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": { \"test\": \"python3 -m unittest discover -s python -p 'test_*.py'\" }\n}\n"
+    },
+    {
+      "path": "python/test_calculator.py",
+      "content": "import unittest\nfrom calculator import multiply\n\nclass CalculatorTest(unittest.TestCase):\n    def test_multiply(self):\n        self.assertEqual(multiply(6, 7), 42)\n\nif __name__ == '__main__':\n    unittest.main()\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 900000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 28, "maxTurns": 20 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["python/calculator.py"],
+    "files": [
+      { "path": "src/sum.js", "contentIncludes": ["function sum", "return a + b"] },
+      { "path": "python/calculator.py", "contentIncludes": ["def multiply(a: int, b: int) -> int:", "return a * b"] }
+    ],
+    "maxToolCalls": 16,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

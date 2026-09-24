@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 2,
+  "name": "large terminal output and streamed log recovery",
+  "task": "Run the supplied log producer, recognize that terminal output is truncated, find the checkout error in the generated multi-megabyte log with bounded text search instead of reading the whole file, clean up the generated log, run the declared test, review the final structured Git diff, and report only verified evidence.",
+  "constraints": [
+    "Do not read service.log as one complete file.",
+    "Use search_text for correlation order-needle-42.",
+    "Delete service.log with the supplied cleanup command before validation.",
+    "Use validate_project and git_operation rather than generic commands for completion evidence."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": { \"test\": \"node --test test.mjs\" }\n}\n"
+    },
+    {
+      "path": "scripts/log-producer.cjs",
+      "content": "const fs = require('node:fs');\nif (process.argv[2] === 'cleanup') {\n  fs.rmSync('service.log', { force: true });\n  process.stdout.write('service.log removed\\n');\n} else {\n  const noise = '2026-09-05T00:00:00Z INFO request completed status=200\\n'.repeat(90000);\n  const marker = '2026-09-05T00:01:00Z ERROR checkout failed correlation=order-needle-42\\n';\n  const content = noise + marker;\n  fs.writeFileSync('service.log', content);\n  process.stdout.write(content);\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { existsSync } from 'node:fs';\nimport test from 'node:test';\ntest('temporary diagnostic log was cleaned', () => assert.equal(existsSync('service.log'), false));\n"
+    }
+  ],
+  "approvalDecisions": {
+    "command.run": "allow",
+    "project.validate": "allow"
+  },
+  "rounds": [
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-inspect", "toolName": "list_files", "arguments": { "path": ".", "depth": 3 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-produce", "toolName": "run_command", "arguments": { "command": "node scripts/log-producer.cjs", "cwd": ".", "timeoutMs": 30000 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-search", "toolName": "search_text", "arguments": { "path": ".", "glob": "**/*.log", "query": "order-needle-42", "limit": 5 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-cleanup", "toolName": "run_command", "arguments": { "command": "node scripts/log-producer.cjs cleanup", "cwd": ".", "timeoutMs": 30000 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": ".", "timeoutMs": 30000 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "large-log-diff", "toolName": "git_operation", "arguments": { "action": "diff" } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The terminal output was truncated safely. Bounded search found checkout failure order-needle-42 in service.log, the temporary log was removed, the declared test passed, and the final structured Git diff was reviewed.",
+      "finishReason": "stop"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "balanced",
+    "budget": {
+      "deadlineMs": 120000,
+      "maxCompletionRejections": 2,
+      "maxModelRetries": 1,
+      "maxToolCalls": 12,
+      "maxTurns": 8,
+      "toolOutput": { "maxBytes": 32000, "maxTokens": 8000, "tailFraction": 0.5 }
+    }
+  },
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allowedChanges": [],
+    "allModelStepsConsumed": true,
+    "files": [
+      { "path": "service.log", "absent": true }
+    ],
+    "toolSequence": ["list_files", "run_command", "search_text", "run_command", "validate_project", "git_operation"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true },
+      { "canonicalToolId": "command.run", "ok": true, "contentIncludes": ["GALAXY OUTPUT TRUNCATED", "\"truncated\":true"] },
+      { "canonicalToolId": "workspace.grep", "ok": true, "contentIncludes": ["order-needle-42", "service.log"] },
+      { "canonicalToolId": "command.run", "ok": true, "contentIncludes": ["service.log removed"] },
+      { "canonicalToolId": "project.validate", "ok": true, "contentIncludes": ["\"passed\":true"] },
+      { "canonicalToolId": "git.exec", "ok": true }
+    ],
+    "finalResponseIncludes": ["truncated safely", "order-needle-42", "test passed", "Git diff was reviewed"],
+    "traceKindsInclude": ["tool_call", "tool_result", "completion_gate"]
+  }
+}

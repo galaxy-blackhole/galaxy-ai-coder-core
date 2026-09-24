@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "live progressive 01 javascript",
+  "task": "Inspect the project, create src/sum.js exporting a named sum(a, b) function that returns a + b, run the declared project test with validate_project, review the final diff with the structured Git tool, and report verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Create src/sum.js and no other model-authored file.",
+    "Do not modify package.json or test.mjs.",
+    "Use validate_project for the declared test and git_operation for final diff review."
+  ],
+  "workspaceInstructions": [
+    "This is stage 1 of one progressive multi-language live-health workspace. Harness files are immutable."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test test.mjs\" }\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { sum } from './src/sum.js';\ntest('sum', () => assert.equal(sum(20, 22), 42));\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 900000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 24, "maxTurns": 18 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src", "src/sum.js"],
+    "files": [{ "path": "src/sum.js", "contentIncludes": ["export", "function sum", "return a + b"] }],
+    "maxToolCalls": 14,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

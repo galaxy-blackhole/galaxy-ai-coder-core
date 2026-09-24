@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "name": "dependency backed 01 next runtime",
+  "task": "Inspect the prepared project, tests, and src/next-catalog.mjs skeleton, then replace its TODO implementations. Use the installed React and Next.js packages already imported by the skeleton, not hand-written framework substitutes. Implement renderCatalog(products), which returns server-rendered accessible product-list HTML with one article per product, data-product-id, name, and the result of the existing formatUsd(product.priceCents) helper, and catalogResponse(products), which returns a NextResponse JSON payload containing { products, count }. Run the complete declared test suite with validate_project, inspect the final structured diff with git_operation, and report only verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/next-catalog.mjs; package.json, package-lock.json, tests, .gitignore, and installed dependencies are immutable.",
+    "Keep the skeleton's actual imports from react, react-dom/server, and next/server.js.",
+    "Do not install, upgrade, or modify dependencies; the host already prepared exact versions before the baseline.",
+    "Use validate_project and git_operation for trusted completion evidence."
+  ],
+  "workspaceInstructions": [
+    "This is stage 1 of a shared dependency-backed framework campaign. All later stages must preserve this source and its passing tests."
+  ],
+  "initialFiles": [
+    {
+      "path": ".gitignore",
+      "content": "node_modules/\n"
+    },
+    {
+      "path": "package.json",
+      "content": "{\n  \"name\": \"galaxy-dependency-backed-health\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test tests/*.test.mjs\" },\n  \"dependencies\": {\n    \"@angular/compiler\": \"21.2.22\",\n    \"@angular/core\": \"21.2.22\",\n    \"@nestjs/common\": \"12.0.1\",\n    \"@nestjs/core\": \"12.0.1\",\n    \"@nestjs/platform-express\": \"12.0.1\",\n    \"@nestjs/testing\": \"12.0.1\",\n    \"@vitejs/plugin-vue\": \"6.0.8\",\n    \"esbuild\": \"0.28.2\",\n    \"next\": \"16.3.4\",\n    \"react\": \"19.2.8\",\n    \"react-dom\": \"19.2.8\",\n    \"reflect-metadata\": \"0.2.2\",\n    \"rxjs\": \"7.8.2\",\n    \"vite\": \"8.2.2\",\n    \"vue\": \"3.5.42\",\n    \"zone.js\": \"0.16.3\"\n  },\n  \"engines\": { \"node\": \">=24.0.0\" }\n}\n"
+    },
+    {
+      "path": "tests/next-runtime.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { renderCatalog, catalogResponse } from '../src/next-catalog.mjs';\n\ntest('Next and React server APIs back the catalog boundary', async () => {\n  const products = [{ id: 'lamp', name: 'Desk Lamp', priceCents: 4950 }];\n  const html = renderCatalog(products);\n  assert.match(html, /<section[^>]*aria-label=[\"']Products[\"']/);\n  assert.match(html, /<article[^>]*data-product-id=[\"']lamp[\"']/);\n  assert.match(html, /Desk Lamp/);\n  assert.match(html, /\\$49\\.50/);\n  const response = catalogResponse(products);\n  assert.equal(response.constructor.name, 'NextResponse');\n  assert.deepEqual(await response.json(), { products, count: 1 });\n});\n"
+    },
+    {
+      "path": "src/next-catalog.mjs",
+      "content": "import { createElement } from 'react';\nimport { renderToStaticMarkup } from 'react-dom/server';\nimport { NextResponse } from 'next/server.js';\n\nconst formatUsd = (priceCents) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceCents / 100);\n\nexport function renderCatalog(products) {\n  throw new Error('TODO renderCatalog');\n}\n\nexport function catalogResponse(products) {\n  throw new Error('TODO catalogResponse');\n}\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "dependencySetup": { "packageManager": "npm", "timeoutMs": 360000 },
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 42, "maxTurns": 30 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/next-catalog.mjs"],
+    "files": [
+      { "path": "src/next-catalog.mjs", "contentIncludes": ["react-dom/server", "next/server", "renderCatalog", "catalogResponse", "NextResponse"] }
+    ],
+    "maxToolCalls": 32,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

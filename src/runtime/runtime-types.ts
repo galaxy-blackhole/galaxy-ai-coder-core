@@ -198,6 +198,8 @@ export type AiCoderRunBudget = Readonly<{
   maxNoProgressEpisodes: number;
   maxObservationRepeats: number;
   maxModelRetries: number;
+  /** Backoff schedule (ms) between model request retries, consumed in order by retry attempt. */
+  modelRetryDelaysMs: readonly number[];
   maxRepeatedToolRequests: number;
   maxToolCalls: number;
   maxTurns: number;
@@ -209,6 +211,8 @@ export type AiCoderRunBudget = Readonly<{
 }>;
 
 export type AiCoderRunRequest = Readonly<{
+  /** Bounded host-supplied recall/history; always wrapped as untrusted data. */
+  contextData?: readonly Readonly<{ source: string; content: string }>[];
   acceptanceCriteria?: readonly Readonly<{
     id: string;
     required?: boolean;
@@ -239,7 +243,22 @@ export type AiCoderRuntimeEventPayload =
   | Readonly<{ call: CodingToolCall; result: AiCoderRuntimeToolResult; type: "tool_result" }>
   | Readonly<{ attempt: number; delayMs: number; message: string; type: "model_retry" }>
   | Readonly<{ checkpoint: AiCoderRunCheckpoint; reason: AiCoderCheckpointReason; type: "checkpoint" }>
-  | Readonly<{ issues: readonly string[]; type: "completion_rejected" }>
+  | Readonly<{
+      candidate: string;
+      issues: readonly string[];
+      researchEvidence: Readonly<{
+        fetchedUrls: readonly string[];
+        searchOnlyUrls: readonly string[];
+        sources: readonly Readonly<{
+          contentHash: string | null;
+          kind: "fetch" | "search";
+          toolCallId: string;
+          url: string;
+        }>[];
+        unsupportedCitations: readonly string[];
+      }>;
+      type: "completion_rejected";
+    }>
   | Readonly<{ pressure: AiCoderContextPressure; tokens: number; type: "context_pressure" }>
   | Readonly<{ transition: AiCoderStateTransition; type: "state" }>;
 

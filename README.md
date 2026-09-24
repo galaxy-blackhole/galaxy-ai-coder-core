@@ -44,6 +44,70 @@ Pre-release versions publish under the `alpha` dist tag, so
 `npm install @galaxy-stack/ai-coder-core@latest` never jumps to an unverified
 alpha.
 
+## Installation
+
+Install the current development line explicitly; `latest` intentionally stays
+on the last non-alpha release:
+
+```sh
+npm install @galaxy-stack/ai-coder-core@alpha
+```
+
+The package is ESM-only and requires Node.js 20 or newer. It does not bundle a
+model provider, filesystem adapter, command runner, credential store, or UI.
+Each host supplies those capabilities through typed ports.
+
+## Basic usage
+
+`AiCoderRunController` owns each run lifecycle; one controller may host
+multiple distinct run IDs, while every run still has exactly one AI. A host
+constructs the adapter set once, passes a complete request to `start`, observes
+typed runtime events, and awaits the handle result. The same request fields
+plus a trusted durable checkpoint are used by `resume`.
+
+```ts
+import {
+  AiCoderRunController,
+  type AiCoderRunDependencies,
+  type AiCoderRunRequest,
+} from "@galaxy-stack/ai-coder-core";
+
+export async function runCoder(
+  dependencies: AiCoderRunDependencies,
+  request: AiCoderRunRequest,
+) {
+  const controller = new AiCoderRunController(dependencies);
+  const handle = controller.start(request);
+
+  // A UI may call handle.pause(), handle.cancel(), or
+  // handle.resolveApproval(requestId, decision) while result is pending.
+  return await handle.result;
+}
+```
+
+Required dependencies are a `CodingModelAdapter` and an
+`AiCoderRuntimeToolExecutor`. Production hosts should also provide a trusted
+run store, trace port, workspace verifier, and output-spill adapter when their
+completion requirements enable those guarantees. `galaxy-code` is the
+reference implementation and conformance test host.
+
+## Public API
+
+| Export | Purpose |
+| --- | --- |
+| `AiCoderRunController` | Start, resume, pause, cancel, and resolve approvals for a run. |
+| `AiCoderRunRequest` / `AiCoderRunResult` | Typed task input, budgets, completion requirements, and terminal result. |
+| `AiCoderRunDependencies` | Model, tools, persistence, trace, workspace verification, clock, and event adapters. |
+| `AiCoderRuntimeEvent` | Model, tool, checkpoint, retry, context-pressure, state, and completion-rejection telemetry. |
+| `evaluateAiCoderCompletion` | Pure completion-evidence evaluation for tests and host diagnostics. |
+| `createAiCoderRunCheckpoint` / `assertAiCoderRunCheckpoint` | Durable checkpoint creation and validation. |
+| `AiCoderToolRegistry` | Canonical tool registration and model-facing registry snapshots. |
+
+Focused subpath exports are available at `/ports`, `/tools`, `/context`,
+`/prompt`, `/approval`, `/retrieval`, and `/runtime`. The API is pre-1.0:
+pin an exact alpha version in production-like hosts and review
+[CHANGELOG.md](CHANGELOG.md) before upgrading.
+
 ## Non-negotiable invariants
 
 1. One AI owns the run state. There is no hidden planner/reviewer agent.
@@ -138,7 +202,7 @@ src/
 
 ## Development
 
-Requires Node.js 20 or newer.
+The platform-neutral root supports Node.js 20+. Full development checks and optional SQLite adapters require Node.js 22.13+ (CI covers Node 22 and 24).
 
 ```bash
 npm install
@@ -160,9 +224,19 @@ before publishing or consuming the package from another repository.
 commit and source fingerprint. The reporter is development-only and runs without
 a galaxy-code checkout. Raw `tsx --test` invocations bypass this reporter.
 
-The deterministic end-to-end host gate lives in `galaxy-code`:
+The deterministic/live/replay host gate lives in the private `testing/` workspace:
 
 ```bash
-cd ../../galaxy-code
-npm run check
+cd testing
+npm ci
+npm run test:local
 ```
+
+
+## Agent platform and optional adapters
+
+The runtime also supports `prompt.agentProfile: "assistant" | "research"` alongside the default coding profile. `contextData` is bounded, snapshotted and wrapped as untrusted context; it never changes approval or validation evidence.
+
+`@galaxy-stack/ai-coder-core/agent` exports `AgentMemoryPort`, `AgentSkillsPort`, `AgentToolExecutor`, `CompositeToolExecutor`, memory/skill tool factories and profile types. Optional `.../adapters/node/*` exports provide the shared Ollama/Node tools, MCP SDK client, directory skill loader and SQLite memory. They are not imported through the platform-neutral root. The SQLite adapter requires Node >=22.13.
+
+The executable lab moved into [testing/](testing/README.md); it is private and excluded from the npm package. Production CLI/TUI lives in the sibling `galaxy-code` repository. See [docs/AGENT_PLATFORM.md](docs/AGENT_PLATFORM.md) for APIs, current scope, commands and rollout boundaries.

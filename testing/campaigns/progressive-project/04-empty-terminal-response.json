@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "name": "campaign 04 empty terminal response",
+  "task": "Reject an empty terminal model response without changing or poisoning the existing project.",
+  "runtime": {
+    "completion": {
+      "requireInspection": false,
+      "requireFinalReportPersistence": false
+    }
+  },
+  "rounds": [{ "content": "", "finishReason": "stop" }],
+  "expected": {
+    "status": "failed",
+    "errorCode": "INVALID_MODEL_STREAM",
+    "executionStatuses": ["failed"],
+    "checkpointReasons": ["failure"],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 1,
+    "allowedChanges": [],
+    "toolSequence": [],
+    "toolResults": []
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "name": "suite provider retry ladder recovers",
+  "task": "Recover through the full configured backoff ladder when three consecutive requests time out.",
+  "runtime": {
+    "budget": { "maxModelRetries": 3, "modelRetryDelaysMs": [5, 10, 15] }
+  },
+  "rounds": [
+    {
+      "events": [
+        { "type": "started" },
+        { "type": "error", "code": "TIMEOUT", "message": "provider window closed 1", "retryable": true }
+      ]
+    },
+    {
+      "events": [
+        { "type": "started" },
+        { "type": "error", "code": "TIMEOUT", "message": "provider window closed 2", "retryable": true }
+      ]
+    },
+    {
+      "events": [
+        { "type": "started" },
+        { "type": "error", "code": "TIMEOUT", "message": "provider window closed 3", "retryable": true }
+      ]
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "inspect-after-ladder", "toolName": "list_files", "arguments": { "path": "." } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Recovered after three consecutive timeouts by walking the full backoff ladder.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 5,
+    "retryDelaysMs": [5, 10, 15],
+    "allowedChanges": [],
+    "toolSequence": ["list_files"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true }
+    ]
+  }
+}

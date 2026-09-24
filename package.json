@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-stack/ai-coder-core",
-  "version": "0.3.0-alpha.1",
+  "version": "0.3.0-alpha.7",
   "private": false,
   "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Core exception under @galaxy-stack, versioned by the galaxy-blackhole organization. Consumed by galaxy-code (Blackhole CLI), galaxy-vscode-extension, and galaxy-desktop.",
   "license": "MIT",
@@ -41,7 +41,15 @@
       "types": "./dist/runtime/index.d.ts",
       "import": "./dist/runtime/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./adapters/node/*": {
+      "types": "./dist/adapters/node/*.d.ts",
+      "import": "./dist/adapters/node/*.js"
+    },
+    "./agent": {
+      "types": "./dist/agent/index.d.ts",
+      "import": "./dist/agent/index.js"
+    }
   },
   "files": [
     "dist",
@@ -57,13 +65,15 @@
     "test:dist": "node test/dist-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "verify": "npm run typecheck && npm run test && npm run build && npm run test:dist",
-    "prepack": "npm run verify"
+    "prepack": "npm run verify",
+    "lab": "npm --prefix testing run dev --",
+    "test:lab": "npm --prefix testing test"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^20.17.0",
+    "@types/node": "^22.20.4",
     "tsx": "^4.20.0",
     "typescript": "~5.9.2"
   },
@@ -74,5 +84,9 @@
   "bugs": {
     "url": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core/issues"
   },
-  "homepage": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core#readme"
+  "homepage": "https://github.com/galaxy-blackhole/galaxy-ai-coder-core#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "yaml": "^2.9.1"
+  }
 }

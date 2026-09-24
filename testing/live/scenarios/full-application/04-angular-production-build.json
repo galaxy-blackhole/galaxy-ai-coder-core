@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "name": "full application 04 angular production build",
+  "task": "Complete src/angular/app.ts as a standalone Angular storefront component. Use Angular signal and computed state for quantity and total cents, reject non-positive quantities, and render the verified title, total, and increment button in the component template. Run the entire cumulative test suite including a real Angular CLI application build, frontend builds, Nest HTTP server, and SQLite migration, then review the structured Git diff and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/angular/app.ts and preserve all earlier application stages.",
+    "Use Component, signal, and computed from @angular/core; do not implement local reactive substitutes.",
+    "Do not alter Angular workspace configuration, test harnesses, dependencies, or build outputs.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "The final cumulative stage executes production framework builders plus a real HTTP and database integration test in one project."
+  ],
+  "initialFiles": [
+    {
+      "path": "angular.json",
+      "content": "{\n  \"$schema\": \"./node_modules/@angular/cli/lib/config/schema.json\",\n  \"version\": 1,\n  \"cli\": { \"analytics\": false, \"cache\": { \"enabled\": false } },\n  \"projects\": {\n    \"storefront\": {\n      \"projectType\": \"application\",\n      \"root\": \"\",\n      \"sourceRoot\": \"src/angular\",\n      \"architect\": {\n        \"build\": {\n          \"builder\": \"@angular/build:application\",\n          \"options\": {\n            \"browser\": \"src/angular/main.ts\",\n            \"index\": \"src/angular/index.html\",\n            \"tsConfig\": \"tsconfig.app.json\",\n            \"outputPath\": \"dist-angular\",\n            \"polyfills\": [\"zone.js\"]\n          },\n          \"configurations\": { \"development\": { \"optimization\": false, \"sourceMap\": false } },\n          \"defaultConfiguration\": \"development\"\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "path": "tsconfig.angular.json",
+      "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"ES2022\",\n    \"moduleResolution\": \"bundler\",\n    \"experimentalDecorators\": true,\n    \"useDefineForClassFields\": false,\n    \"strict\": true,\n    \"skipLibCheck\": true\n  },\n  \"angularCompilerOptions\": { \"strictTemplates\": true }\n}\n"
+    },
+    {
+      "path": "tsconfig.app.json",
+      "content": "{\n  \"extends\": \"./tsconfig.angular.json\",\n  \"compilerOptions\": { \"outDir\": \"./out-tsc/app\" },\n  \"files\": [\"src/angular/main.ts\"]\n}\n"
+    },
+    {
+      "path": "src/angular/index.html",
+      "content": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Galaxy Angular Store</title><base href=\"/\"></head><body><galaxy-root></galaxy-root></body></html>\n"
+    },
+    {
+      "path": "src/angular/main.ts",
+      "content": "import { bootstrapApplication } from '@angular/platform-browser';\nimport { StorefrontComponent } from './app';\nbootstrapApplication(StorefrontComponent).catch((error) => console.error(error));\n"
+    },
+    {
+      "path": "src/angular/app.ts",
+      "content": "import { Component, computed, signal } from '@angular/core';\n\n@Component({\n  selector: 'galaxy-root',\n  standalone: true,\n  template: `<main>TODO Angular storefront</main>`\n})\nexport class StorefrontComponent {\n  readonly priceCents = signal(4950);\n  readonly quantity = signal(1);\n  readonly totalCents = computed(() => { throw new Error('TODO total'); });\n\n  setQuantity(value: number): void {\n    throw new Error('TODO quantity');\n  }\n}\n"
+    },
+    {
+      "path": "tests/04-angular-build.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { execFile } from 'node:child_process';\nimport { readFile, readdir, rm, stat } from 'node:fs/promises';\nimport test from 'node:test';\nimport { fileURLToPath } from 'node:url';\nimport { promisify } from 'node:util';\n\nconst run = promisify(execFile);\nconst root = fileURLToPath(new URL('..', import.meta.url));\nconst output = new URL('../dist-angular/', import.meta.url);\n\ntest('Angular CLI builds the standalone storefront application', { timeout: 240000 }, async () => {\n  try {\n    await run(process.execPath, ['node_modules/@angular/cli/bin/ng.js', 'build', '--configuration', 'development'], { cwd: root, env: { ...process.env, NG_CLI_ANALYTICS: 'false' }, maxBuffer: 4 * 1024 * 1024, timeout: 220000 });\n    assert.equal((await stat(new URL('browser/index.html', output))).isFile(), true);\n    const assets = await readdir(new URL('browser/', output));\n    const bundles = assets.filter((name) => name.endsWith('.js'));\n    const code = (await Promise.all(bundles.map((name) => readFile(new URL(`browser/${name}`, output), 'utf8')))).join('');\n    assert.match(code, /Galaxy Angular Storefront/);\n    assert.doesNotMatch(code, /TODO Angular storefront|TODO total|TODO quantity/);\n  } finally {\n    await rm(output, { recursive: true, force: true });\n    await rm(new URL('../.angular/', import.meta.url), { recursive: true, force: true });\n  }\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 56, "maxTurns": 36 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/angular/app.ts"],
+    "files": [
+      { "path": "src/nest/catalog.service.mjs", "contentIncludes": ["schema_migrations"] },
+      { "path": "src/angular/app.ts", "contentIncludes": ["Component", "signal", "computed", "Galaxy Angular Storefront", "setQuantity"] }
+    ],
+    "maxToolCalls": 42,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

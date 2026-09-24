@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "name": "campaign 02 inspect existing project",
+  "task": "Inspect the project created by the previous stage and report only facts observed from its manifest, source, and test.",
+  "mode": "review_only",
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "c02-detect", "toolName": "detect_project", "arguments": { "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c02-package", "toolName": "read_file", "arguments": { "path": "package.json" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c02-source", "toolName": "read_file", "arguments": { "path": "src/math.js" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c02-test", "toolName": "read_file", "arguments": { "path": "test/math.test.mjs" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Observed a JavaScript ESM project with the node --test test/*.test.mjs script, an add implementation in src/math.js, and its assertion in test/math.test.mjs.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 5,
+    "allowedChanges": [],
+    "files": [
+      { "path": "src/math.js", "contentIncludes": ["export function add"] },
+      { "path": "test/math.test.mjs", "contentIncludes": ["test(\"add\""] }
+    ],
+    "toolSequence": ["detect_project", "read_file", "read_file", "read_file"],
+    "finalResponseIncludes": ["JavaScript ESM", "src/math.js", "test/math.test.mjs"]
+  }
+}

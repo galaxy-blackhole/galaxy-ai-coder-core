@@ -19,3 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      - run: npm ci
+        working-directory: testing
+      - run: npm run typecheck:local && npm run test:local
+        working-directory: testing

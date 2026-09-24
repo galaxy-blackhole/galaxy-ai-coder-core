@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced commerce 02 vite nest checkout",
+  "task": "Extend the accumulated commerce workspace with a Vite-style web client and NestJS-style checkout domain service. Preserve the catalog files. Create apps/api/src/cart-service.js exporting calculateCart(lines, catalogById) and apps/web/src/checkout-client.js exporting async submitCart(http, lines). calculateCart must reject unknown products and non-positive integer quantities, compute subtotal, ten-percent tax, and total in integer cents, and never trust prices supplied by the client. submitCart must use the injected Axios-compatible client's post('/api/cart/quote', { lines }) and return response.data. Run every declared test using validate_project, review the structured Git diff, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Create only apps/api/src/cart-service.js and apps/web/src/checkout-client.js.",
+    "Do not modify or delete the stage-1 catalog implementation or any harness file.",
+    "The injected HTTP interface is Axios-compatible; do not add dependencies or perform network requests.",
+    "Use validate_project and git_operation for trusted completion evidence."
+  ],
+  "workspaceInstructions": [
+    "This is stage 2. Earlier commerce source is accumulated and immutable; the root test script now validates both stages."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test test/*.test.mjs\" }\n}\n"
+    },
+    {
+      "path": "test/checkout.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { calculateCart } from '../apps/api/src/cart-service.js';\nimport { submitCart } from '../apps/web/src/checkout-client.js';\n\ntest('server owns price calculations in integer cents', () => {\n  const catalog = new Map([['lamp', { id: 'lamp', priceCents: 4950 }], ['desk', { id: 'desk', priceCents: 49900 }]]);\n  assert.deepEqual(calculateCart([{ productId: 'lamp', quantity: 2, priceCents: 1 }], catalog), { subtotalCents: 9900, taxCents: 990, totalCents: 10890 });\n  assert.throws(() => calculateCart([{ productId: 'missing', quantity: 1 }], catalog), /unknown|not found/i);\n  assert.throws(() => calculateCart([{ productId: 'lamp', quantity: 0 }], catalog), /quantity/i);\n});\n\ntest('Vite-facing client honors the Axios contract', async () => {\n  const calls = [];\n  const http = { post: async (...args) => { calls.push(args); return { data: { totalCents: 10890 } }; } };\n  const lines = [{ productId: 'lamp', quantity: 2 }];\n  assert.deepEqual(await submitCart(http, lines), { totalCents: 10890 });\n  assert.deepEqual(calls, [['/api/cart/quote', { lines }]]);\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 42, "maxTurns": 28 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["apps", "apps/api", "apps/api/src", "apps/api/src/cart-service.js", "apps/web", "apps/web/src", "apps/web/src/checkout-client.js"],
+    "files": [
+      { "path": "lib/catalog.js", "contentIncludes": ["listFeaturedProducts"] },
+      { "path": "apps/api/src/cart-service.js", "contentIncludes": ["calculateCart", "subtotalCents", "taxCents", "totalCents"] },
+      { "path": "apps/web/src/checkout-client.js", "contentIncludes": ["submitCart", "/api/cart/quote", ".post"] }
+    ],
+    "maxToolCalls": 26,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

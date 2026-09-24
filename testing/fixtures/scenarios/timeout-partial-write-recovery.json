@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "name": "timeout partial write recovery",
+  "task": "Run the supplied generator, detect its timeout and partial workspace mutation, inspect the partial file, repair it with an exact hash-guarded edit, validate the declared test, review the final structured Git diff, and report the recovered result.",
+  "constraints": [
+    "Do not rerun the timed-out generator.",
+    "Read src/config.js before editing and use the observed SHA-256 precondition.",
+    "Use validate_project and git_operation as completion evidence."
+  ],
+  "approvalDecisions": {
+    "command.run": "allow",
+    "project.validate": "allow"
+  },
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test test.mjs\" }\n}\n"
+    },
+    {
+      "path": "scripts/partial-generator.cjs",
+      "content": "const fs = require('node:fs');\nfs.mkdirSync('src', { recursive: true });\nfs.writeFileSync('src/config.js', 'partial\\n');\nprocess.stdout.write('partial write completed; entering simulated hang\\n');\nsetInterval(() => {}, 1000);\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { checkoutTimeoutMs } from './src/config.js';\ntest('timeout repair', () => assert.equal(checkoutTimeoutMs, 5000));\n"
+    }
+  ],
+  "rounds": [
+    {
+      "toolCalls": [
+        { "toolCallId": "timeout-inspect", "toolName": "list_files", "arguments": { "path": ".", "depth": 3 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "timeout-run", "toolName": "run_command", "arguments": { "command": "node scripts/partial-generator.cjs", "cwd": ".", "timeoutMs": 1000 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "timeout-read-partial", "toolName": "read_file", "arguments": { "path": "src/config.js" } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "timeout-repair",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "src/config.js",
+            "oldText": "partial\n",
+            "newText": "export const checkoutTimeoutMs = 5000;\n",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "95aebb28195b8d737effe0df18d71d39c8d8ba6569286fd3930fbc9f9767181e" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "timeout-validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": ".", "timeoutMs": 30000 } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "timeout-diff", "toolName": "git_operation", "arguments": { "action": "diff", "paths": ["src/config.js"] } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The generator timed out after a verified partial write. I inspected the partial file, repaired it with the observed content hash, the project test passed, and the final structured Git diff was reviewed.",
+      "finishReason": "stop"
+    }
+  ],
+  "runtime": {
+    "budget": { "deadlineMs": 60000, "maxToolCalls": 12, "maxTurns": 8 }
+  },
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allowedChanges": ["src", "src/config.js"],
+    "allModelStepsConsumed": true,
+    "files": [
+      { "path": "src/config.js", "content": "export const checkoutTimeoutMs = 5000;\n" }
+    ],
+    "toolSequence": ["list_files", "run_command", "read_file", "edit_file", "validate_project", "git_operation"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true },
+      { "canonicalToolId": "command.run", "ok": true, "contentIncludes": ["\"timedOut\":true", "partial write completed"] },
+      { "canonicalToolId": "workspace.read", "ok": true, "contentIncludes": ["partial", "95aebb28195b8d737effe0df18d71d39c8d8ba6569286fd3930fbc9f9767181e"] },
+      { "canonicalToolId": "workspace.edit", "ok": true },
+      { "canonicalToolId": "project.validate", "ok": true, "contentIncludes": ["\"passed\":true"] },
+      { "canonicalToolId": "git.exec", "ok": true, "contentIncludes": ["checkoutTimeoutMs"] }
+    ],
+    "finalResponseIncludes": ["timed out", "observed content hash", "test passed", "Git diff was reviewed"]
+  }
+}

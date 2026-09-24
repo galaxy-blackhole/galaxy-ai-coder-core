@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "name": "full application 01 next production build",
+  "task": "Complete the prepared Next.js App Router storefront page in app/page.jsx. Render the supplied products as accessible article elements with data-product-id, product name, and USD price derived from priceCents. Use the existing React/Next project without substitutes. Run the declared cumulative test suite, which performs a real next build, then review the structured Git diff and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only app/page.jsx; manifests, build harnesses, configuration, dependencies, and generated outputs are immutable.",
+    "Keep this as a real Next.js App Router server component.",
+    "Do not install or upgrade dependencies; the host installs exact versions before the mutation baseline.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This is stage 1 of a cumulative full-application campaign. Validation runs the production framework build and removes its generated output afterward."
+  ],
+  "initialFiles": [
+    {
+      "path": ".gitignore",
+      "content": "node_modules/\n.next-health/\ndist-vite/\ndist-angular/\n.angular/\n"
+    },
+    {
+      "path": "package.json",
+      "content": "{\n  \"name\": \"galaxy-full-application-health\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test --test-concurrency=1 tests/*.test.mjs\" },\n  \"dependencies\": {\n    \"@angular/build\": \"21.2.22\",\n    \"@angular/cli\": \"21.2.22\",\n    \"@angular/common\": \"21.2.22\",\n    \"@angular/compiler\": \"21.2.22\",\n    \"@angular/compiler-cli\": \"21.2.22\",\n    \"@angular/core\": \"21.2.22\",\n    \"@angular/platform-browser\": \"21.2.22\",\n    \"@nestjs/common\": \"12.0.1\",\n    \"@nestjs/core\": \"12.0.1\",\n    \"@nestjs/platform-express\": \"12.0.1\",\n    \"@vitejs/plugin-vue\": \"6.0.8\",\n    \"next\": \"16.3.4\",\n    \"react\": \"19.2.8\",\n    \"react-dom\": \"19.2.8\",\n    \"reflect-metadata\": \"0.2.2\",\n    \"rxjs\": \"7.8.2\",\n    \"tslib\": \"2.8.1\",\n    \"typescript\": \"5.9.2\",\n    \"vite\": \"8.2.2\",\n    \"vue\": \"3.5.42\",\n    \"zone.js\": \"0.16.3\"\n  },\n  \"engines\": { \"node\": \">=24.0.0\" }\n}\n"
+    },
+    {
+      "path": "next.config.mjs",
+      "content": "import { dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst root = dirname(fileURLToPath(import.meta.url));\nexport default { distDir: '.next-health', turbopack: { root } };\n"
+    },
+    {
+      "path": "app/layout.jsx",
+      "content": "export const metadata = { title: 'Galaxy Storefront' };\nexport default function RootLayout({ children }) { return <html lang=\"en\"><body>{children}</body></html>; }\n"
+    },
+    {
+      "path": "app/page.jsx",
+      "content": "const products = [{ id: 'lamp', name: 'Desk Lamp', priceCents: 4950 }];\n\nexport default function StorefrontPage() {\n  throw new Error('TODO render storefront');\n}\n"
+    },
+    {
+      "path": "tests/01-next-build.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { execFile } from 'node:child_process';\nimport { readFile, rm, stat } from 'node:fs/promises';\nimport test from 'node:test';\nimport { fileURLToPath } from 'node:url';\nimport { promisify } from 'node:util';\n\nconst run = promisify(execFile);\nconst root = fileURLToPath(new URL('..', import.meta.url));\nconst output = fileURLToPath(new URL('../.next-health', import.meta.url));\n\ntest('Next App Router completes a production build', { timeout: 240000 }, async () => {\n  try {\n    await run(process.execPath, ['node_modules/next/dist/bin/next', 'build'], { cwd: root, env: { ...process.env, CI: '1', NEXT_TELEMETRY_DISABLED: '1' }, maxBuffer: 4 * 1024 * 1024, timeout: 220000 });\n    assert.equal((await stat(new URL('../.next-health/BUILD_ID', import.meta.url))).isFile(), true);\n    const source = await readFile(new URL('../app/page.jsx', import.meta.url), 'utf8');\n    assert.doesNotMatch(source, /TODO/);\n    assert.match(source, /data-product-id/);\n    assert.match(source, /Desk Lamp/);\n  } finally {\n    await rm(output, { recursive: true, force: true });\n  }\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "dependencySetup": { "packageManager": "npm", "timeoutMs": 480000 },
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 48, "maxTurns": 32 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["app/page.jsx"],
+    "files": [
+      { "path": "app/page.jsx", "contentIncludes": ["data-product-id", "Desk Lamp", "priceCents", "StorefrontPage"] }
+    ],
+    "maxToolCalls": 36,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

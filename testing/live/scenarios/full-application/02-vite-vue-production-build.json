@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "name": "full application 02 vite vue production build",
+  "task": "Complete src/vue/App.vue as a real Vue storefront component. Render the supplied reactive products, a computed item count, an accessible products section, and a button that adds one Desk Lamp. Preserve the Vite and Vue configuration. Run every cumulative test, including real Next and Vite production builds, review the structured Git diff, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/vue/App.vue and preserve the passing Next application.",
+    "Use Vue ref and computed from the installed Vue package.",
+    "Do not alter configuration, test harnesses, dependencies, or generated build outputs.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This is stage 2. Both real production builds run cumulatively and their generated directories are removed by trusted test harnesses."
+  ],
+  "initialFiles": [
+    {
+      "path": "vite.config.mjs",
+      "content": "import { defineConfig } from 'vite';\nimport vue from '@vitejs/plugin-vue';\nexport default defineConfig({ root: 'src/vue', plugins: [vue()], build: { outDir: '../../dist-vite', emptyOutDir: true } });\n"
+    },
+    {
+      "path": "src/vue/index.html",
+      "content": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Galaxy Vue Store</title></head><body><div id=\"app\"></div><script type=\"module\" src=\"/main.js\"></script></body></html>\n"
+    },
+    {
+      "path": "src/vue/main.js",
+      "content": "import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');\n"
+    },
+    {
+      "path": "src/vue/App.vue",
+      "content": "<script setup>\nimport { computed, ref } from 'vue';\nconst products = ref([{ id: 'desk', name: 'Standing Desk', quantity: 1 }]);\n// TODO implement derived state and add behavior\n</script>\n\n<template><main>TODO storefront</main></template>\n"
+    },
+    {
+      "path": "tests/02-vite-vue-build.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { readFile, readdir, rm, stat } from 'node:fs/promises';\nimport test from 'node:test';\nimport { build } from 'vite';\n\nconst output = new URL('../dist-vite/', import.meta.url);\nconst viteTemp = new URL('../node_modules/.vite-temp/', import.meta.url);\n\ntest('Vite bundles the complete Vue application', { timeout: 120000 }, async () => {\n  try {\n    await build({ configFile: new URL('../vite.config.mjs', import.meta.url).pathname, configLoader: 'native', logLevel: 'silent' });\n    assert.equal((await stat(new URL('index.html', output))).isFile(), true);\n    const assets = await readdir(new URL('assets/', output));\n    const javascript = assets.filter((name) => name.endsWith('.js'));\n    assert.ok(javascript.length > 0);\n    const bundle = (await Promise.all(javascript.map((name) => readFile(new URL(`assets/${name}`, output), 'utf8')))).join('');\n    assert.match(bundle, /Standing Desk/);\n    assert.match(bundle, /Desk Lamp/);\n    assert.doesNotMatch(bundle, /TODO storefront/);\n  } finally {\n    await Promise.all([\n      rm(output, { recursive: true, force: true }),\n      rm(viteTemp, { recursive: true, force: true })\n    ]);\n  }\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 48, "maxTurns": 32 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/vue/App.vue"],
+    "files": [
+      { "path": "app/page.jsx", "contentIncludes": ["data-product-id"] },
+      { "path": "src/vue/App.vue", "contentIncludes": ["computed", "ref", "Standing Desk", "Desk Lamp", "itemCount"] }
+    ],
+    "maxToolCalls": 36,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

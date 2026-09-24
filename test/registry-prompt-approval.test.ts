@@ -345,13 +345,22 @@ test("approval is fail-closed when callback is missing, throws, fails, or times 
   });
   assert.equal((await failing(tool, {}, executionContext())).allowed, false);
 
+  let requestAborted = false;
+  const timeoutContext = executionContext();
   const timeout = createAiCoderApprovalPolicy({
-    approvalCallback: () => new Promise(() => undefined),
+    approvalCallback: (_request, context) => new Promise(resolve => {
+      context.signal.addEventListener("abort", () => {
+        requestAborted = true;
+        resolve(portSuccess({ approved: true, scope: "once", decidedAt: new Date().toISOString() }));
+      }, { once: true });
+    }),
     approvalProfile: "balanced",
     approvalTimeoutMs: 5,
     grantedPermissions: permissions,
   });
-  assert.equal((await timeout(tool, {}, executionContext())).decision, "deny_approval_timeout");
+  assert.equal((await timeout(tool, {}, timeoutContext)).decision, "deny_approval_timeout");
+  assert.equal(requestAborted, true, "expired prompt must be dismissed, even if it answers late");
+  assert.equal(timeoutContext.signal.aborted, false, "expiring one prompt must not abort its run");
 });
 
 test("read-only research still requires network permission and explicit external approval", async () => {

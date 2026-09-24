@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+import { verifyBaseline } from './source-baseline.mjs';
+
+test('baseline verifies retained bytes and rejects modified source, summary and invalid paths', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'galaxy-baseline-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const sha = value => createHash('sha256').update(value).digest('hex');
+  const bytes = 'export const version = 1;\n';
+  const summary = '{"status":"passed"}';
+  const files = [{ path: 'cli/src/example.ts', bytes: Buffer.byteLength(bytes), sha256: sha(bytes) }];
+  const manifest = { source: { sha256: sha(JSON.stringify(files)), files }, audit: { sha256: sha(summary) } };
+  const saveManifest = () => writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest));
+  await mkdir(join(directory, 'snapshot/cli/src'), { recursive: true });
+  await writeFile(join(directory, 'snapshot/cli/src/example.ts'), bytes);
+  await writeFile(join(directory, 'audit-summary.json'), summary);
+  await saveManifest();
+  assert.equal((await verifyBaseline(directory)).verified, true);
+  await writeFile(join(directory, 'snapshot/cli/src/example.ts'), 'tampered');
+  await assert.rejects(verifyBaseline(directory), /Snapshot hash mismatch/);
+  await writeFile(join(directory, 'snapshot/cli/src/example.ts'), bytes);
+  await writeFile(join(directory, 'audit-summary.json'), '{}');
+  await assert.rejects(verifyBaseline(directory), /Audit summary hash mismatch/);
+  await writeFile(join(directory, 'audit-summary.json'), summary);
+  files[0].path = 'cli/../../outside';
+  manifest.source.sha256 = sha(JSON.stringify(files));
+  await saveManifest();
+  await assert.rejects(verifyBaseline(directory), /Invalid snapshot path/);
+});

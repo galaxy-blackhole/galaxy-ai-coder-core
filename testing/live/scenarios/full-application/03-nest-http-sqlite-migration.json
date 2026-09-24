@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "full application 03 nest http sqlite migration",
+  "task": "Complete src/nest/catalog.service.mjs. It must open an in-memory SQLite database through node:sqlite, apply an idempotent schema migration recorded as version 1, seed the supplied catalog only when empty, expose ordered products, and close the database on module destruction. The prepared real Nest application serves this service at GET /products. Run the full cumulative suite, which starts Nest on an ephemeral port and makes a real HTTP request, then review the structured Git diff and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/nest/catalog.service.mjs and preserve both frontend builds.",
+    "Use DatabaseSync from node:sqlite with prepared statements; do not replace SQLite with arrays or mocks.",
+    "Migration version 1 must create schema_migrations and products and remain safe if migrate is called twice.",
+    "Do not alter server wiring, test harnesses, dependencies, or generated outputs.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This stage verifies an actual Nest HTTP listener, fetch request, dependency injection, SQLite storage, migration bookkeeping, and cleanup."
+  ],
+  "initialFiles": [
+    {
+      "path": "src/nest/catalog.service.mjs",
+      "content": "import { Injectable } from '@nestjs/common';\nimport { DatabaseSync } from 'node:sqlite';\n\nexport class CatalogService {\n  constructor() {\n    throw new Error('TODO initialize database and migrate');\n  }\n\n  migrate() {\n    throw new Error('TODO migrate');\n  }\n\n  seed(products) {\n    throw new Error('TODO seed');\n  }\n\n  listProducts() {\n    throw new Error('TODO list');\n  }\n\n  migrationVersions() {\n    throw new Error('TODO versions');\n  }\n\n  onModuleDestroy() {\n    throw new Error('TODO close');\n  }\n}\n\nInjectable()(CatalogService);\n"
+    },
+    {
+      "path": "src/nest/catalog.controller.mjs",
+      "content": "import 'reflect-metadata';\nimport { Controller, Get } from '@nestjs/common';\nimport { CatalogService } from './catalog.service.mjs';\n\nexport class CatalogController {\n  constructor(catalog) { this.catalog = catalog; }\n  list() { return { products: this.catalog.listProducts(), migrations: this.catalog.migrationVersions() }; }\n}\nController('products')(CatalogController);\nGet()(CatalogController.prototype, 'list', Object.getOwnPropertyDescriptor(CatalogController.prototype, 'list'));\nReflect.defineMetadata('design:paramtypes', [CatalogService], CatalogController);\n"
+    },
+    {
+      "path": "src/nest/app.module.mjs",
+      "content": "import 'reflect-metadata';\nimport { Module } from '@nestjs/common';\nimport { CatalogController } from './catalog.controller.mjs';\nimport { CatalogService } from './catalog.service.mjs';\nexport class AppModule {}\nModule({ controllers: [CatalogController], providers: [CatalogService] })(AppModule);\n"
+    },
+    {
+      "path": "tests/03-nest-http-sqlite.test.mjs",
+      "content": "import 'reflect-metadata';\nimport assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { NestFactory } from '@nestjs/core';\nimport { AppModule } from '../src/nest/app.module.mjs';\nimport { CatalogService } from '../src/nest/catalog.service.mjs';\n\ntest('Nest serves migrated SQLite data over a real HTTP socket', { timeout: 60000 }, async () => {\n  const app = await NestFactory.create(AppModule, { logger: false });\n  try {\n    const catalog = app.get(CatalogService);\n    catalog.migrate();\n    catalog.seed([{ id: 'lamp', name: 'Desk Lamp', priceCents: 4950 }, { id: 'desk', name: 'Standing Desk', priceCents: 49900 }]);\n    catalog.seed([{ id: 'ignored', name: 'Must Not Duplicate', priceCents: 1 }]);\n    await app.listen(0, '127.0.0.1');\n    const address = app.getHttpServer().address();\n    assert.ok(address && typeof address === 'object');\n    const response = await fetch(`http://127.0.0.1:${address.port}/products`);\n    assert.equal(response.status, 200);\n    assert.deepEqual(await response.json(), {\n      products: [\n        { id: 'desk', name: 'Standing Desk', priceCents: 49900 },\n        { id: 'lamp', name: 'Desk Lamp', priceCents: 4950 }\n      ],\n      migrations: [1]\n    });\n  } finally {\n    await app.close();\n  }\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 56, "maxTurns": 36 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/nest/catalog.service.mjs"],
+    "files": [
+      { "path": "src/vue/App.vue", "contentIncludes": ["itemCount"] },
+      { "path": "src/nest/catalog.service.mjs", "contentIncludes": ["DatabaseSync", "schema_migrations", "CREATE TABLE", "migrationVersions", "onModuleDestroy"] }
+    ],
+    "maxToolCalls": 42,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

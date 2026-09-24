@@ -1,0 +1,63 @@
+{
+  "name": "@galaxy-internal/agent-lab",
+  "version": "2.0.0-alpha.8",
+  "private": true,
+  "description": "Private agent runtime fixtures, replay and live evaluation harness",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agent-lab": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "core:build": "npm --prefix .. run build",
+    "predev": "npm run core:build",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "typecheck": "npm run core:build && npm run typecheck:local",
+    "typecheck:local": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run core:build && npm run test:local",
+    "test:local": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:unit": "node scripts/test-audit.mjs --only cli:unit",
+    "test:audit": "node scripts/test-audit.mjs",
+    "test:audit:log": "node scripts/audit-journal.mjs",
+    "test:integration": "node scripts/test-audit.mjs --only cli:integration",
+    "test:e2e": "npm run build && node scripts/test-audit.mjs --only cli:e2e",
+    "test:command-conformance": "tsx --test test/unit/host-environment.test.ts test/integration/node-command-port.test.ts test/integration/lab-tool-executor.test.ts",
+    "test:github-lifecycle": "node scripts/github-lifecycle-health.mjs",
+    "check": "npm run core:build && npm run typecheck:local && npm run test:local && npm run build"
+  },
+  "dependencies": {
+    "@galaxy-stack/ai-coder-core": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/galaxy-blackhole/galaxy-code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/galaxy-blackhole/galaxy-code/issues"
+  },
+  "homepage": "https://github.com/galaxy-blackhole/galaxy-code#readme",
+  "keywords": [
+    "galaxy-blackhole",
+    "blackhole",
+    "ai-coder",
+    "ai",
+    "cli",
+    "coding-agent"
+  ]
+}

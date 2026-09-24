@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced polyglot 02 angular rust pricing",
+  "task": "Extend the accumulated Vue and Python CMS workspace with an Angular-facing pricing presenter and a Rust pricing engine. Preserve all earlier implementation. Create web/angular/pricing.mjs exporting presentPrice(priceCents, currency='USD') using Intl.NumberFormat and rejecting non-integer or negative cents. Create rust/pricing.rs exporting pub fn volume_total_cents(unit_cents: u64, quantity: u32) -> Option<u64>, applying a 10 percent integer discount for quantity 10 or more and returning None on overflow; include focused Rust unit tests. Run the portable full suite with validate_project, review the final diff using git_operation, and report only evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Create only web/angular/pricing.mjs and rust/pricing.rs; preserve Vue/Python files and harnesses.",
+    "Rust arithmetic must be checked and deterministic; do not use floating point for money.",
+    "Do not add dependencies or use OS-specific shell chaining.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This stage expands the same workspace and validates JavaScript, Python, and Rust from one cross-platform Node orchestrator."
+  ],
+  "initialFiles": [
+    {
+      "path": "scripts/test-all.mjs",
+      "content": "import { spawnSync } from 'node:child_process';\nimport { rmSync } from 'node:fs';\nconst python = process.platform === 'win32' ? 'python' : 'python3';\nconst rustBinary = process.platform === 'win32' ? '.galaxy-rust-test.exe' : '.galaxy-rust-test';\nconst commands = [\n  [process.execPath, ['--test', 'test/vue-client.test.mjs', 'test/angular-pricing.test.mjs']],\n  [python, ['-m', 'unittest', 'backend/test_cms_service.py']],\n  ['rustc', ['--test', '.galaxy-oracles/rust-pricing.rs', '-o', rustBinary]],\n  [process.platform === 'win32' ? rustBinary : `./${rustBinary}`, []]\n];\ntry {\n  for (const [command, args] of commands) {\n    const result = spawnSync(command, args, { encoding: 'utf8', stdio: 'inherit', shell: false });\n    if (result.error) throw result.error;\n    if (result.status !== 0) throw new Error(`${command} failed with exit code ${result.status ?? 1}`);\n  }\n} finally { rmSync(rustBinary, { force: true }); }\n"
+    },
+    {
+      "path": ".galaxy-oracles/rust-pricing.rs",
+      "content": "#[path = \"../rust/pricing.rs\"]\nmod pricing;\n\n#[test]\nfn applies_the_integer_discount() {\n    assert_eq!(pricing::volume_total_cents(100, 9), Some(900));\n    assert_eq!(pricing::volume_total_cents(100, 10), Some(900));\n}\n\n#[test]\nfn permits_a_discounted_result_when_only_the_undiscounted_intermediate_exceeds_u64() {\n    let unit = u64::MAX / 10 + 1;\n    assert_eq!(pricing::volume_total_cents(unit, 10), Some(unit * 9));\n}\n\n#[test]\nfn rejects_a_final_result_that_exceeds_u64() {\n    assert_eq!(pricing::volume_total_cents(u64::MAX, 10), None);\n}\n"
+    },
+    {
+      "path": "test/angular-pricing.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { presentPrice } from '../web/angular/pricing.mjs';\n\ntest('Angular-facing price presenter validates integer cents', () => {\n  assert.match(presentPrice(4950), /\\$49\\.50/);\n  assert.throws(() => presentPrice(-1), /cents|price/i);\n  assert.throws(() => presentPrice(1.5), /integer|cents/i);\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 46, "maxTurns": 32 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["rust", "rust/pricing.rs", "web/angular", "web/angular/pricing.mjs"],
+    "files": [
+      { "path": "backend/cms_service.py", "contentIncludes": ["class CmsService"] },
+      { "path": "web/angular/pricing.mjs", "contentIncludes": ["presentPrice", "Intl.NumberFormat"] },
+      { "path": "rust/pricing.rs", "contentIncludes": ["volume_total_cents", "quantity"] }
+    ],
+    "maxToolCalls": 30,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

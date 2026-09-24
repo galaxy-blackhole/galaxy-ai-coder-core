@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced polyglot 03 vite java inventory",
+  "task": "Complete the accumulated polyglot system with a Vite-facing inventory client and a Java inventory domain service. Preserve all JavaScript, Python, and Rust work. Create web/vite/inventory-client.js exporting createInventoryClient(http) with reserve(sku, quantity) that validates a positive integer quantity, calls POST /api/inventory/reservations with { sku, quantity }, and returns response.data. Create java/src/InventoryService.java with an in-memory stock map, synchronized reserve(String sku, int quantity), rejection of unknown SKU or invalid/insufficient quantities, and stockOf(String sku). Use no framework dependencies. Run the complete Node/Python/Rust/Java suite via validate_project, review the final Git diff with git_operation, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Create only web/vite/inventory-client.js and java/src/InventoryService.java.",
+    "Do not alter earlier source or the immutable cross-language harness.",
+    "Use Java 17-compatible source and no package declaration so the supplied compiler harness can run it portably.",
+    "Use validate_project and git_operation for completion evidence."
+  ],
+  "workspaceInstructions": [
+    "The final stage runs four language toolchains with shell:false and cleans generated binaries/classes even on failure."
+  ],
+  "initialFiles": [
+    {
+      "path": "scripts/test-all.mjs",
+      "content": "import { spawnSync } from 'node:child_process';\nimport { mkdirSync, rmSync } from 'node:fs';\nconst python = process.platform === 'win32' ? 'python' : 'python3';\nconst rustBinary = process.platform === 'win32' ? '.galaxy-rust-test.exe' : '.galaxy-rust-test';\nconst javaOut = '.galaxy-java-classes';\nconst commands = [\n  [process.execPath, ['--test', 'test/vue-client.test.mjs', 'test/angular-pricing.test.mjs', 'test/vite-inventory.test.mjs']],\n  [python, ['-m', 'unittest', 'backend/test_cms_service.py']],\n  ['rustc', ['--test', 'rust/pricing.rs', '-o', rustBinary]],\n  [process.platform === 'win32' ? rustBinary : `./${rustBinary}`, []],\n  ['javac', ['-d', javaOut, 'java/src/InventoryService.java', 'java/test/InventoryServiceTest.java']],\n  ['java', ['-cp', javaOut, 'InventoryServiceTest']]\n];\ntry {\n  mkdirSync(javaOut, { recursive: true });\n  for (const [command, args] of commands) {\n    const result = spawnSync(command, args, { encoding: 'utf8', stdio: 'inherit', shell: false });\n    if (result.error) throw result.error;\n    if (result.status !== 0) throw new Error(`${command} failed with exit code ${result.status ?? 1}`);\n  }\n} finally {\n  rmSync(rustBinary, { force: true });\n  rmSync(javaOut, { recursive: true, force: true });\n}\n"
+    },
+    {
+      "path": "test/vite-inventory.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { createInventoryClient } from '../web/vite/inventory-client.js';\n\ntest('Vite-facing inventory adapter honors validation and HTTP contract', async () => {\n  const calls = [];\n  const http = { post: async (...args) => { calls.push(args); return { data: { remaining: 3 } }; } };\n  const client = createInventoryClient(http);\n  assert.deepEqual(await client.reserve('lamp', 2), { remaining: 3 });\n  assert.deepEqual(calls, [['/api/inventory/reservations', { sku: 'lamp', quantity: 2 }]]);\n  await assert.rejects(async () => client.reserve('lamp', 0), /quantity/i);\n});\n"
+    },
+    {
+      "path": "java/test/InventoryServiceTest.java",
+      "content": "import java.util.Map;\n\npublic final class InventoryServiceTest {\n  public static void main(String[] args) {\n    InventoryService service = new InventoryService(Map.of(\"lamp\", 5));\n    if (service.reserve(\"lamp\", 2) != 3 || service.stockOf(\"lamp\") != 3) throw new AssertionError(\"reservation failed\");\n    expectFailure(() -> service.reserve(\"lamp\", 4));\n    expectFailure(() -> service.reserve(\"missing\", 1));\n    expectFailure(() -> service.reserve(\"lamp\", 0));\n    System.out.println(\"InventoryServiceTest passed\");\n  }\n  private static void expectFailure(Runnable operation) {\n    try { operation.run(); throw new AssertionError(\"expected failure\"); }\n    catch (IllegalArgumentException expected) { }\n  }\n}\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "extended",
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 3, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 52, "maxTurns": 36 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["java/src", "java/src/InventoryService.java", "web/vite", "web/vite/inventory-client.js"],
+    "files": [
+      { "path": "rust/pricing.rs", "contentIncludes": ["volume_total_cents"] },
+      { "path": "web/vite/inventory-client.js", "contentIncludes": ["createInventoryClient", "/api/inventory/reservations", "quantity"] },
+      { "path": "java/src/InventoryService.java", "contentIncludes": ["class InventoryService", "reserve", "stockOf", "synchronized"] }
+    ],
+    "maxToolCalls": 34,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

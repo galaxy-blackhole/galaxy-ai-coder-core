@@ -1,0 +1,11 @@
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { ListToolsRequestSchema, CallToolRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema, ListPromptsRequestSchema, GetPromptRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+const server = new Server({ name: 'galaxy-mcp-fixture', version: '1' }, { capabilities: { tools: {}, resources: {}, prompts: {} } });
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [{ name: 'echo', description: 'Test echo', inputSchema: { type: 'object', properties: { text: { anyOf: [{ type: 'string' }, { type: 'number' }] } }, required: ['text'], additionalProperties: false } }] }));
+server.setRequestHandler(CallToolRequestSchema, async request => ({ content: [{ type: 'text', text: String(request.params.arguments.text) }] }));
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [{ uri: 'test://note', name: 'note' }] }));
+server.setRequestHandler(ReadResourceRequestSchema, async request => ({ contents: [{ uri: request.params.uri, text: 'Resource data' }] }));
+server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [{ name: 'review' }] }));
+server.setRequestHandler(GetPromptRequestSchema, async () => ({ messages: [{ role: 'user', content: { type: 'text', text: 'Review current evidence' } }] }));
+await server.connect(new StdioServerTransport());

@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "name": "long context multilingual workspace",
+  "task": "Inspect the TypeScript, Python, and Rust areas, create one generated source file for each language, validate their exact contents, preserve all evidence through repeated context compaction, and review the final Git diff.",
+  "approvalDecisions": { "project.validate": "allow" },
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test test.mjs\" }\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { readFile } from 'node:fs/promises';\nimport test from 'node:test';\ntest('generated multilingual sources', async () => {\n  assert.equal(await readFile(new URL('./generated/handler.ts', import.meta.url), 'utf8'), 'export const answer: number = 42;\\n');\n  assert.equal(await readFile(new URL('./python/generated.py', import.meta.url), 'utf8'), 'ANSWER: int = 42\\n');\n  assert.equal(await readFile(new URL('./rust/src/generated.rs', import.meta.url), 'utf8'), 'pub const ANSWER: i32 = 42;\\n');\n});\n"
+    },
+    { "path": "src/main.ts", "content": "export const LANGUAGE_MARKER = \"typescript\";\n" },
+    { "path": "python/app.py", "content": "LANGUAGE_MARKER = \"python\"\n" },
+    { "path": "rust/src/lib.rs", "content": "pub const LANGUAGE_MARKER: &str = \"rust\";\n" }
+  ],
+  "model": {
+    "tokenCountSteps": [
+      500,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000,
+      90000, 20000
+    ]
+  },
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "detect", "toolName": "detect_project", "arguments": { "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "list", "toolName": "list_files", "arguments": { "path": ".", "depth": 4 } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "read-ts", "toolName": "read_file", "arguments": { "path": "src/main.ts" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "read-python", "toolName": "read_file", "arguments": { "path": "python/app.py" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "read-rust", "toolName": "read_file", "arguments": { "path": "rust/src/lib.rs" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "grep-markers", "toolName": "search_text", "arguments": { "query": "LANGUAGE_MARKER", "path": ".", "glob": "**/*.{ts,py,rs}" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "glob-sources", "toolName": "glob_files", "arguments": { "pattern": "**/*.{ts,py,rs}", "path": ".", "kind": "file" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "write-ts", "toolName": "write_file", "arguments": { "path": "generated/handler.ts", "content": "export const answer: number = 42;\n", "precondition": { "kind": "must_not_exist" } } },
+        { "toolCallId": "write-python", "toolName": "write_file", "arguments": { "path": "python/generated.py", "content": "ANSWER: int = 42\n", "precondition": { "kind": "must_not_exist" } } },
+        { "toolCallId": "write-rust", "toolName": "write_file", "arguments": { "path": "rust/src/generated.rs", "content": "pub const ANSWER: i32 = 42;\n", "precondition": { "kind": "must_not_exist" } } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "verify-ts", "toolName": "read_file", "arguments": { "path": "generated/handler.ts" } },
+        { "toolCallId": "verify-python", "toolName": "read_file", "arguments": { "path": "python/generated.py" } },
+        { "toolCallId": "verify-rust", "toolName": "read_file", "arguments": { "path": "rust/src/generated.rs" } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": ".", "timeoutMs": 30000 } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "activate-git", "toolName": "search_tools", "arguments": { "query": "final git diff", "category": "git" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "diff", "toolName": "git_operation", "arguments": { "action": "diff", "paths": ["generated/handler.ts", "python/generated.py", "rust/src/generated.rs"] } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Created and verified TypeScript, Python, and Rust source files. The declared validation passed and the final Git diff was reviewed after twelve context compactions.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "checkpointReasons": [
+      "provider_overflow", "provider_overflow", "provider_overflow", "provider_overflow",
+      "provider_overflow", "provider_overflow", "provider_overflow", "provider_overflow",
+      "provider_overflow", "provider_overflow", "provider_overflow", "provider_overflow"
+    ],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 13,
+    "allowedChanges": ["generated", "generated/handler.ts", "python/generated.py", "rust/src/generated.rs"],
+    "files": [
+      { "path": "generated/handler.ts", "content": "export const answer: number = 42;\n" },
+      { "path": "python/generated.py", "content": "ANSWER: int = 42\n" },
+      { "path": "rust/src/generated.rs", "content": "pub const ANSWER: i32 = 42;\n" }
+    ],
+    "toolSequence": [
+      "detect_project", "list_files", "read_file", "read_file", "read_file", "search_text", "glob_files",
+      "write_file", "write_file", "write_file", "read_file", "read_file", "read_file",
+      "validate_project", "search_tools", "git_operation"
+    ]
+  }
+}

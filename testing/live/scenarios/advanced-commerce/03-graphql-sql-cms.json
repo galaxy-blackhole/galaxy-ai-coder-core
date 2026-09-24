@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced commerce 03 graphql sql cms",
+  "task": "Add a GraphQL and SQL-backed CMS boundary to the accumulated commerce workspace while preserving every earlier implementation. Create services/catalog/schema.graphql with Product, Query.products, and Mutation.publishProduct; services/catalog/migrations/001_products.sql with a portable products table, unique slug, non-negative price_cents and stock checks, and published flag; and services/catalog/src/resolvers.js exporting createResolvers(repository). The resolvers must delegate products() to repository.listPublished() and publishProduct(_, { input }) to repository.publish(input), without embedding SQL or global state. Run the full declared test suite via validate_project, review final changes with git_operation, and report verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Create exactly the schema, migration, and resolver files requested; do not edit harness or earlier source.",
+    "Keep database access behind the injected repository and use no network or package installation.",
+    "The SQL migration must represent prices as integer cents and enforce basic integrity.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This final commerce stage checks a multi-file tool-call round, API schema, persistence contract, cumulative regression tests, and diff review."
+  ],
+  "initialFiles": [
+    {
+      "path": "test/cms.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { readFile } from 'node:fs/promises';\nimport test from 'node:test';\nimport { createResolvers } from '../services/catalog/src/resolvers.js';\n\ntest('GraphQL resolvers delegate to the repository', async () => {\n  const calls = [];\n  const repository = {\n    listPublished: async () => { calls.push(['list']); return [{ id: 'p1' }]; },\n    publish: async (input) => { calls.push(['publish', input]); return { id: 'p2', ...input }; }\n  };\n  const resolvers = createResolvers(repository);\n  assert.deepEqual(await resolvers.Query.products(), [{ id: 'p1' }]);\n  const input = { slug: 'lamp', name: 'Lamp', priceCents: 4950, stock: 4 };\n  assert.deepEqual(await resolvers.Mutation.publishProduct(null, { input }), { id: 'p2', ...input });\n  assert.deepEqual(calls, [['list'], ['publish', input]]);\n});\n\ntest('schema and migration encode the public and persistence contracts', async () => {\n  const schema = await readFile(new URL('../services/catalog/schema.graphql', import.meta.url), 'utf8');\n  const sql = await readFile(new URL('../services/catalog/migrations/001_products.sql', import.meta.url), 'utf8');\n  assert.match(schema, /type\\s+Product/);\n  assert.match(schema, /products\\s*:/);\n  assert.match(schema, /publishProduct/);\n  assert.match(sql, /CREATE\\s+TABLE/i);\n  assert.match(sql, /UNIQUE/i);\n  assert.match(sql, /price_cents/i);\n  assert.match(sql, /CHECK/i);\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 3, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 48, "maxTurns": 32 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["services", "services/catalog", "services/catalog/migrations", "services/catalog/migrations/001_products.sql", "services/catalog/schema.graphql", "services/catalog/src", "services/catalog/src/resolvers.js"],
+    "files": [
+      { "path": "apps/api/src/cart-service.js", "contentIncludes": ["calculateCart"] },
+      { "path": "services/catalog/schema.graphql", "contentIncludes": ["type Product", "products", "publishProduct"] },
+      { "path": "services/catalog/migrations/001_products.sql", "contentIncludes": ["products", "price_cents", "stock"] },
+      { "path": "services/catalog/src/resolvers.js", "contentIncludes": ["createResolvers", "listPublished", "publish"] }
+    ],
+    "maxToolCalls": 30,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

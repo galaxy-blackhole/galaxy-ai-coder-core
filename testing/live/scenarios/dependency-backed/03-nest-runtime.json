@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "dependency backed 03 nest runtime",
+  "task": "Extend the accumulated project by replacing the TODO quote implementation in src/nest-cart.mjs. Use the installed NestJS dependency injection APIs already wired by the skeleton. Implement CartService.quote(lines, prices) so it validates positive integer quantities and known product IDs, calculates subtotalCents, taxCents at ten percent rounded to the nearest integer, and totalCents without trusting client prices. Preserve the valid JavaScript Injectable application so @nestjs/testing can resolve it. Run every cumulative test with validate_project, review the final structured Git diff, and report verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/nest-cart.mjs and preserve the Next/Vite/Vue stages.",
+    "Import Injectable from @nestjs/common and apply it without TypeScript decorator syntax.",
+    "Do not alter dependencies or harness files.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This is stage 3; @nestjs/testing in the immutable harness must construct the real Nest testing module and resolve the service."
+  ],
+  "initialFiles": [
+    {
+      "path": "tests/nest-runtime.test.mjs",
+      "content": "import 'reflect-metadata';\nimport assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { Test } from '@nestjs/testing';\nimport { CartService } from '../src/nest-cart.mjs';\n\ntest('Nest testing module resolves the real injectable cart service', async () => {\n  const moduleRef = await Test.createTestingModule({ providers: [CartService] }).compile();\n  const service = moduleRef.get(CartService);\n  const prices = new Map([['lamp', 4950], ['desk', 49900]]);\n  assert.deepEqual(service.quote([{ productId: 'lamp', quantity: 2, priceCents: 1 }], prices), { subtotalCents: 9900, taxCents: 990, totalCents: 10890 });\n  assert.throws(() => service.quote([{ productId: 'missing', quantity: 1 }], prices), /unknown|not found/i);\n  assert.throws(() => service.quote([{ productId: 'lamp', quantity: 0 }], prices), /quantity/i);\n  await moduleRef.close();\n});\n"
+    },
+    {
+      "path": "src/nest-cart.mjs",
+      "content": "import { Injectable } from '@nestjs/common';\n\nexport class CartService {\n  quote(lines, prices) {\n    throw new Error('TODO quote');\n  }\n}\n\nInjectable()(CartService);\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 42, "maxTurns": 30 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/nest-cart.mjs"],
+    "files": [
+      { "path": "src/vite-vue-cart.mjs", "contentIncludes": ["transformWithEsbuild"] },
+      { "path": "src/nest-cart.mjs", "contentIncludes": ["@nestjs/common", "Injectable", "CartService", "subtotalCents", "taxCents", "totalCents"] }
+    ],
+    "maxToolCalls": 32,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

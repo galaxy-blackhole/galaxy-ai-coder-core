@@ -32,6 +32,7 @@ import type {
   AiCoderRunHandle,
   AiCoderRunRequest,
   AiCoderRunStore,
+  AiCoderRuntimeEvent,
   AiCoderRuntimeToolExecutor,
   AiCoderRuntimeToolResult,
   AiCoderRuntimeToolSet,
@@ -272,9 +273,112 @@ test("retry feedback reaches the immediate request and thinking-only failures re
   assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /failure_detail_untrusted/);
 });
 
+test("model retry backoff comes from the budget schedule and reaches the caller", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError("TIMEOUT", "provider window closed mid-request", true),
+    })]),
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError("TIMEOUT", "provider window closed again", true),
+    })]),
+    Object.freeze([tool("workspace_list", "inspect-after-budgeted-retries"), done("", "tool_calls")]),
+    Object.freeze([done("Recovered under the configured backoff schedule.")]),
+  ]);
+  const sleeps: number[] = [];
+  const retryDelaysFromEvents: number[] = [];
+  const result = await new AiCoderRunController({
+    model,
+    onEvent: (event) => {
+      if (event.type === "model_retry") retryDelaysFromEvents.push(event.delayMs);
+    },
+    sleep: async (milliseconds) => { sleeps.push(milliseconds); },
+    toolExecutor: new DeterministicExecutor(),
+  }).start(Object.freeze({
+    ...request("run-budgeted-retry-backoff"),
+    budget: Object.freeze({
+      ...request().budget,
+      maxModelRetries: 2,
+      modelRetryDelaysMs: Object.freeze([10, 20, 40]),
+    }),
+  })).result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.deepEqual(sleeps, [10, 20], "the retry sleeps consume the budget schedule in order");
+  assert.deepEqual(retryDelaysFromEvents, [10, 20], "model_retry events report the budgeted delays");
+});
+
+test("a model retry is skipped fail-loud when the remaining budget cannot cover the backoff", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError("TIMEOUT", "model stalled", true),
+    })]),
+  ]);
+  const result = await new AiCoderRunController({
+    model,
+    sleep: async () => { throw new Error("the doomed retry must be skipped instead of sleeping"); },
+    toolExecutor: new DeterministicExecutor(),
+  }).start(Object.freeze({
+    ...request("run-retry-skip-deadline"),
+    budget: Object.freeze({
+      ...request().budget,
+      maxModelRetries: 2,
+      deadlineMs: 1_500,
+      modelRetryDelaysMs: Object.freeze([30_000]),
+    }),
+  })).result;
+  assert.equal(result.state, "failed");
+  assert.equal(result.error?.code, "PROVIDER_ERROR");
+  assert.match(result.error?.message ?? "", /Model retry 1 skipped/);
+  assert.equal(model.requests.length, 1, "the retry that cannot fit the budget must not be dispatched");
+});
+
+test("invalid model retry delay budgets fail loud at request validation", async () => {
+  for (const bad of [[], [0], [10, -5], [10, 1.5], [10, 700_000], Array.from({ length: 9 }, (_, index) => index + 1)]) {
+    assert.throws(
+      () => new AiCoderRunController({ model: new ScriptedModel([]), toolExecutor: new DeterministicExecutor() })
+        .start(Object.freeze({
+          ...request("run-invalid-retry-delays"),
+          budget: Object.freeze({ ...request().budget, maxModelRetries: 1, modelRetryDelaysMs: Object.freeze(bad) }),
+        })),
+      /modelRetryDelaysMs/,
+      `expected ${JSON.stringify(bad)} to fail validation`,
+    );
+  }
+});
+
+test("cancel during the model retry backoff stops the run without another request", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([Object.freeze({
+      type: "error" as const,
+      error: new CodingProviderError("TIMEOUT", "provider stalled", true),
+    })]),
+  ]);
+  const handle = new AiCoderRunController({
+    model,
+    sleep: (milliseconds, signal) => new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, Math.min(milliseconds, 5_000));
+      signal.addEventListener("abort", () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+    }),
+    toolExecutor: new DeterministicExecutor(),
+  }).start(Object.freeze({
+    ...request("run-cancel-during-backoff"),
+    budget: Object.freeze({
+      ...request().budget,
+      maxModelRetries: 2,
+      modelRetryDelaysMs: Object.freeze([60_000]),
+    }),
+  }));
+  setTimeout(() => handle.cancel("user cancelled during backoff"), 20);
+  const result = await handle.result;
+  assert.equal(result.state, "cancelled");
+  assert.equal(model.requests.length, 1, "the cancelled backoff must not dispatch another request");
+});
+
 test("retry cannot disable thinking when the provider requires it", async () => {
   const requiredThinking = Object.freeze({ ...CAPABILITIES, thinking: "required" as const });
-  const model = new ScriptedModel([
+  const requiredThinkingModel = new ScriptedModel([
     Object.freeze([Object.freeze({
       type: "error" as const,
       error: new CodingProviderError(
@@ -287,16 +391,16 @@ test("retry cannot disable thinking when the provider requires it", async () => 
     Object.freeze([tool("workspace_list", "required-thinking-inspect"), done("", "tool_calls")]),
     Object.freeze([done("Recovered while preserving required thinking.")]),
   ], [], requiredThinking);
-  const result = await new AiCoderRunController({ model, toolExecutor: new DeterministicExecutor() })
+  const result = await new AiCoderRunController({ model: requiredThinkingModel, toolExecutor: new DeterministicExecutor() })
     .start(Object.freeze({
       ...request("run-required-thinking-retry"),
       budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 1, maxToolCalls: 20, maxTurns: 12 }),
     })).result;
 
   assert.equal(result.state, "completed");
-  assert.equal(model.requests[0]?.think, true);
-  assert.equal(model.requests[1]?.think, true);
-  assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /preserving required or unverified thinking behavior/);
+  assert.equal(requiredThinkingModel.requests[0]?.think, true);
+  assert.equal(requiredThinkingModel.requests[1]?.think, true);
+  assert.match(requiredThinkingModel.requests[1]?.messages.at(-1)?.content ?? "", /preserving required or unverified thinking behavior/);
 });
 
 test("operational states allow evidence-driven phase changes and terminals remain closed", () => {
@@ -1327,7 +1431,7 @@ test("a passing validation closes retried diagnostics with the same stable id", 
   await waiting;
   handle.pause("inspect recovered validation state");
   const paused = await handle.result;
-  assert.equal(paused.state, "paused");
+  assert.equal(paused.state, "paused", JSON.stringify(paused.error));
   assert.equal(paused.validation.length, 2, "same-state failure retries keep only their latest diagnostic");
   assert.equal(paused.validation.at(-1)?.status, "passed");
   assert.deepEqual(paused.checkpoint?.openProblems, []);
@@ -1450,12 +1554,22 @@ test("hash-return cycles are paused before an edit can toggle forever", async ()
       { beforeHash: "hash-a", afterHash: "hash-b" },
       { beforeHash: "hash-b", afterHash: "hash-a" },
       { beforeHash: "hash-a", afterHash: "hash-b" },
+      { beforeHash: "hash-a", afterHash: "hash-b" },
     ] as const;
 
     override async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
       this.calls.push(call);
       const mutation = this.mutations[this.calls.length - 1];
-      assert.ok(mutation);
+      if (!mutation) {
+        return Object.freeze({
+          canonicalToolId: "workspace_write",
+          content: JSON.stringify({ ok: true }),
+          error: Object.freeze({ code: "NO_PROGRESS", message: "cycle fixture exhausted its scripted mutations", retryable: false }),
+          ok: false,
+          summary: "cycle fixture exhausted its scripted mutations",
+          trust: "trusted" as const,
+        });
+      }
       return Object.freeze({
         canonicalToolId: "workspace_write",
         content: JSON.stringify({ ok: true }),
@@ -1473,6 +1587,15 @@ test("hash-return cycles are paused before an edit can toggle forever", async ()
     Object.freeze([tool("workspace_write", "cycle-1"), done("", "tool_calls")]),
     Object.freeze([tool("workspace_write", "cycle-2"), done("", "tool_calls")]),
     Object.freeze([tool("workspace_write", "cycle-3"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-2"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-3"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-4"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-5"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-6"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-7"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-8"), done("", "tool_calls")]),
+    Object.freeze([done("unused")]),
   ]);
   const executor = new CyclingWriteExecutor();
   const result = await new AiCoderRunController({
@@ -1480,10 +1603,29 @@ test("hash-return cycles are paused before an edit can toggle forever", async ()
     resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
     toolExecutor: executor,
   }).start(request("run-write-cycle")).result;
-  assert.equal(result.state, "paused");
-  assert.equal(executor.calls.length, 3);
-  assert.equal(result.writes.length, 3);
+  assert.equal(result.state, "paused", `first part: ${JSON.stringify(result.error)}`);
+  assert.equal(executor.calls.length, 6, "the recovery round dispatches one extra cycle write before the pause");
+  assert.equal(result.writes.length, 4);
   assert.equal(result.checkpoint?.reason, "pause");
+
+  const recoveredModel = new ScriptedModel([
+    Object.freeze([tool("workspace_write", "cycle-recovery"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-2"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "cycle-recovery-3"), done("", "tool_calls")]),
+    Object.freeze([done("Broke the cycle with a single verified write.")]),
+  ]);
+  const recoveryExecutor = new CyclingWriteExecutor();
+  const recovered = await new AiCoderRunController({
+    model: recoveredModel,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: recoveryExecutor,
+  }).start(Object.freeze({
+    ...request("run-write-cycle-recovery"),
+    completion: Object.freeze({ requireInspection: false }),
+    budget: Object.freeze({ ...request().budget, maxNoProgressEpisodes: 1 }),
+  })).result;
+  assert.equal(recovered.state, "paused", `recovery part: ${JSON.stringify(recovered.error)}`);
+  assert.equal(recoveryExecutor.calls.length, 3, "each cycling recovery write still counts one episode per round");
 });
 
 test("resume reconstructs write-hash cycle history from checkpoint evidence", async () => {
@@ -1492,12 +1634,22 @@ test("resume reconstructs write-hash cycle history from checkpoint evidence", as
       { beforeHash: "hash-a", afterHash: "hash-b" },
       { beforeHash: "hash-b", afterHash: "hash-a" },
       { beforeHash: "hash-a", afterHash: "hash-b" },
+      { beforeHash: "hash-a", afterHash: "hash-b" },
     ] as const;
 
     override async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
       this.calls.push(call);
       const mutation = this.mutations[this.calls.length - 1];
-      assert.ok(mutation);
+      if (!mutation) {
+        return Object.freeze({
+          canonicalToolId: "workspace_write",
+          content: JSON.stringify({ ok: true }),
+          error: Object.freeze({ code: "NO_PROGRESS", message: "resume cycle fixture exhausted its scripted mutations", retryable: false }),
+          ok: false,
+          summary: "resume cycle fixture exhausted its scripted mutations",
+          trust: "trusted" as const,
+        });
+      }
       return Object.freeze({
         canonicalToolId: "workspace_write",
         content: "changed",
@@ -1538,6 +1690,13 @@ test("resume reconstructs write-hash cycle history from checkpoint evidence", as
   const resumed = await new AiCoderRunController({
     model: new ScriptedModel([
       Object.freeze([tool("workspace_write", "resume-cycle-3"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-2"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-3"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-4"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-5"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-6"), done("", "tool_calls")]),
+      Object.freeze([done("unused")]),
     ]),
     resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
     toolExecutor: executor,
@@ -1547,9 +1706,28 @@ test("resume reconstructs write-hash cycle history from checkpoint evidence", as
     checkpointTrust: "trusted_host",
     runId: "run-resume-cycle",
   }).result;
-  assert.equal(resumed.state, "paused");
-  assert.equal(executor.calls.length, 3);
-  assert.equal(resumed.writes.length, 3);
+  assert.equal(resumed.state, "paused", JSON.stringify(resumed.error));
+  assert.equal(executor.calls.length, 6, "the resumed recovery round dispatches one extra cycle write before the pause");
+  assert.equal(resumed.writes.length, 4);
+
+  const resumedRecoveredExecutor = new ResumeCycleExecutor();
+  const resumedRecovered = await new AiCoderRunController({
+    model: new ScriptedModel([
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-2"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-3"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-4"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-5"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-6"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-7"), done("", "tool_calls")]),
+      Object.freeze([tool("workspace_write", "resume-cycle-recovery-8"), done("", "tool_calls")]),
+      Object.freeze([done("Broke the resumed cycle with a single verified write.")]),
+    ]),
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: resumedRecoveredExecutor,
+  }).start(request("run-resume-cycle-recovery")).result;
+  assert.equal(resumedRecovered.state, "paused", JSON.stringify(resumedRecovered.error));
+  assert.equal(resumedRecoveredExecutor.calls.length, 6, "each cycling recovery write still counts one episode per round before the pause");
 });
 
 test("different stale edit arguments still share one bounded failure family", async () => {
@@ -1566,7 +1744,7 @@ test("different stale edit arguments still share one bounded failure family", as
       });
     }
   }
-  const model = new ScriptedModel(Array.from({ length: 4 }, (_, index) => Object.freeze([
+  const model = new ScriptedModel(Array.from({ length: 7 }, (_, index) => Object.freeze([
     toolWithArguments("workspace_write", `stale-${index}`, {
       newText: `replacement-${index}`,
       oldText: `stale-fragment-${index}`,
@@ -1578,7 +1756,7 @@ test("different stale edit arguments still share one bounded failure family", as
   const result = await new AiCoderRunController({ model, toolExecutor: executor })
     .start(request("run-stale-family")).result;
   assert.equal(result.state, "paused");
-  assert.equal(executor.calls.length, 4);
+  assert.equal(executor.calls.length, 5);
   assert.equal(result.writes.length, 0);
 });
 
@@ -1684,6 +1862,18 @@ test("observation and no-progress budget fields raise the block and pause thresh
     Object.freeze([toolWithArguments("read_file", "once", { path: "src/a.ts" }), done("", "tool_calls")]),
     Object.freeze([toolWithArguments("read_file", "twice", { path: "src/a.ts" }), done("", "tool_calls")]),
     Object.freeze([toolWithArguments("read_file", "thrice", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-2", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-3", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-4", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-5", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-6", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-7", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-8", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-9", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-10", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-11", { path: "src/a.ts" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("read_file", "recovery-12", { path: "src/a.ts" }), done("", "tool_calls")]),
     Object.freeze([done("unused")]),
   ]);
   const pausedExecutor = new ObservationExecutor();
@@ -1693,9 +1883,27 @@ test("observation and no-progress budget fields raise the block and pause thresh
       budget: Object.freeze({
         maxCompletionRejections: 3, maxNoProgressEpisodes: 1, maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict",
       }),
-    })).result;
-  assert.equal(paused.state, "paused");
-  assert.equal(pausedExecutor.calls.length, 3, "the nudged third read dispatches and the first episode pauses");
+  })).result;
+  assert.equal(paused.state, "paused", `obs-pause: ${JSON.stringify(paused.error)}`);
+  assert.equal(pausedExecutor.calls.length, 3, "the nudged third read dispatches; the recovery feedback turn then pauses without another dispatch");
+
+  const recoveryModel = new ScriptedModel([
+    ...Array.from({ length: 3 }, (_, index) => Object.freeze([
+      toolWithArguments("read_file", `recovery-repeat-${index}`, { path: "src/a.ts" }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([done("unused")]),
+  ]);
+  const recoveryExecutor = new ObservationExecutor();
+  const recovered = await new AiCoderRunController({ model: recoveryModel, toolExecutor: recoveryExecutor })
+    .start(Object.freeze({
+      ...request("run-observation-recovery"),
+      budget: Object.freeze({
+        maxCompletionRejections: 3, maxNoProgressEpisodes: 1, maxObservationRepeats: 2, maxRepeatedToolRequests: 2, maxModelRetries: 0, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict",
+      }),
+  })).result;
+  assert.equal(recovered.state, "completed", JSON.stringify(recovered.error));
+  assert.equal(recoveryExecutor.calls.length, 3, "the recovery round keeps dispatching reads, then pauses after the flag is consumed");
 });
 
 test("two blocked observations in one model round count as one no-progress episode", async () => {
@@ -1763,6 +1971,8 @@ test("two blocked observations in one model round count as one no-progress episo
       done("", "tool_calls"),
     ]),
     Object.freeze([done("unused")]),
+    Object.freeze([toolWithArguments("read_file", "recovery", { path: "src/other.mjs" }), done("", "tool_calls")]),
+    Object.freeze([done("Recovery still observed identical state and finished with the retained evidence.")]),
   ]);
   const pausedExecutor = new ObservationExecutor();
   const paused = await new AiCoderRunController({ model: pausedModel, toolExecutor: pausedExecutor })
@@ -1770,9 +1980,8 @@ test("two blocked observations in one model round count as one no-progress episo
       ...request("run-same-round-blocks-pause"),
       budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 0, maxNoProgressEpisodes: 1, maxToolCalls: 20, maxTurns: 12, noProgressPolicy: "strict" }),
     })).result;
-  assert.equal(paused.state, "paused");
-  assert.equal(paused.checkpoint?.noProgress?.episodes, 1, "the same-round incidents carry exactly one episode");
-  assert.equal(pausedExecutor.calls.length, 5, "the pause keeps both nudged dispatches and the cycle-blocked b3");
+  assert.equal(paused.state, "completed", "the recovery round finishes with the retained evidence instead of pausing");
+  assert.equal(pausedExecutor.calls.length, 5, "the recovery read dispatches once before the completion");
 });
 
 test("advisory observations nudge at configured thresholds and block after the final threshold", async () => {
@@ -1945,7 +2154,7 @@ test("no-progress policy configuration fails loud and is checkpoint-bound on res
   const readRound = (id: string) => Object.freeze([toolWithArguments("read_file", id, { path: "src/a.ts" }), done("", "tool_calls")]);
   const executor = new ObservationExecutor();
   const paused = await new AiCoderRunController({
-    model: new ScriptedModel([readRound("cp-1"), readRound("cp-2"), readRound("cp-3"), readRound("cp-4"), Object.freeze([done("unused")])]),
+    model: new ScriptedModel([readRound("cp-1"), readRound("cp-2"), readRound("cp-3"), readRound("cp-4"), readRound("cp-recovery"), readRound("cp-final"), Object.freeze([done("unused")])]),
     resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
     toolExecutor: executor,
   }).start(cycleRequest).result;
@@ -2006,7 +2215,7 @@ test("repeated failed validation on one workspace fingerprint is paused and dedu
       });
     }
   }
-  const model = new ScriptedModel(Array.from({ length: 4 }, (_, index) => Object.freeze([
+  const model = new ScriptedModel(Array.from({ length: 6 }, (_, index) => Object.freeze([
     toolWithArguments("project_validate", `validation-${index}`, { attempt: index, path: "." }),
     done("", "tool_calls"),
   ])));
@@ -2017,9 +2226,27 @@ test("repeated failed validation on one workspace fingerprint is paused and dedu
     toolExecutor: executor,
   }).start(request("run-validation-loop")).result;
   assert.equal(result.state, "paused");
-  assert.equal(executor.calls.length, 4);
+  assert.equal(executor.calls.length, 5, "the recovery feedback turn pauses without another dispatch");
   assert.equal(result.validation.length, 1);
   assert.deepEqual(result.checkpoint?.openProblems, ["unit test src/a.test.ts failed"]);
+
+  const recoveredExecutor = new FailingValidationExecutor();
+  const recoveredModel = new ScriptedModel([
+    ...Array.from({ length: 5 }, (_, index) => Object.freeze([
+      toolWithArguments("project_validate", `recovery-validation-${index}`, { attempt: index, path: "." }),
+      done("", "tool_calls"),
+    ])),
+    Object.freeze([toolWithArguments("project_validate", "recovery-final", { attempt: 5, path: "." }), done("", "tool_calls")]),
+    Object.freeze([done("Recovered after the validation passed.")]),
+    Object.freeze([done("unused")]),
+  ]);
+  const recovered = await new AiCoderRunController({
+    model: recoveredModel,
+    resumeWorkspaceVerifier: deterministicWorkspaceVerifier,
+    toolExecutor: recoveredExecutor,
+  }).start(request("run-validation-recovery")).result;
+  assert.equal(recovered.state, "paused", JSON.stringify(recovered.error));
+  assert.equal(recoveredExecutor.calls.length, 5, "the recovery round still ends in a pause because no validation passed");
 });
 
 test("runtime blocks an alternating successful tool cycle before exhausting the tool budget", async () => {
@@ -2796,6 +3023,199 @@ test("research evidence survives tool-result compaction without immediately comp
   assert.equal(store.checkpoints[0]?.researchSources?.[0]?.url, "https://nodejs.org/api/globals.html");
   assert.equal(model.requests[1]?.messages.some((message) => message.content.includes("Node fetch resolves HTTP error responses")), true);
   assert.equal(model.requests.length, 3);
+});
+
+test("citation rejection records the candidate and gives fetched-source recovery feedback", async () => {
+  class ResearchCitationExecutor extends DeterministicExecutor {
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const base = await super.getToolSet();
+      const researchDefinitions = ["search_web", "fetch_url"].map((name) => Object.freeze({
+        function: Object.freeze({ description: "research source", name, parameters: Object.freeze({ type: "object" }) }),
+        type: "function" as const,
+      }));
+      return Object.freeze({
+        ...base,
+        canonicalToolIds: Object.freeze({
+          ...base.canonicalToolIds,
+          fetch_url: "research.fetch",
+          search_web: "research.search",
+        }),
+        definitions: Object.freeze([...base.definitions, ...researchDefinitions]),
+        effectCapabilities: Object.freeze({
+          ...base.effectCapabilities,
+          "research.fetch": Object.freeze(["approval" as const, "research" as const]),
+          "research.search": Object.freeze(["approval" as const, "research" as const]),
+        }),
+        snapshotHash: "sha256:research-citation-tool-set",
+      });
+    }
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (!['search_web', 'fetch_url'].includes(call.name)) return super.execute(call, context);
+      this.calls.push(call);
+      const search = call.name === "search_web";
+      return Object.freeze({
+        canonicalToolId: search ? "research.search" : "research.fetch",
+        content: search ? "search result" : "fetched source",
+        effects: Object.freeze({
+          researchSources: Object.freeze([Object.freeze({
+            contentHash: search ? null : "sha256:fetched",
+            kind: search ? "search" as const : "fetch" as const,
+            summary: search ? "Search-only candidate." : "Fetched documentation.",
+            title: search ? "Search result" : "Fetched source",
+            truncated: false,
+            url: search ? "https://search.example.org/result" : "https://docs.example.org/guide",
+          })]),
+        }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: search ? "Searched sources." : "Fetched source.",
+        trust: "external" as const,
+      });
+    }
+  }
+
+  const rejected: Array<Extract<AiCoderRuntimeEvent, { type: "completion_rejected" }>> = [];
+  const badCandidate = "Use the fetched guide https://docs.example.org/guide and search-only https://search.example.org/result.";
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("search_web", "citation-search", { query: "guide" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("fetch_url", "citation-fetch", { url: "https://docs.example.org/guide" }), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "citation-inspect"), done("", "tool_calls")]),
+    Object.freeze([done(badCandidate)]),
+    Object.freeze([done("Use the fetched guide https://docs.example.org/guide.")]),
+  ]);
+  const baseRequest = request("run-citation-recovery");
+  const result = await new AiCoderRunController({
+    model,
+    onEvent(event) {
+      if (event.type === "completion_rejected") rejected.push(event);
+    },
+    toolExecutor: new ResearchCitationExecutor(),
+  }).start(Object.freeze({
+    ...baseRequest,
+    completion: Object.freeze({
+      research: Object.freeze({ minFetchCalls: 1, minSearchCalls: 1, requireCitations: true }),
+    }),
+  })).result;
+
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(rejected.length, 1);
+  assert.equal(rejected[0]?.candidate, badCandidate);
+  assert.deepEqual(rejected[0]?.researchEvidence, {
+    fetchedUrls: ["https://docs.example.org/guide"],
+    searchOnlyUrls: ["https://search.example.org/result"],
+    sources: [
+      {
+        contentHash: "sha256:fetched",
+        kind: "fetch",
+        toolCallId: "citation-fetch",
+        url: "https://docs.example.org/guide",
+      },
+      {
+        contentHash: null,
+        kind: "search",
+        toolCallId: "citation-search",
+        url: "https://search.example.org/result",
+      },
+    ],
+    unsupportedCitations: ["https://search.example.org/result"],
+  });
+  const feedback = model.requests.at(-1)?.messages.find((message) => (
+    message.role === "user" && message.content.includes("Successfully fetched source URLs")
+  ));
+  assert.ok(feedback);
+  assert.match(feedback.content, /A search result or plausible URL is not fetched evidence/);
+  assert.match(feedback.content, /https:\/\/docs\.example\.org\/guide/);
+  assert.match(feedback.content, /https:\/\/search\.example\.org\/result/);
+});
+
+test("evidence-missing rejection names the research tools so a fetch-only run can recover", async () => {
+  class FetchOnlyExecutor extends DeterministicExecutor {
+    override async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      const base = await super.getToolSet();
+      const researchDefinitions = ["search_web", "fetch_url"].map((name) => Object.freeze({
+        function: Object.freeze({ description: "research source", name, parameters: Object.freeze({ type: "object" }) }),
+        type: "function" as const,
+      }));
+      return Object.freeze({
+        ...base,
+        canonicalToolIds: Object.freeze({
+          ...base.canonicalToolIds,
+          fetch_url: "research.fetch",
+          search_web: "research.search",
+        }),
+        definitions: Object.freeze([...base.definitions, ...researchDefinitions]),
+        effectCapabilities: Object.freeze({
+          ...base.effectCapabilities,
+          "research.fetch": Object.freeze(["approval" as const, "research" as const]),
+          "research.search": Object.freeze(["approval" as const, "research" as const]),
+        }),
+        snapshotHash: "sha256:research-evidence-tool-set",
+      });
+    }
+
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (!['search_web', 'fetch_url'].includes(call.name)) return super.execute(call, context);
+      this.calls.push(call);
+      const search = call.name === "search_web";
+      return Object.freeze({
+        canonicalToolId: search ? "research.search" : "research.fetch",
+        content: search ? "search result" : "fetched source",
+        effects: Object.freeze({
+          researchSources: Object.freeze([Object.freeze({
+            contentHash: search ? null : "sha256:fetched",
+            kind: search ? "search" as const : "fetch" as const,
+            summary: search ? "Search-only candidate." : "Fetched documentation.",
+            title: search ? "Search result" : "Fetched source",
+            truncated: false,
+            url: search ? "https://search.example.org/results" : "https://docs.example.org/guide",
+          })]),
+        }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: search ? "Searched sources." : "Fetched source.",
+        trust: "external" as const,
+      });
+    }
+  }
+
+  const rejected: Array<Extract<AiCoderRuntimeEvent, { type: "completion_rejected" }>> = [];
+  const fetchOnlyCandidate = "Based on the fetched guide https://docs.example.org/guide, the implementation is complete.";
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("fetch_url", "evidence-fetch", { url: "https://docs.example.org/guide" }), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "evidence-inspect"), done("", "tool_calls")]),
+    Object.freeze([done(fetchOnlyCandidate)]),
+    Object.freeze([toolWithArguments("search_web", "evidence-search", { query: "guide" }), done("", "tool_calls")]),
+    Object.freeze([done("Based on the fetched guide https://docs.example.org/guide and the search results, the implementation is complete.")]),
+  ]);
+  const executor = new FetchOnlyExecutor();
+  const baseRequest = request("run-evidence-missing-recovery");
+  const result = await new AiCoderRunController({
+    model,
+    onEvent(event) {
+      if (event.type === "completion_rejected") rejected.push(event);
+    },
+    toolExecutor: executor,
+  }).start(Object.freeze({
+    ...baseRequest,
+    completion: Object.freeze({
+      research: Object.freeze({ minFetchCalls: 1, minSearchCalls: 1 }),
+    }),
+  })).result;
+
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(rejected.length, 1);
+  assert.equal(rejected[0]?.candidate, fetchOnlyCandidate);
+  assert.deepEqual(rejected[0]?.issues, ["RESEARCH_EVIDENCE_MISSING: Missing research evidence: search calls 0/1."]);
+  const feedback = model.requests.at(-2)?.messages.find((message) => (
+    message.role === "user" && message.content.includes("RESEARCH_EVIDENCE_MISSING")
+  ));
+  assert.ok(feedback);
+  assert.match(feedback.content, /Discovery requires search_web with one focused query/);
+  assert.match(feedback.content, /fetch_url alone does not satisfy a search requirement/);
+  const fetchIndex = executor.calls.findIndex((call) => call.name === "fetch_url");
+  const searchIndex = executor.calls.findIndex((call) => call.name === "search_web");
+  assert.ok(fetchIndex >= 0 && searchIndex > fetchIndex, "the search must happen after the evidence-missing rejection");
 });
 
 test("context assembly failures are classified as context budget errors", async () => {

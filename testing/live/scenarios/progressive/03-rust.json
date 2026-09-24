@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "live progressive 03 rust",
+  "task": "Inspect the accumulated JavaScript and Python project and preserve their source files. Create rust/src/lib.rs defining pub fn subtract(a: i32, b: i32) -> i32 returning a - b and include a cfg(test) unit test asserting subtract(50, 8) equals 42. Run the declared Rust test with validate_project, review the final diff with the structured Git tool, and report verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Create rust/src/lib.rs and do not change src/sum.js or python/calculator.py.",
+    "Do not modify package.json.",
+    "Use validate_project for the declared test and git_operation for final diff review."
+  ],
+  "workspaceInstructions": [
+    "This is stage 3 of one progressive workspace. JavaScript and Python outputs from earlier stages must remain unchanged."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": { \"test\": \"rustc --test rust/src/lib.rs -o .galaxy-rust-test && ./.galaxy-rust-test && rm .galaxy-rust-test\" }\n}\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 900000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 30, "maxTurns": 22 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["rust", "rust/src", "rust/src/lib.rs"],
+    "files": [
+      { "path": "src/sum.js", "contentIncludes": ["function sum", "return a + b"] },
+      { "path": "python/calculator.py", "contentIncludes": ["def multiply", "return a * b"] },
+      { "path": "rust/src/lib.rs", "contentIncludes": ["pub fn subtract(a: i32, b: i32) -> i32", "a - b", "subtract(50, 8)"] }
+    ],
+    "maxToolCalls": 18,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

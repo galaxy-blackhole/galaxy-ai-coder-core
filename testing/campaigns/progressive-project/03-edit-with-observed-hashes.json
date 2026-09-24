@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "name": "campaign 03 edit with observed hashes",
+  "task": "Add a multiply function and its test using exact observed-file preconditions, then validate and review only the edited files.",
+  "mode": "refactor",
+  "approvalDecisions": { "project.validate": "allow" },
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "c03-read-source", "toolName": "read_file", "arguments": { "path": "src/math.js" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-read-test", "toolName": "read_file", "arguments": { "path": "test/math.test.mjs" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-edit-source", "toolName": "edit_file", "arguments": {
+        "path": "src/math.js",
+        "oldText": "export function add(a, b) {\n  return a + b;\n}\n",
+        "newText": "export function add(a, b) {\n  return a + b;\n}\n\nexport function multiply(a, b) {\n  return a * b;\n}\n",
+        "precondition": { "kind": "matches_sha256", "contentSha256": "5b63136552577a64d788dc3cd4552739d0d60f9e1adb63ec4dfb6932d56fc75d" }
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-edit-test", "toolName": "edit_file", "arguments": {
+        "path": "test/math.test.mjs",
+        "oldText": "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { add } from \"../src/math.js\";\n\ntest(\"add\", () => {\n  assert.equal(add(2, 3), 5);\n});\n",
+        "newText": "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { add, multiply } from \"../src/math.js\";\n\ntest(\"add\", () => {\n  assert.equal(add(2, 3), 5);\n});\n\ntest(\"multiply\", () => {\n  assert.equal(multiply(4, 5), 20);\n});\n",
+        "precondition": { "kind": "matches_sha256", "contentSha256": "12b882b053a6b6e65063d8c2f9edd1994ca1db49b59d2e3fd2d556f89836f317" }
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-find-git", "toolName": "search_tools", "arguments": { "query": "review final git diff", "category": "git" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c03-diff", "toolName": "git_operation", "arguments": { "action": "diff", "paths": ["src/math.js", "test/math.test.mjs"] } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Added multiply through hash-guarded exact edits. Both tests passed and the final Git diff was reviewed.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 8,
+    "allowedChanges": ["src/math.js", "test/math.test.mjs"],
+    "files": [
+      { "path": "src/math.js", "contentIncludes": ["export function add", "export function multiply"] },
+      { "path": "test/math.test.mjs", "contentIncludes": ["assert.equal(add(2, 3), 5)", "assert.equal(multiply(4, 5), 20)"] }
+    ],
+    "toolSequence": ["read_file", "read_file", "edit_file", "edit_file", "validate_project", "search_tools", "git_operation"]
+  }
+}

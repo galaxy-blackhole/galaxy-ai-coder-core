@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "name": "suite provider retry skipped near deadline",
+  "task": "Fail loud instead of dispatching a model retry that cannot fit the remaining run budget.",
+  "runtime": {
+    "budget": { "deadlineMs": 2000, "maxModelRetries": 2, "modelRetryDelaysMs": [30000] }
+  },
+  "rounds": [
+    {
+      "events": [
+        { "type": "started" },
+        { "type": "error", "code": "RATE_LIMITED", "message": "temporary quota", "retryable": true }
+      ]
+    }
+  ],
+  "expected": {
+    "status": "failed",
+    "errorCode": "PROVIDER_ERROR",
+    "executionStatuses": ["failed"],
+    "checkpointReasons": ["failure"],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 1,
+    "retryDelaysMs": [],
+    "allowedChanges": [],
+    "toolSequence": [],
+    "toolResults": []
+  }
+}

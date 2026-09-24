@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "name": "suite empty terminal response",
+  "task": "Reject an empty completed response without tools instead of looping.",
+  "runtime": {
+    "completion": {
+      "requireInspection": false,
+      "requireFinalReportPersistence": false
+    }
+  },
+  "rounds": [
+    {
+      "content": "",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "failed",
+    "errorCode": "INVALID_MODEL_STREAM",
+    "executionStatuses": ["failed"],
+    "checkpointReasons": ["failure"],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 1,
+    "allowedChanges": [],
+    "toolSequence": [],
+    "toolResults": [],
+    "finalResponseExcludes": ["completed"]
+  }
+}

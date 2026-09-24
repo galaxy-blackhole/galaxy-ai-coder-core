@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced polyglot 01 vue python cms",
+  "task": "Create a Vue-facing CMS client and a Python SQLite CMS service in one project. Inspect the immutable harness. Create web/vue/cms-client.js exporting createCmsClient(http), whose listPublished calls GET /api/articles?status=published and whose publish(slug, title, body) calls POST /api/articles with that object and returns response.data. Create backend/cms_service.py with CmsService(connection), initialize_schema(), publish(slug, title, body), and list_published(); use parameterized SQLite statements, a unique slug, deterministic ordering, and return plain dictionaries. Run the cross-language tests with validate_project, inspect the structured Git diff, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Create only web/vue/cms-client.js and backend/cms_service.py.",
+    "Use only JavaScript and Python standard libraries; the HTTP object is Axios-compatible and injected.",
+    "Never interpolate article values into SQL strings.",
+    "Use validate_project for the portable root test and git_operation for final diff review."
+  ],
+  "workspaceInstructions": [
+    "This is stage 1 of a portable polyglot campaign. The root Node harness invokes each language toolchain without shell-specific syntax."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node scripts/test-all.mjs\" }\n}\n"
+    },
+    {
+      "path": "scripts/test-all.mjs",
+      "content": "import { spawnSync } from 'node:child_process';\nconst python = process.platform === 'win32' ? 'python' : 'python3';\nfor (const [command, args] of [[process.execPath, ['--test', 'test/vue-client.test.mjs']], [python, ['-m', 'unittest', 'backend/test_cms_service.py']]]) {\n  const result = spawnSync(command, args, { encoding: 'utf8', stdio: 'inherit', shell: false });\n  if (result.error) throw result.error;\n  if (result.status !== 0) process.exit(result.status ?? 1);\n}\n"
+    },
+    {
+      "path": "test/vue-client.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { createCmsClient } from '../web/vue/cms-client.js';\n\ntest('Vue-facing client follows the injected HTTP contract', async () => {\n  const calls = [];\n  const http = {\n    get: async (...args) => { calls.push(['get', ...args]); return { data: [{ slug: 'news' }] }; },\n    post: async (...args) => { calls.push(['post', ...args]); return { data: { slug: args[1].slug, published: true } }; }\n  };\n  const client = createCmsClient(http);\n  assert.deepEqual(await client.listPublished(), [{ slug: 'news' }]);\n  assert.deepEqual(await client.publish('launch', 'Launch', 'Hello'), { slug: 'launch', published: true });\n  assert.deepEqual(calls, [\n    ['get', '/api/articles?status=published'],\n    ['post', '/api/articles', { slug: 'launch', title: 'Launch', body: 'Hello' }]\n  ]);\n});\n"
+    },
+    {
+      "path": "backend/test_cms_service.py",
+      "content": "import sqlite3\nimport unittest\nfrom backend.cms_service import CmsService\n\nclass CmsServiceTest(unittest.TestCase):\n    def setUp(self):\n        self.connection = sqlite3.connect(':memory:')\n        self.service = CmsService(self.connection)\n        self.service.initialize_schema()\n\n    def test_publish_and_list_are_persistent_and_deterministic(self):\n        self.service.publish('z-last', 'Zed', 'body-z')\n        created = self.service.publish('a-first', 'Alpha', 'body-a')\n        self.assertEqual(created['slug'], 'a-first')\n        self.assertEqual([item['slug'] for item in self.service.list_published()], ['a-first', 'z-last'])\n        with self.assertRaises(sqlite3.IntegrityError):\n            self.service.publish('a-first', 'Again', 'duplicate')\n\nif __name__ == '__main__':\n    unittest.main()\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 44, "maxTurns": 30 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["backend/cms_service.py", "web", "web/vue", "web/vue/cms-client.js"],
+    "files": [
+      { "path": "web/vue/cms-client.js", "contentIncludes": ["createCmsClient", "/api/articles", "listPublished", "publish"] },
+      { "path": "backend/cms_service.py", "contentIncludes": ["class CmsService", "initialize_schema", "list_published"] }
+    ],
+    "maxToolCalls": 28,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

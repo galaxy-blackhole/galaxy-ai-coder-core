@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 2,
+  "name": "suite stale edit loop",
+  "task": "Never corrupt safe.txt when an edit is based on a stale content hash.",
+  "initialFiles": [
+    { "path": "safe.txt", "content": "safe\n" }
+  ],
+  "rounds": [
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "stale-1",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "safe.txt",
+            "oldText": "safe",
+            "newText": "unsafe",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "stale-2",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "safe.txt",
+            "oldText": "safe",
+            "newText": "unsafe",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "stale-3",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "safe.txt",
+            "oldText": "safe",
+            "newText": "unsafe",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "stale-4",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "safe.txt",
+            "oldText": "safe",
+            "newText": "unsafe",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "stale-5",
+          "toolName": "edit_file",
+          "arguments": {
+            "path": "safe.txt",
+            "oldText": "safe",
+            "newText": "unsafe",
+            "precondition": { "kind": "matches_sha256", "contentSha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    }
+  ],
+  "expected": {
+    "status": "paused",
+    "errorCode": null,
+    "executionStatuses": ["paused"],
+    "checkpointReasons": ["pause"],
+    "allModelStepsConsumed": true,
+    "allowedChanges": [],
+    "files": [
+      { "path": "safe.txt", "content": "safe\n", "unchanged": true }
+    ],
+    "toolSequence": ["edit_file", "edit_file"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.edit", "ok": false, "errorCode": "PRECONDITION_FAILED" },
+      { "canonicalToolId": "workspace.edit", "ok": false, "errorCode": "PRECONDITION_FAILED" },
+      { "canonicalToolId": "workspace.edit", "ok": false, "errorCode": "NO_PROGRESS" },
+      { "canonicalToolId": "workspace.edit", "ok": false, "errorCode": "NO_PROGRESS" },
+      { "canonicalToolId": "workspace.edit", "ok": false, "errorCode": "NO_PROGRESS" }
+    ]
+  }
+}

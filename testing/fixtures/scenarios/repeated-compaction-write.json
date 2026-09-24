@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "name": "suite repeated compaction after write",
+  "task": "Create generated.txt and retain verified evidence across repeated context compaction.",
+  "approvalDecisions": { "project.validate": "allow" },
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": { \"test\": \"node --test test.mjs\" }\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport { readFile } from 'node:fs/promises';\nimport test from 'node:test';\ntest('generated', async () => assert.equal(await readFile(new URL('./generated.txt', import.meta.url), 'utf8'), 'generated\\n'));\n"
+    }
+  ],
+  "model": {
+    "tokenCountSteps": [500, 500, 90000, 20000, 90000, 20000, 90000, 20000, 90000, 20000]
+  },
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "inspect", "toolName": "list_files", "arguments": { "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "write", "toolName": "write_file", "arguments": { "path": "generated.txt", "content": "generated\n", "precondition": { "kind": "must_not_exist" } } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "activate-git", "toolName": "search_tools", "arguments": { "query": "final git diff", "category": "git" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "diff", "toolName": "git_operation", "arguments": { "action": "diff", "paths": ["generated.txt"] } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Created generated.txt; validation and final diff review survived repeated context compaction.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "checkpointReasons": ["provider_overflow", "provider_overflow", "provider_overflow", "provider_overflow"],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 6,
+    "allowedChanges": ["generated.txt"],
+    "files": [{ "path": "generated.txt", "content": "generated\n" }],
+    "toolSequence": ["list_files", "write_file", "validate_project", "search_tools", "git_operation"]
+  }
+}

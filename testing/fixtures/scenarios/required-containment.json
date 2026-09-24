@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "name": "suite required containment",
+  "task": "Prove that command execution fails before spawn when containment is unverified.",
+  "runtime": {
+    "commandContainment": "required"
+  },
+  "approvalDecisions": {
+    "command.run": "allow"
+  },
+  "rounds": [
+    {
+      "toolCalls": [
+        { "toolCallId": "inspect", "toolName": "list_files", "arguments": { "path": "." } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "must-not-spawn", "toolName": "run_command", "arguments": { "command": "printf spawned > forbidden.txt" } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The command was blocked before spawn because verified containment is unavailable.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "allowedChanges": [],
+    "files": [
+      { "path": "forbidden.txt", "absent": true }
+    ],
+    "toolSequence": ["list_files", "run_command"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true },
+      { "canonicalToolId": "command.run", "ok": false, "errorCode": "UNAVAILABLE", "contentIncludes": ["Required command containment is unavailable"] }
+    ],
+    "finalResponseIncludes": ["blocked", "containment"]
+  }
+}

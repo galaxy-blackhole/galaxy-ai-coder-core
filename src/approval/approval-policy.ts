@@ -98,11 +98,14 @@ function waitForApproval(
 ): Promise<ApprovalOutcome> {
   return new Promise((resolve) => {
     let settled = false;
+    const requestController = new AbortController();
     const finish = (outcome: ApprovalOutcome) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       context.signal.removeEventListener("abort", onAbort);
+      // Close the host prompt when this request expires, without canceling the run.
+      requestController.abort();
       resolve(outcome);
     };
     const onAbort = () => finish({ kind: "canceled" });
@@ -115,7 +118,7 @@ function waitForApproval(
     void Promise.resolve().then(async () => {
       if (settled) return;
       try {
-        const result = await callback(request, context);
+        const result = await callback(request, { ...context, signal: requestController.signal });
         finish({ kind: "result", result });
       } catch {
         finish({ kind: "error", code: "APPROVAL_CALLBACK_THROWN" });

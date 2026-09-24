@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "dependency backed 04 angular runtime",
+  "task": "Complete the accumulated framework project by replacing the TODO implementation in src/angular-pricing.mjs. Use the installed Angular signals runtime already imported by the skeleton. Implement createPricingModel(initialPriceCents, initialQuantity), returning { priceCents, quantity, totalCents, setQuantity } where priceCents and quantity are Angular signal functions, totalCents is an Angular computed signal multiplying them, and setQuantity rejects non-positive integers before updating quantity. Run the full cumulative tests through validate_project, review the final structured Git diff, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/angular-pricing.mjs and preserve all prior framework stages.",
+    "Import signal and computed from @angular/core; no local reactive implementation.",
+    "Do not alter dependencies or harness files.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This final stage validates real Next, Vite, Vue, NestJS, and Angular package APIs together in one cumulative project."
+  ],
+  "initialFiles": [
+    {
+      "path": "tests/angular-runtime.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { createPricingModel } from '../src/angular-pricing.mjs';\n\ntest('Angular signals drive and recompute pricing state', () => {\n  const pricing = createPricingModel(4950, 2);\n  assert.equal(pricing.priceCents(), 4950);\n  assert.equal(pricing.quantity(), 2);\n  assert.equal(pricing.totalCents(), 9900);\n  pricing.setQuantity(3);\n  assert.equal(pricing.totalCents(), 14850);\n  assert.throws(() => pricing.setQuantity(0), /quantity/i);\n  assert.equal(pricing.quantity(), 3);\n});\n"
+    },
+    {
+      "path": "src/angular-pricing.mjs",
+      "content": "import { computed, signal } from '@angular/core';\n\nexport function createPricingModel(initialPriceCents, initialQuantity) {\n  throw new Error('TODO createPricingModel');\n}\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 42, "maxTurns": 30 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/angular-pricing.mjs"],
+    "files": [
+      { "path": "src/nest-cart.mjs", "contentIncludes": ["CartService"] },
+      { "path": "src/angular-pricing.mjs", "contentIncludes": ["@angular/core", "signal", "computed", "createPricingModel", "setQuantity"] }
+    ],
+    "maxToolCalls": 32,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

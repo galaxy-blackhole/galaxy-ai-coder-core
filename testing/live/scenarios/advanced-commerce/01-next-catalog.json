@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced commerce 01 next catalog",
+  "task": "Build the domain and server-rendering slice of a Next.js-style product catalog. Inspect the harness, create lib/catalog.js exporting listFeaturedProducts(products) and app/products/page.js exporting renderProductCards(products). listFeaturedProducts must keep only featured products with stock greater than zero, sort by price ascending without mutating the input, and renderProductCards must return accessible product-card HTML containing name, formatted USD price, and data-product-id. Run the declared unit tests with validate_project, inspect the final diff with git_operation, and report only verified results.",
+  "mode": "auto",
+  "constraints": [
+    "Create only lib/catalog.js and app/products/page.js; harness files are immutable.",
+    "Use dependency-free ESM so this offline health campaign is deterministic.",
+    "Do not claim a full Next.js runtime was installed; this scenario verifies framework-facing domain and rendering contracts.",
+    "Use validate_project for tests and git_operation for final diff review."
+  ],
+  "workspaceInstructions": [
+    "This is stage 1 of an accumulated commerce workspace. Preserve these implementation files in later stages."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test test/*.test.mjs\" }\n}\n"
+    },
+    {
+      "path": "test/catalog.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { listFeaturedProducts } from '../lib/catalog.js';\nimport { renderProductCards } from '../app/products/page.js';\n\ntest('catalog filters, sorts, and preserves input', () => {\n  const products = [\n    { id: 'desk', name: 'Desk', price: 499, stock: 2, featured: true },\n    { id: 'lamp', name: 'Lamp', price: 49.5, stock: 4, featured: true },\n    { id: 'chair', name: 'Chair', price: 199, stock: 0, featured: true },\n    { id: 'mat', name: 'Mat', price: 20, stock: 8, featured: false }\n  ];\n  const before = structuredClone(products);\n  assert.deepEqual(listFeaturedProducts(products).map(({ id }) => id), ['lamp', 'desk']);\n  assert.deepEqual(products, before);\n});\n\ntest('server rendering emits accessible commerce evidence', () => {\n  const html = renderProductCards([{ id: 'lamp', name: 'Lamp', price: 49.5, stock: 4, featured: true }]);\n  assert.match(html, /data-product-id=[\"']lamp[\"']/);\n  assert.match(html, /Lamp/);\n  assert.match(html, /\\$49\\.50/);\n  assert.match(html, /article|listitem/);\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced", "requestTimeoutMs": 300000,
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 36, "maxTurns": 24 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["app", "app/products", "app/products/page.js", "lib", "lib/catalog.js"],
+    "files": [
+      { "path": "lib/catalog.js", "contentIncludes": ["listFeaturedProducts", "featured", "stock"] },
+      { "path": "app/products/page.js", "contentIncludes": ["renderProductCards"] }
+    ],
+    "maxToolCalls": 22,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

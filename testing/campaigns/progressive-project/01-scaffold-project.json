@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "name": "campaign 01 scaffold project",
+  "task": "Create a minimal JavaScript math project with one tested add function, then validate and review the exact diff.",
+  "mode": "scaffold",
+  "approvalDecisions": { "project.validate": "allow" },
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "c01-list", "toolName": "list_files", "arguments": { "path": ".", "depth": 2 } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-package", "toolName": "write_file", "arguments": {
+        "path": "package.json",
+        "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"test\": \"node --test test/*.test.mjs\"\n  }\n}\n",
+        "precondition": { "kind": "must_not_exist" }
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-source", "toolName": "write_file", "arguments": {
+        "path": "src/math.js",
+        "content": "export function add(a, b) {\n  return a + b;\n}\n",
+        "precondition": { "kind": "must_not_exist" }
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-test", "toolName": "write_file", "arguments": {
+        "path": "test/math.test.mjs",
+        "content": "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { add } from \"../src/math.js\";\n\ntest(\"add\", () => {\n  assert.equal(add(2, 3), 5);\n});\n",
+        "precondition": { "kind": "must_not_exist" }
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-validate", "toolName": "validate_project", "arguments": { "checks": ["test"], "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-find-git", "toolName": "search_tools", "arguments": { "query": "review final git diff", "category": "git" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "c01-diff", "toolName": "git_operation", "arguments": { "action": "diff", "paths": ["package.json", "src/math.js", "test/math.test.mjs"] } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Created the JavaScript math project. Its add test passed and the final Git diff was reviewed.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 8,
+    "allowedChanges": ["package.json", "src", "src/math.js", "test", "test/math.test.mjs"],
+    "files": [
+      { "path": "package.json", "contentIncludes": ["node --test test/*.test.mjs"] },
+      { "path": "src/math.js", "content": "export function add(a, b) {\n  return a + b;\n}\n" },
+      { "path": "test/math.test.mjs", "contentIncludes": ["assert.equal(add(2, 3), 5)"] }
+    ],
+    "toolSequence": ["list_files", "write_file", "write_file", "write_file", "validate_project", "search_tools", "git_operation"]
+  }
+}

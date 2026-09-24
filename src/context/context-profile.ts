@@ -10,7 +10,7 @@ import type { ModelCapabilities } from "../ports/capability-port.js";
 import type { AiCoderTokenProfile } from "../tools/settings-types.js";
 
 export const AI_CODER_CONTEXT_PROFILE_SCHEMA_VERSION = 1;
-export const AI_CODER_CONTEXT_PROFILE_CONFIG_VERSION = "1.0.0";
+export const AI_CODER_CONTEXT_PROFILE_CONFIG_VERSION = "1.1.0";
 
 export type AiCoderContextPressure = "normal" | "tighten" | "evict" | "compact" | "blocked";
 
@@ -48,7 +48,7 @@ const PROFILE_CONFIGS: Readonly<Record<AiCoderTokenProfile, AiCoderContextProfil
     evictionThreshold: 120_000,
     maxToolRoundsBeforeCheckpoint: 16,
     name: "conservative",
-    outputReserveTokens: 24_000,
+    outputReserveTokens: 32_768,
     schemaVersion: AI_CODER_CONTEXT_PROFILE_SCHEMA_VERSION,
     softInputTokens: 120_000,
     tightenThreshold: 90_000,

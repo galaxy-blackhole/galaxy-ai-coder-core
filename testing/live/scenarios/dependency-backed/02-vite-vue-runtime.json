@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "dependency backed 02 vite vue runtime",
+  "task": "Extend the accumulated project by replacing the TODO implementations in src/vite-vue-cart.mjs. Use the installed Vue, Vite, and esbuild packages already wired by the skeleton. Implement createCartState(initialLines), returning { lines, itemCount, addLine } where lines is Vue reactive state, itemCount is a Vue computed ref summing quantities, and addLine appends a line. Also implement async transformTypedPriceModule(source), using Vite transformWithEsbuild to transform TypeScript into executable JavaScript and returning the generated code string. Inspect the harness, run all tests with validate_project, review the final structured Git diff, and report verified evidence.",
+  "mode": "auto",
+  "constraints": [
+    "Modify only src/vite-vue-cart.mjs and preserve the passing Next stage.",
+    "Import reactive and computed from vue and transformWithEsbuild from vite; esbuild is already installed as Vite's explicit peer dependency, so use no local substitutes.",
+    "Do not alter dependencies or harness files.",
+    "If an immutable dependency is unavailable, report the blocker after one confirming validation instead of probing repeatedly.",
+    "Use validate_project and git_operation before completion."
+  ],
+  "workspaceInstructions": [
+    "This is stage 2; dependencies were installed and baselined in stage 1, and the full cumulative test suite must pass."
+  ],
+  "initialFiles": [
+    {
+      "path": "tests/vite-vue-runtime.test.mjs",
+      "content": "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { createCartState, transformTypedPriceModule } from '../src/vite-vue-cart.mjs';\n\ntest('Vue reactivity and Vite transformation execute through installed packages', async () => {\n  const cart = createCartState([{ productId: 'lamp', quantity: 2 }]);\n  assert.equal(cart.itemCount.value, 2);\n  cart.addLine({ productId: 'desk', quantity: 1 });\n  assert.equal(cart.itemCount.value, 3);\n  assert.equal(cart.lines.length, 2);\n  const code = await transformTypedPriceModule('export const price: number = 4950');\n  assert.doesNotMatch(code, /: number/);\n  const transformed = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);\n  assert.equal(transformed.price, 4950);\n});\n"
+    },
+    {
+      "path": "src/vite-vue-cart.mjs",
+      "content": "import { computed, reactive } from 'vue';\nimport { transformWithEsbuild } from 'vite';\n\nexport function createCartState(initialLines) {\n  throw new Error('TODO createCartState');\n}\n\nexport async function transformTypedPriceModule(source) {\n  throw new Error('TODO transformTypedPriceModule');\n}\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": { "deadlineMs": 1800000, "maxCompletionRejections": 2, "maxModelRetries": 2, "maxNoProgressEpisodes": 3, "maxObservationRepeats": 4, "maxRepeatedToolRequests": 4, "maxToolCalls": 42, "maxTurns": 30 }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["src/vite-vue-cart.mjs"],
+    "files": [
+      { "path": "src/next-catalog.mjs", "contentIncludes": ["NextResponse"] },
+      { "path": "src/vite-vue-cart.mjs", "contentIncludes": ["from 'vue'", "from 'vite'", "reactive", "computed", "transformWithEsbuild"] }
+    ],
+    "maxToolCalls": 32,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["project.validate", "git.exec"],
+    "requiredAnyCanonicalTools": [["workspace.write", "workspace.edit", "command.run"]]
+  }
+}

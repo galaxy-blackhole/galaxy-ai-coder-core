@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "name": "live 01 write and validate",
+  "task": "Inspect this project, create hello.txt containing exactly hello followed by one newline, run the declared project test with validate_project, use the structured Git inspection tool to review the final diff, and report only verified results.",
+  "mode": "auto",
+  "acceptanceCriteria": [
+    { "id": "hello-file", "text": "hello.txt contains exactly hello followed by one newline.", "required": false },
+    { "id": "tests-pass", "text": "The declared project test passes after the write.", "required": false }
+  ],
+  "constraints": [
+    "Do not modify package.json or test.mjs.",
+    "Use write_file with a must_not_exist precondition for the first creation of hello.txt only; after the file exists, use a matches_sha256 precondition with the current content hash.",
+    "Use validate_project rather than a generic command for the declared test.",
+    "Review the final Git diff before completing."
+  ],
+  "workspaceInstructions": [
+    "This is an isolated Galaxy Code live health workspace. Treat package.json and test.mjs as immutable test harness files."
+  ],
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"test\": \"node --test test.mjs\"\n  }\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from \"node:assert/strict\";\nimport { readFile } from \"node:fs/promises\";\nimport test from \"node:test\";\n\ntest(\"hello live health\", async () => {\n  assert.equal(await readFile(new URL(\"hello.txt\", import.meta.url), \"utf8\"), \"hello\\n\");\n});\n"
+    }
+  ],
+  "runtime": {
+    "approvalProfile": "trusted-workspace",
+    "commandContainment": "best_effort",
+    "tokenProfile": "balanced",
+    "budget": {
+      "deadlineMs": 900000,
+      "maxCompletionRejections": 2,
+      "maxModelRetries": 1,
+      "maxToolCalls": 20,
+      "maxTurns": 16
+    }
+  },
+  "expected": {
+    "status": "completed",
+    "allowedChanges": ["hello.txt"],
+    "files": [{ "path": "hello.txt", "content": "hello\n" }],
+    "maxToolCalls": 12,
+    "requirePassedValidation": true,
+    "requiredCanonicalTools": ["workspace.write", "project.validate", "git.exec"]
+  }
+}

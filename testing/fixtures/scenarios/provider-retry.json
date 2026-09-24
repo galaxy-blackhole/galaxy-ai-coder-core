@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "name": "suite bounded provider retry",
+  "task": "Retry one transient provider error without duplicating tool work.",
+  "runtime": {
+    "budget": { "maxModelRetries": 1 }
+  },
+  "rounds": [
+    {
+      "events": [
+        { "type": "started" },
+        { "type": "error", "code": "RATE_LIMITED", "message": "temporary quota", "retryable": true }
+      ]
+    },
+    {
+      "toolCalls": [
+        { "toolCallId": "inspect-once", "toolName": "list_files", "arguments": { "path": "." } }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The transient error was retried and the workspace was inspected exactly once.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 3,
+    "retryDelaysMs": [1000],
+    "allowedChanges": [],
+    "toolSequence": ["list_files"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true }
+    ]
+  }
+}

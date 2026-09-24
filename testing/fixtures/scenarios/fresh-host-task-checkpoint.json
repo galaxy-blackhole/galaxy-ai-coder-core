@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "name": "suite fresh host durable task checkpoint",
+  "task": "Preserve the bounded task checkpoint across a fresh-host resume.",
+  "initialFiles": [{ "path": "README.md", "content": "fixture\n" }],
+  "model": {
+    "tokenCountSteps": [500, 500, 90000, 90000, 500, 500]
+  },
+  "runtime": {
+    "resume": { "on": "failed", "maxExecutions": 2, "recreateHost": true }
+  },
+  "rounds": [
+    {
+      "toolCalls": [{ "toolCallId": "inspect", "toolName": "list_files", "arguments": { "path": "." } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "checkpoint-update", "toolName": "update_checkpoint", "arguments": {
+        "action": "update",
+        "goal": "Keep verified task state",
+        "progress": "Inspection completed before exhaustion",
+        "decisions": ["Do not repeat inspection"],
+        "nextStep": "Read checkpoint after resume"
+      } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [{ "toolCallId": "checkpoint-read", "toolName": "update_checkpoint", "arguments": { "action": "read" } }],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "The fresh host read the durable checkpoint and continued without repeating inspection.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "executionStatuses": ["failed", "completed"],
+    "checkpointReasons": ["provider_overflow", "failure"],
+    "allModelStepsConsumed": true,
+    "modelRequestCount": 4,
+    "allowedChanges": [],
+    "toolSequence": ["list_files", "update_checkpoint", "update_checkpoint"],
+    "toolResults": [
+      { "canonicalToolId": "workspace.list", "ok": true },
+      { "canonicalToolId": "task.checkpoint", "ok": true },
+      {
+        "canonicalToolId": "task.checkpoint",
+        "ok": true,
+        "contentIncludes": ["Inspection completed before exhaustion", "Do not repeat inspection", "Read checkpoint after resume"]
+      }
+    ]
+  }
+}

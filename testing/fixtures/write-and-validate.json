@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "name": "write and validate",
+  "task": "Create hello.txt with the exact text hello and verify the project test before reporting completion.",
+  "mode": "auto",
+  "approvalDecisions": { "project.validate": "allow" },
+  "initialFiles": [
+    {
+      "path": "package.json",
+      "content": "{\n  \"private\": true,\n  \"scripts\": {\n    \"test\": \"node --test test.mjs\"\n  }\n}\n"
+    },
+    {
+      "path": "test.mjs",
+      "content": "import assert from \"node:assert/strict\";\nimport { readFile } from \"node:fs/promises\";\nimport test from \"node:test\";\n\ntest(\"hello fixture\", async () => {\n  assert.equal(await readFile(new URL(\"hello.txt\", import.meta.url), \"utf8\"), \"hello\\n\");\n});\n"
+    }
+  ],
+  "rounds": [
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "call-inspect",
+          "toolName": "list_files",
+          "arguments": { "path": ".", "depth": 2 }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "call-write",
+          "toolName": "write_file",
+          "arguments": {
+            "path": "hello.txt",
+            "content": "hello\n",
+            "precondition": { "kind": "must_not_exist" }
+          }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "call-validate",
+          "toolName": "validate_project",
+          "arguments": { "checks": ["test"], "path": ".", "timeoutMs": 30000 }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "call-discover-git",
+          "toolName": "search_tools",
+          "arguments": { "query": "inspect final git diff", "category": "git", "limit": 5 }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "toolCalls": [
+        {
+          "toolCallId": "call-review-diff",
+          "toolName": "git_operation",
+          "arguments": { "action": "diff", "paths": ["hello.txt"] }
+        }
+      ],
+      "finishReason": "tool_calls"
+    },
+    {
+      "content": "Created hello.txt with the exact requested content. The project test passed and the final Git diff was reviewed.",
+      "finishReason": "stop"
+    }
+  ],
+  "expected": {
+    "status": "completed",
+    "errorCode": null,
+    "allModelStepsConsumed": true,
+    "allowedChanges": ["hello.txt"],
+    "toolSequence": [
+      "list_files",
+      "write_file",
+      "validate_project",
+      "search_tools",
+      "git_operation"
+    ],
+    "files": [
+      { "path": "hello.txt", "content": "hello\n" }
+    ],
+    "toolResults": [
+      { "toolName": "list_files", "canonicalToolId": "workspace.list", "ok": true },
+      { "toolName": "write_file", "canonicalToolId": "workspace.write", "ok": true },
+      { "toolName": "validate_project", "canonicalToolId": "project.validate", "ok": true },
+      { "toolName": "search_tools", "canonicalToolId": "catalog.search", "ok": true },
+      {
+        "toolName": "git_operation",
+        "canonicalToolId": "git.exec",
+        "ok": true,
+        "contentIncludes": ["hello.txt", "+hello"]
+      }
+    ],
+    "finalResponseIncludes": [
+      "project test passed",
+      "final Git diff was reviewed"
+    ]
+  }
+}
