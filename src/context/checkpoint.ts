@@ -116,6 +116,7 @@ export type AiCoderCheckpointValidation = Readonly<{
 }>;
 
 export type AiCoderCheckpointToolCall = Readonly<{
+  argumentDigest?: string;
   argumentsHash: string;
   idempotencyKey?: string;
   name: string;
@@ -258,7 +259,7 @@ export class AiCoderCheckpointIntegrityError extends Error {
   }
 }
 
-function canonicalJson(value: unknown, ancestors = new WeakSet<object>()): string {
+export function canonicalJson(value: unknown, ancestors = new WeakSet<object>()): string {
   if (value === null) return "null";
   if (value === undefined) return "null";
   if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
@@ -410,6 +411,7 @@ export function sanitizeAiCoderCheckpointPayload(
     executionBudget: Object.freeze({ ...payload.executionBudget }),
     goal: redactAiCoderCheckpointText(payload.goal),
     lastToolCalls: Object.freeze(payload.lastToolCalls.map((item) => Object.freeze({
+      ...(item.argumentDigest !== undefined ? { argumentDigest: item.argumentDigest } : {}),
       argumentsHash: item.argumentsHash,
       ...(item.idempotencyKey !== undefined ? { idempotencyKey: item.idempotencyKey } : {}),
       name: item.name,
@@ -911,10 +913,11 @@ async function validateCheckpointSnapshot(
   else checkpoint.lastToolCalls.forEach((call, index) => {
     if (!call || typeof call !== "object") issue(`lastToolCalls[${index}]`, "Tool call must be an object.");
     else {
-      rejectUnknown(call, `lastToolCalls[${index}]`, ["argumentsHash", "idempotencyKey", "name", "outcome", "toolCallId"]);
+      rejectUnknown(call, `lastToolCalls[${index}]`, ["argumentDigest", "argumentsHash", "idempotencyKey", "name", "outcome", "toolCallId"]);
       if (!nonEmptyString(call.toolCallId)) issue(`lastToolCalls[${index}].toolCallId`, "toolCallId is required.");
       if (!nonEmptyString(call.name)) issue(`lastToolCalls[${index}].name`, "Tool name is required.");
       if (!nonEmptyString(call.argumentsHash)) issue(`lastToolCalls[${index}].argumentsHash`, "argumentsHash is required.");
+      if (call.argumentDigest !== undefined && !nonEmptyString(call.argumentDigest)) issue(`lastToolCalls[${index}].argumentDigest`, "argumentDigest must be non-empty when present.");
       if (call.idempotencyKey !== undefined && !nonEmptyString(call.idempotencyKey)) issue(`lastToolCalls[${index}].idempotencyKey`, "idempotencyKey must be non-empty when present.");
       if (!(["canceled", "failed", "succeeded", "unknown"] as const).includes(call.outcome)) issue(`lastToolCalls[${index}].outcome`, "Tool outcome is invalid.");
     }

@@ -9,6 +9,7 @@ import {
   createAiCoderRunCheckpoint,
   hashAiCoderCanonicalValue,
   isAiCoderWorkspaceMutationEvidence,
+  canonicalJson,
   redactAiCoderCheckpointText,
   type AiCoderCheckpointPhase,
   type AiCoderCheckpointReason,
@@ -1425,6 +1426,7 @@ export class AiCoderRunController {
       : Object.freeze({ ...checkpoint.completionEvidence.diffReview });
     session.evidence.inspectedPaths = new Set(checkpoint.workspace.activeFiles.map((item) => item.path));
     session.evidence.lastToolCalls = checkpoint.lastToolCalls.map((item) => ({
+      ...(item.argumentDigest !== undefined ? { argumentDigest: item.argumentDigest } : {}),
       argumentsHash: item.argumentsHash,
       idempotencyKey: item.idempotencyKey ?? `${checkpoint.runId}:${item.toolCallId}:${item.argumentsHash}`,
       name: item.name,
@@ -2004,6 +2006,9 @@ export class AiCoderRunController {
     if (session.toolCycleHistory.length > 24) session.toolCycleHistory.splice(0, session.toolCycleHistory.length - 24);
     const idempotencyKey = await runtimeHash({ runId: session.context.runId, toolCallId: call.toolCallId, name: call.name, argumentsHash });
     const callRecord = {
+      // Bounded, redacted digest so the post-compaction checkpoint shows WHICH
+      // paths/queries were already inspected; hashes alone cannot stop re-listing.
+      argumentDigest: redactAiCoderCheckpointText(canonicalJson(call.arguments)).slice(0, 160),
       argumentsHash,
       idempotencyKey,
       name: call.name,

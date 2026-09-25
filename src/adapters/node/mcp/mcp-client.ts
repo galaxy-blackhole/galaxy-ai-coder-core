@@ -85,7 +85,12 @@ export class McpAgentClient {
         const validate = validator.getValidator(tool.inputSchema as Parameters<typeof validator.getValidator>[0]);
         tools.push({
           validateArguments: args => { const result = validate(args); return { valid: result.valid, errors: result.valid ? [] : [result.errorMessage] }; },
-          id: `mcp.${this.name}.${tool.name}`, risk: "external", trust: "external",
+          // A server's readOnlyHint opts its tool out of the host permission
+          // prompt (user-approved policy). Everything else still asks, and
+          // every result stays untrusted data with bounded output.
+          id: `mcp.${this.name}.${tool.name}`,
+          risk: (tool.annotations as { readOnlyHint?: boolean } | undefined)?.readOnlyHint === true ? "read" : "external",
+          trust: "external",
           definition: { type: "function", function: { name, description: (tool.description ?? tool.name).slice(0, 4096), parameters: tool.inputSchema } },
           execute: async (args, context) => {
             const result = await this.client.callTool({ name: tool.name, arguments: { ...args } }, undefined, { signal: context.signal, timeout: Math.max(1, Math.min(this.timeout, context.deadline - Date.now())) });

@@ -156,3 +156,21 @@ Backup trước migration có 243 file và working-tree diff; vị trí local đ
 - C07: sửa lỗi reconnect sau login (provider không được truyền lại), viết lại FileOAuthProvider khởi động callback server trong constructor với `ready` promise (hết race getter sync), thêm close() trả port; test E2E fixture OAuth cục bộ: 401 discovery, đăng ký client, PKCE, đổi token, reconnect kèm Bearer, token 0600, clear/logout.
 - E06: `blackhole memory import-quasar` tạo backup nguồn, import leaf active thành confirmed với provenance `quasar:<source>`, key ổn định từ source_ref, bỏ trùng/superseded, chạy lại không nhân bản. Live với `~/.galaxy/desktop/memory/memory.db`: 15 notes imported, FTS recall được, chạy lại 0 imported/15 skipped; bản gốc chỉ đọc qua bản sao backup.
 - Core verify 123/123; CLI check 17/17 + typecheck/build. Xoá `test/oauth-flow.test.ts` (phiên cũ treo vì hostname giả) và gộp assertion 0600/clear vào `test/mcp-oauth.test.ts`. Chưa push/publish galaxy-code trong đợt này.
+
+### Runtime logging cho CLI (2026-09-25)
+
+- [x] F21: `CliLogger` NDJSON theo ngày trong `<state-dir>/logs/`, 0600, xoay 5 MB giữ 3 đoạn, redact secret, flush/close; `blackhole logs [n]` xem lại.
+- [x] F22: Wire vào lifecycle (cli_start, session_open, signal, fatal, uncaught/unhandled), run events (state, tool_failed, model_retry, completion_rejected, run_finished) và mcp_connect_failed.
+- [x] F23: Tests unit (redact/rotate/recent 0700) + E2E spawn CLI lỗi → trace có stack trong log; CLI check 20/20.
+
+### Chống lặp sau compact + giảm token + readOnlyHint (2026-09-25)
+
+- [x] P1: checkpoint `lastToolCalls` thêm `argumentDigest` (redact, ≤160 ký tự) — sau compact model thấy CHÍNH XÁC đã gọi gì với path nào. Bằng chứng từ run GymFlow: 9 lần compact trong 11 phút, lastToolCalls chỉ có hash không đọc được.
+- [x] P1: `summarizeP2` nhúng `tools: [{name, args}]` + `resultTail` (300 ký tự cuối) vào bản tóm lược — trước đó chỉ còn "listed workspace" nên agent inspect lại từ đầu.
+- [x] P2: `command.run` maxOutputTokens 12000 → 6000; CLI wire `FileToolOutputSpill` (stateDir/spill, 0600) + tool `tool_output.read` (read-only, không prompt) để đọc lại output đầy đủ qua marker `artifact://<id>`.
+- [x] MCP readOnlyHint: orbit-mcp 0.1.5 + nebula-mcp 1.0.3 công bố annotation; mcp-client đổi risk thành "read" khi hint=true → bỏ prompt cho tra cứu (đã verify live: 5 tool orbit risk=read). Tool khác vẫn prompt.
+- Core 124/124 (thêm test digest); CLI 20/20. Đã publish orbit 0.1.5, nebula 1.0.3, core 0.3.0-alpha.8 (pending CI).
+
+### Lưu ý chẩn đoán
+
+- Log run GymFlow (2026-09-25 09:39): 9 lần compacting→executing trong 11 phút; checkpoint `lastToolCalls` lặp `list_files`/`read_file`/`orbit_knowledge_topics` — bằng chứng trực tiếp vòng xoáy compact-mất-ngữ-cảnh-làm-lại.

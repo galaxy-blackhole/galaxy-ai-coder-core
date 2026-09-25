@@ -311,6 +311,7 @@ export type AiCoderMutableRunEvidence = {
   diffReview: AiCoderCompletionDiffReview | null;
   inspectedPaths: Set<string>;
   lastToolCalls: Array<{
+    argumentDigest?: string;
     argumentsHash: string;
     idempotencyKey: string;
     name: string;

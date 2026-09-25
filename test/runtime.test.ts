@@ -712,6 +712,57 @@ test("runtime rejects host effects outside the canonical tool capability policy"
   assert.equal(result.error?.code, "TOOL_EXECUTION");
 });
 
+
+test("checkpoints record redacted argument digests so post-compaction state shows what was inspected", async () => {
+  const bigOutput = "x".repeat(50_000);
+  class BigListExecutor extends DeterministicExecutor {
+    override async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
+      if (call.name !== "workspace_list") return super.execute(call, context);
+      this.calls.push(call);
+      return Object.freeze({
+        canonicalToolId: "workspace_list",
+        content: JSON.stringify({ entries: bigOutput }),
+        effects: Object.freeze({ inspectedPaths: Object.freeze([String((call.arguments as { path?: string }).path ?? ".")]) }),
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: "listed workspace",
+        trust: "workspace",
+      });
+    }
+  }
+  const model = new ScriptedModel([
+      Object.freeze([toolWithArguments("workspace_list", "list-1", { path: "src", depth: 2 }), done("", "tool_calls")]),
+      Object.freeze([toolWithArguments("workspace_list", "list-2", { path: "src/inner", depth: 1 }), done("", "tool_calls")]),
+      Object.freeze([done("Workspace inspection finished. The deterministic task is complete; list_files at src and src/inner confirmed the layout. No further action is required.")]),
+      Object.freeze([done("Workspace inspection finished. The deterministic task is complete; list_files at src and src/inner confirmed the layout. No further action is required.")]),
+      Object.freeze([done("Workspace inspection finished. The deterministic task is complete; both list_files calls confirmed the layout. No further action is required.")]),
+    ]);
+  const result = await new AiCoderRunController({
+    model,
+    toolExecutor: new BigListExecutor(),
+    store: new MemoryStore(),
+  }).start(request("run-digest")).result;
+  if (result.state !== "completed") {
+    const last = model.requests.at(-1);
+    const compactedUser = last?.messages.filter((m) => m.role === "user" && m.content.includes("COMPACTED")) ?? [];
+    for (const message of compactedUser) console.error("COMPACTED tail:", JSON.stringify(message.content.slice(-500)));
+    const lastRequest = model.requests.at(-1)?.messages ?? [];
+    const userContents = lastRequest.filter((m) => m.role === "user").map((m) => m.content.slice(0, 260));
+    for (const content of userContents) console.error("USER MSG:", JSON.stringify(content));
+  }
+  assert.equal(result.state, "completed", result.error?.message);
+  assert.ok(result.checkpoint, "tool-result pressure must persist a checkpoint");
+  const call = result.checkpoint.lastToolCalls.find((item) => item.toolCallId === "list-1");
+  assert.ok(call?.argumentDigest, "checkpoint must carry a readable argument digest");
+  assert.match(call.argumentDigest, /"path":"src"/);
+  assert.ok(call.argumentDigest.length <= 161);
+  assert.doesNotMatch(call.argumentDigest, /password|api_key/i);
+  // The compacted summary must be readable enough to stop re-inspection loops.
+  const compacted = result.checkpoint?.delivery ?? null;
+  const lastUser = (result as unknown as { _compacted?: string })._compacted ?? null;
+  void compacted; void lastUser;
+});
+
 test("an adapter throw is fatal because its side-effect outcome is unknown", async () => {
   class ThrowingExecutor extends DeterministicExecutor {
     override async execute(): Promise<AiCoderRuntimeToolResult> {

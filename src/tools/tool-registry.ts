@@ -269,7 +269,7 @@ const CATALOG: AiCoderToolDescriptor[] = [
     description: "Run one bounded command in the workspace for project tooling only when no safer specialized tool exists. Compose the command for the exact trusted hostEnvironment.command interpreter and dialect; stdin is closed and no TTY is available. Do not use it for Git status/diff/log or declared project validation: use git_operation or validate_project because generic command output cannot satisfy their trusted completion evidence. Do not run destructive, privileged, or remote-script commands. Returns exit status, bounded output, and a bounded observation when generated dependency state changed.",
     category: "command", inputSchema: objectSchema({ command: NON_EMPTY_STRING, cwd: WORKSPACE_PATH, timeoutMs: { type: "integer", minimum: 100, maximum: 600000 }, env: objectSchema({}, [], STRING) }, ["command"]),
     outputSchema: objectSchema({ command: NON_EMPTY_STRING, cwd: PATH, exitCode: INTEGER, stdout: STRING, stderr: STRING, timedOut: BOOLEAN, cancelled: BOOLEAN, truncated: BOOLEAN, derivedMutations: DERIVED_MUTATION_OBSERVATION }, ["command", "exitCode", "stdout", "stderr", "timedOut", "cancelled", "truncated"]),
-    permissions: ["process.execute"], risk: "high", mutability: "execute", idempotency: "unsafe", timeoutMs: 180_000, maxOutputTokens: 12_000, supportsCancellation: true, enabledByDefault: true,
+    permissions: ["process.execute"], risk: "high", mutability: "execute", idempotency: "unsafe", timeoutMs: 180_000, maxOutputTokens: 6_000, supportsCancellation: true, enabledByDefault: true,
   }),
   descriptor({
     id: "project.detect", modelName: "detect_project", title: "Detect project",

@@ -316,3 +316,38 @@ Tham chiếu: [Ink useCursor](https://github.com/vadimdemedes/ink#usecursor), [I
 - Core 123/123 (2 test OAuth mới: E2E fixture cục bộ + lưu trữ 0600/clear); CLI 17/17 kèm 2 test migration fixture; typecheck + build qua cả hai repo.
 - E06 live với `~/.galaxy/desktop/memory/memory.db`: 15 notes imported, backup lưu, FTS recall được, chạy lại 0 imported/15 skipped.
 - Chưa push/publish galaxy-code; orbit-mcp đã push và CI publish 0.1.4 thành công.
+
+## 18. Runtime log cho CLI (2026-09-25)
+
+### Thiết kế
+
+- `src/logs.ts` `CliLogger`: NDJSON mỗi ngày `cli-YYYY-MM-DD.ndjson` trong `<stateDir>/logs/`, quyền 0600/0700, serialize ghi qua promise queue, xoay ở 5 MB giữ tối đa 3 đoạn, redact pattern secret trước khi ghi, `flush()` cho shutdown.
+- Sự kiện: `cli_start`, `session_open`, `run_started`, `state`, `tool_failed` (kèm summary), `model_retry`, `completion_rejected`, `run_finished` (state + error), `mcp_connect_failed`, `signal`, `fatal`, `uncaught_exception`, `unhandled_rejection`. Không log content/thinking delta (noise + dung lượng).
+- `blackhole logs [n]` in N mục mới nhất kèm đường dẫn file log.
+- Crash handlers giữ trace sau khi stderr/alternate screen biến mất: `uncaughtException` log + exit(1); `unhandledRejection` log + exitCode.
+
+### Nghiệm thu
+
+- Unit: JSON lines hợp lệ, redact `api_key`/`token`, rotate tạo `.1`/`.2`/`.3` đúng hạn mức, `recent()` mới nhất trước.
+- E2E spawn CLI với action sai → exit 1, log chứa `cli_start`, `session_open`, `fatal` kèm stack; demo thật `blackhole logs`.
+- CLI check 20/20 (typecheck + build).
+
+## 19. Chống lặp sau compact + giảm token + readOnlyHint (2026-09-25)
+
+### Nguyên nhân (từ log thật)
+
+Run GymFlow 11 phút có 9 chu kỳ compacting→executing. Chuỗi: tool output lớn (bun install, knowledge docs) → chạm ngưỡng 150K → compact → bản tóm lược chỉ còn "listed workspace" (không path/args) → agent inspect lại → đầy lại. Hậu quả: lặp công việc, hao token, chậm.
+
+### Thay đổi
+
+1. **Checkpoint digest (P1)**: `lastToolCalls` thêm `argumentDigest` = JSON đối số redact ≤160 ký tự; validator chấp nhận; restore giữ nguyên. Sau compact model đọc được chính xác đã inspect path/query nào.
+2. **Enriched compaction summary (P1)**: `summarizeP2` mỗi item thêm `tools` (tên + args redact ≤200) và `resultTail` (300 ký tự cuối kết quả). Hết thời đại summary "listed workspace".
+3. **Hạ cap command.run (P2)**: maxOutputTokens 12000 → 6000.
+4. **Spill + read-back (P2)**: CLI wire `FileToolOutputSpill` (stateDir/spill, 0600) và tool `tool_output.read` (read-only) — output dài vượt hạn mức được spill ra file, context chỉ giữ head/tail + marker `artifact://<id>`; agent tự đọc lại khi cần. Đây là pattern Claude Code (persist to disk, read back).
+5. **readOnlyHint (user feedback)**: orbit-mcp/nebula-mcp công bố `readOnlyHint: true` (đúng chuẩn MCP — chỉ trả text, không mutate); CLI đổi risk thành "read" theo hint → AgentToolExecutor tự cho phép không prompt. Tool không hint vẫn prompt.
+
+### Nghiệm thu
+
+- Core 124/124 (test mới: checkpoint có digest `"path":"src"`, redact, ≤161 ký tự; compacted summary chứa `tools[{name,args}]`).
+- CLI 20/20 qua check. Live: 5 tool orbit risk=read qua npx 0.1.5; nebula 1.0.3 published.
+- So sánh với hệ thống khác: pattern P1 tương đương todo/state P0 của Claude Code; P2 tương đương "persist to disk, read back" — cả hai là chuẩn chung của các agent ổn định.

@@ -10,7 +10,9 @@ const context = (): ToolExecutionContext => ({ deadline: Date.now() + 5000, mode
 test("MCP stdio negotiates protocol, validates full schemas, enforces permissions and exposes resources/prompts", async () => {
   const client = await McpAgentClient.connect({ name: "local", transport: "stdio", command: process.execPath, args: [fileURLToPath(new URL("./mcp-fixture.mjs", import.meta.url))] });
   try {
-    const tools = await client.tools(); assert.equal(tools.length, 1); assert.equal(tools[0]?.risk, "external");
+    const tools = await client.tools(); assert.equal(tools.length, 2);
+    assert.equal(tools[0]?.risk, "external", "tools without readOnlyHint must still prompt");
+    assert.equal(tools[1]!.risk, "read", "readOnlyHint opts the tool out of the permission prompt");
     const call = { name: tools[0]!.definition.function.name, arguments: { text: "Xin chào" }, toolCallId: "echo" };
     const executor = new AgentToolExecutor(tools, async () => true);
     const success = await executor.execute(call, context()); assert.equal(success.ok, true); assert.match(success.content, /Xin chào/); assert.equal(success.effects, undefined);
