@@ -1,353 +1,176 @@
-# Galaxy Agent Platform — kế hoạch phát triển
+# Galaxy Agent Platform — TODO và tiến độ
+
+Ngày: 2026-09-23. Trạng thái: đang triển khai.
+
+## Quy tắc theo dõi
+
+`[x]` hoàn thành và có bằng chứng; `[ ]` chưa hoàn thành. Ghi rõ mock/live. Kế hoạch: [GALAXY_AGENT_PLATFORM_PLAN.md](GALAXY_AGENT_PLATFORM_PLAN.md).
+
+## A. Kiến trúc và baseline
+
+- [x] A01 Đọc core/CLI hiện tại, xác định lab và dependency adapters.
+- [x] A02 Đối chiếu assistant-ui Ink, Gemini CLI, Codex TUI, OpenCode.
+- [x] A03 Viết kế hoạch chi tiết, ranh giới và tiêu chí nghiệm thu.
+- [x] A04 Ghi baseline tests và bảo toàn working tree trước khi di chuyển.
+
+## B. Lab và adapter dùng chung
+
+- [x] B01 Tách Node host/provider thành adapter subpaths, root core vẫn trung lập.
+- [x] B02 Chuyển fixture/live runners, scenarios và tests vào core/testing.
+- [x] B03 Lab có scripts/entrypoint độc lập; CLI không là dependency của core.
+- [x] B04 Cập nhật runbook, default paths, source-baseline và migration map.
+- [x] B05 Chạy regression suite, fixture và wire-mock sau di chuyển.
+- [x] B06 Kiểm tra npm artifact không chứa testing/scenarios/recordings.
+
+## C. MCP
+
+- [x] C01 Contract tool source/executor và stable namespace.
+- [x] C02 Adapter SDK stdio và Streamable HTTP; close/cancel/timeout.
+- [x] C03 Discovery, schema validation, output/error bounds, permissions.
+- [x] C04 Nối MCP tools vào agent runtime và CLI config.
+- [x] C05 Test server local end-to-end.
+- [x] C06 Resources/prompts adapter API và trust boundary.
+- [x] C07 OAuth lifecycle: SDK discovery + dynamic client registration + PKCE + auto-refresh; `blackhole mcp login/logout`; token 0600 trong state dir. UI host-native (VS Code/desktop) dùng oauthProviderFactory khi rollout G06.
+
+## D. Skills
+
+- [x] D01 Metadata/content contracts, catalog và lazy activation.
+- [x] D02 Loader SKILL.md, scope, collision, traversal/symlink protection.
+- [x] D03 Nối catalog/load vào runtime và CLI.
+- [x] D04 Tests metadata/path/size/hash bounds và runtime registration của skill tools.
+- [ ] D05 Marketplace/install/update và UI quản lý đa host (giai đoạn mở rộng).
+
+## E. Memory
+
+- [x] E01 MemoryPort, scoped records, source/revision/supersession.
+- [x] E02 Durable SQLite/FTS adapter và schema v1 initialization (migration Quasar tách ở E06).
+- [x] E03 Query/remember/forget và bounded recall trong agent.
+- [x] E04 Kiểm thử restart, scope isolation, supersede, concurrency và forget.
+- [x] E05 CLI controls đọc/ghi/confirm/forget memory theo workspace; tự recall cho session.
+- [x] E06 `blackhole memory import-quasar <db>`: backup nguồn vào state dir, import leaf active thành confirmed kèm provenance, idempotent khi chạy lại; đã chạy với memory.db thật (15 notes, backup giữ nguyên bản gốc).
+- [ ] E07 Graphify/CBM backend evaluation và stale-code invalidation.
+- [ ] E08 Background consolidation, embeddings và hybrid ranking có benchmark.
+
+## F. CLI/TUI
+
+- [x] F01 Application service ghép core và adapters; không dùng lab runner cho chat.
+- [x] F02 CLI task input, JSON/text output, cancellation và error exit.
+- [x] F03 Ink/assistant-ui bridge, composer, messages và streaming.
+- [x] F04 Tool activity, approval, status, context/model và keyboard controls.
+- [x] F05 Durable sessions và commands memory/skills.
+- [x] F06 Tests render, input, stream, cancel, resize và PTY smoke.
+- [ ] F07 Provider/model/thinking picker đầy đủ theo capability (giai đoạn mở rộng).
+- [x] F08 Fullscreen alternate screen, header/input cố định, viewport cuộn và resize.
+- [x] F09 Timeline có thứ tự cho thinking/message/tool; nhãn command/path và badge kết quả.
+- [x] F10 Approval luôn nhìn thấy, timeout/cancel đóng prompt; input Unicode cuộn ngang.
+- [x] F11 Ctrl+T thinking, Ctrl+O chi tiết tool, PageUp/PageDown và Ctrl+G.
+- [x] F12 Scratch workspace không Git: baseline review adapter, validation và completion gate giữ nguyên.
+- [x] F13 Regression tests + PTY live coding end-to-end theo lỗi người dùng báo.
+- [ ] F14 Persist/replay timeline chi tiết theo session, schema version và retention.
+- [x] F15 Mouse/trackpad scrolling, ↑/↓ và giữ vị trí khi stream; dọn mouse mode lúc thoát.
+- [ ] F16 Điều hướng/mở chi tiết từng tool riêng biệt.
+- [x] F17 Streaming từ HTTP đến UI trước EOF, incremental UTF-8/NDJSON, cancellation và regression tests.
+
+## G. General agent profiles và bàn giao
+
+- [x] G01 Coding compatibility và profile assistant/research.
+- [x] G02 Typecheck/build/test core, lab và CLI.
+- [x] G03 Ghi kết quả live smoke riêng với deterministic/wire mock.
+- [x] G04 Cập nhật README, docs, TODO theo thực tế, kiểm tra package.
+- [x] G05 Cập nhật graphify: 58.003 nodes, 81.722 edges, 3.717 communities; AST-only.
+- [ ] G06 VS Code/Quasar consume API mới và conformance (giai đoạn rollout đa host).
+
+## Nhật ký kiểm chứng
+
+Các kết quả được phân biệt giữa kiểm thử tự động, giao thức mock và provider thật bên dưới.
+
+### Kết quả ngày 2026-09-23
+
+| Nhóm | Kết quả |
+|---|---|
+| Baseline trước di chuyển | Core 112/112 |
+| Core sau triển khai | 119/119; typecheck/build/dist smoke qua |
+| Private lab unit | 120/120 |
+| Private lab integration | 88/88 |
+| Private lab E2E | 44/44; gồm crash/resume/research protocol fixtures |
+| CLI/TUI mới | 7/7; typecheck/build qua |
+| Live lab | `01-write-and-validate` với Ollama `glm-5.3-flash:cloud`: passed=true, completed, failures=[] |
+| TUI live | PTY gửi tiếng Việt → nhận “Xin chào.” từ provider thật, completed; Ctrl+C thoát |
+| Migration data | 47 fixture/scenario/recording đối chiếu nguyên byte |
+| Publish | Chưa push/publish; không đổi publisher/repo/npm identity |
+
+Backup trước migration có 243 file và working-tree diff; vị trí local được ghi trong `.agent-migration-backup` cùng thư mục này. Lab regression logs ở `galaxy-ai-coder-core/testing/.galaxy/audit/`; core test journal ở repo core. Không commit log/DB cá nhân vào npm.
 
-Ngày bắt đầu: 2026-09-23. Trạng thái: **P1 nền tảng đã triển khai và kiểm chứng; các phase rollout/memory nâng cao theo TODO**.
+### Phần chưa đánh dấu xong có chủ ý
 
-## 1. Mục tiêu và quyết định đã được đồng ý
+- D05/E07–E08/F07/G06 là các phase mở rộng có điều kiện nghiệm thu trong kế hoạch, không phải API đã hoạt động. C07 đã giao lifecycle + CLI login/logout; màn hình OAuth/resources riêng trong TUI chưa có.
+- UI quản lý memory/resources/prompts trực tiếp trong TUI, production checkpoint resume, direct provider adapters, graph/embedding retrieval và migration Quasar chưa được tính là đã giao.
+- Bản TUI hiện tại là giao diện vận hành cơ bản; chưa có slash command palette, sidebar session, multi-tab hay provider picker.
 
-- `galaxy-ai-coder-core` trở thành nền tảng agent dùng chung cho CLI, VS Code và Quasar.
-- Coding là một profile trên runtime chung; các bảo đảm về chỉnh sửa code, validation và resume vẫn được giữ.
-- `galaxy-code` trở thành sản phẩm terminal có CLI không tương tác và TUI.
-- Lab deterministic/live/replay chuyển về repo core và có entrypoint riêng.
-- MCP, skills, memory có contract chung; I/O thực hiện ở adapter. UI không tự triển khai agent loop.
-- Giữ tên repo, npm package và workflow trusted publishing hiện có. Chưa cần tạo repo/package npm mới để chia module.
-- Không gộp hoặc sửa luồng release của Orbit/Nebula trong công việc này.
+- PTY tự động: resize từ 80 xuống 40 cột, kiểm tra border 38 ký tự, Esc cập nhật trạng thái huỷ, Ctrl+C thoát mã 0. Transcript smoke lưu tại `/tmp/galaxy-tui-resize-smoke.txt`.
+- Npm dry-run: core và CLI không chứa `testing/`, fixture, recording, SQLite DB hay output lab cũ; CLI sau clean build có 23 file artifact.
 
-## 2. Hiện trạng đã kiểm tra
+- Runtime extension smoke: `skill.list → skill.load → memory.remember → memory.search` chạy qua cùng agent loop, tất cả tool result thành công; candidate không xuất hiện trong recall mặc định.
+- Root/agent import closure: kiểm tra 49 module compiled, không kéo Node/MCP/SQLite/React vào entrypoint thuần core.
+- Graphify hoàn tất. Giới hạn công cụ: 12 file SQL không được parser vì thiếu `tree_sitter_sql`; 8 file ở phần khác workspace chỉ parse một phần do syntax. Không sửa các file ngoài phạm vi đợt này.
 
-Core hiện có run controller, tool registry, prompt assembly, context manager, checkpoint, completion gate và host ports. Code vẫn thiên về coding ở identity, prompt modules và completion evidence.
 
-CLI hiện là executable lab: `src/lab`, `src/live`, `fixtures`, `live/scenarios`, provider Ollama và Node host adapters. Nhiều bài test có tên live dùng HTTP mock; chúng không phải bằng chứng đã gọi model thật.
+### Kết quả sửa TUI ngày 2026-09-24
 
-Quasar có Memory Tree Python/SQLite/FTS5/embedding và Rust IPC. Binding dữ liệu, migration và credential đang phụ thuộc desktop. `galaxy-retrieval-core` có contract/strategy cũ, chưa phải memory service dùng chung đã tích hợp vào runtime hiện tại.
+- Core: `npm run verify` qua, 121/121 test (gồm timeout đóng approval và workspace review).
+- CLI: `npm run check` qua, 12/12 test. Có kiểm thử trình tự thinking/tool, exit code khác 0, thao tác approval, input dài, resize và viewport 40×8.
+- Private lab: 16/16 test `lab-tool-executor.test.ts` qua; Git review, approval và evidence cũ giữ hành vi.
+- Live PTY với Ollama `glm-5.3-flash:cloud`, thinking bật: tạo 3 file dự án Node.js trong thư mục không Git; validation chạy 6/6 test pass; final report được lưu và run completed.
+- PTY xác nhận thinking, approval ở đáy, scroll lịch sử, resize 110×30 → 48×16, Ctrl+T/Ctrl+O/Ctrl+G và Ctrl+C thoát mã 0; alternate screen được khôi phục.
+- Evidence local: `/var/folders/1k/56z811sj31zfd6xkvg4r65vm0000gn/T/galaxy-tui-final-l79zgb85/` (`result.json`, `completed.txt`, `resized.txt`, `terminal.ansi`, final report trong state/runs). Không đưa transcript/provider output vào npm.
+- Lần thử trước dừng vì bộ điều khiển QA hết thời gian chờ trước khi duyệt test; không tính đó là một lần live completed. Một lần QA khác bắt frame chưa vẽ xong đã được sửa cách chờ frame rồi chạy lại.
+- Chưa push/publish; không thay repo, npm identity hay trusted-publisher bindings.
+- Graphify AST update hoàn tất: 58.115 nodes, 81.898 edges, 3.706 communities. Cảnh báo parser SQL và syntax ở phần khác workspace vẫn như lần trước.
 
-Workspace root không phải Git repository. Core và CLI đều có thay đổi chưa commit trước đợt này. Khi di chuyển phải giữ nội dung working tree, không reset về HEAD.
 
-## 3. Ranh giới triển khai
+### Sửa streaming và scrolling theo phản hồi tiếp theo (2026-09-24)
 
-| Phần | Trách nhiệm | Phụ thuộc được phép |
-|---|---|---|
-| Runtime core | Vòng lặp, context, tools, profile, skills/memory policy, cancellation, evidence | Contract thuần TypeScript |
-| Node adapters | Provider, MCP client, đọc skills, filesystem/commands, durable store | Node và SDK tích hợp |
-| Lab | Fixture, evaluator, record/replay, reference host, báo cáo | Core + cùng adapter sản phẩm sử dụng |
-| CLI application | Cấu hình, vòng đời session, composition, CLI output | Core + Node adapters |
-| TUI | Input, stream, trạng thái, tool activity, approval, session commands | Application events |
+- Root cause xác nhận bằng source: `readNdjson` chờ toàn bộ body trước khi phát events; viewport trước đó không bật mouse protocol. Đã thay bằng incremental reader + normalizer dùng chung live/replay và SGR mouse reporting.
+- Core verify: 121/121 qua; provider transport: 13/13; normalizer: 7/7; recorded replay: 1/1. Private lab typecheck qua.
+- CLI check: 13/13 qua. Test HTTP→core→Ink giữ response mở, xác nhận thinking/text xuất hiện trước EOF, mouse cuộn giữ dòng đang đọc trong khi delta mới đến và không làm hỏng draft.
+- Live Ollama `glm-5.3-flash:cloud` với thinking off để đo text: partial frame đầu ở 7,48 giây; 60 frame khác nhau trước completed ở 14,04 giây. Wheel lên/xuống, draft, Ctrl+G và Ctrl+C đều qua; mouse mode được tắt và alternate screen được khôi phục.
+- Evidence local: `/var/folders/1k/56z811sj31zfd6xkvg4r65vm0000gn/T/galaxy-stream-scroll-_sqb5j8d/`. Bài thử dài với thinking on được dừng trước completion, không tính là run completed; test streaming thinking trước EOF đã được kiểm chứng bằng HTTP giữ mở.
+- Kiểm tra PTY riêng cho SIGTERM và SIGINT: cả hai đều tắt mouse reporting và khôi phục alternate screen khi thoát. CLI typecheck/build và diff whitespace check cuối cùng qua.
+- Graphify AST update hoàn tất sau sửa: 58.134 nodes, 81.926 edges, 3.719 communities; cảnh báo parser ngoài phạm vi giữ nguyên.
 
-Ban đầu Node adapters dùng subpath export riêng trong package core hiện tại. Root import của core không tải Node, MCP SDK, SQLite hay React. Build/package cần kiểm tra ranh giới này. Tách package/repo độc lập là bước phát hành sau, khi có nhu cầu thật.
 
-## 4. Nghiên cứu TUI và lựa chọn
+### Composer và activity theo ảnh phản hồi (2026-09-24)
 
-Nguồn chính đã đối chiếu ngày 2026-09-23:
+- [x] F18: Native caret cho IME, Delete/Fn+Delete, grapheme và packet nhiều thao tác nhập.
+- [x] F19: Token căn phải footer; spinner + text động theo stage; ẩn activity thành công và dọn timer.
+- [x] F20: Regression Unicode/delete/animation/footer; PTY caret ở màn hình thường, hẹp và rất thấp, cộng cleanup khi thoát.
+- [ ] Kiểm chứng thủ công preedit với bộ gõ tiếng Việt đang bật trong iTerm2 của người dùng; automation hiện kiểm chứng terminal protocol và committed Unicode.
+- CLI `npm run check`: typecheck, 15/15 test và build qua; `git diff --check` sạch. Dependency peer Ink 7.1.1 / React 19.3 / assistant-ui 0.0.44 hợp lệ.
+- PTY 14 checkpoint qua: input trước space, DEL/Fn+Delete, caret trái, emoji/dấu kết hợp, nhiều delete trong packet, input dài, resize 110×30 → 40×16 → 40×8 → 110×30; Ctrl+C khôi phục terminal. Evidence: `/var/folders/1k/56z811sj31zfd6xkvg4r65vm0000gn/T/galaxy-input-cursor-m2sphvql/`.
+- Chưa push/publish trong đợt sửa UI này.
 
-- assistant-ui Ink: https://www.assistant-ui.com/docs/ink?platform=ink
-- Custom backend: https://www.assistant-ui.com/docs/ink/custom-backend
-- Gemini CLI package: https://github.com/google-gemini/gemini-cli/blob/main/packages/cli/package.json
-- Codex Rust TUI: https://github.com/openai/codex/blob/main/codex-rs/tui/Cargo.toml
-- OpenCode: https://github.com/anomalyco/opencode/blob/dev/packages/opencode/package.json
+### Bundle MCP/skills, E06 migration và C07 OAuth (2026-09-24)
 
-Gemini CLI dùng hệ React/Ink; Codex dùng Rust/Ratatui/Crossterm; OpenCode dùng OpenTUI/Solid. Các lựa chọn đều có thể xây agent terminal, nhưng React/Ink phù hợp nhất với code TypeScript hiện tại và tránh thêm runtime ngôn ngữ mới.
+- Tích hợp sẵn 2 MCP server (`orbit`, `nebula` qua npx, tắt bằng `--no-galaxy-mcp`) và 2 skill bundle (`bundled/orbit-framework`, `bundled/galaxy-ui`). Live verify: `blackhole mcp` liệt kê tool của cả hai server; `blackhole skills` thấy 2 skill và load nội dung.
+- orbit-mcp 0.1.2 trên npm hỏng bin (mất shebang, shell chạy JS như bash). Sửa build (banner + `scripts/fix-bin-shebang.mjs`), publish 0.1.4 qua CI trusted publishing; npx -y hoạt động lại, galaxy-code kết nối OK.
+- C07: sửa lỗi reconnect sau login (provider không được truyền lại), viết lại FileOAuthProvider khởi động callback server trong constructor với `ready` promise (hết race getter sync), thêm close() trả port; test E2E fixture OAuth cục bộ: 401 discovery, đăng ký client, PKCE, đổi token, reconnect kèm Bearer, token 0600, clear/logout.
+- E06: `blackhole memory import-quasar` tạo backup nguồn, import leaf active thành confirmed với provenance `quasar:<source>`, key ổn định từ source_ref, bỏ trùng/superseded, chạy lại không nhân bản. Live với `~/.galaxy/desktop/memory/memory.db`: 15 notes imported, FTS recall được, chạy lại 0 imported/15 skipped; bản gốc chỉ đọc qua bản sao backup.
+- Core verify 123/123; CLI check 17/17 + typecheck/build. Xoá `test/oauth-flow.test.ts` (phiên cũ treo vì hostname giả) và gộp assertion 0600/clear vào `test/mcp-oauth.test.ts`. Chưa push/publish galaxy-code trong đợt này.
 
-Chọn React + Ink và đánh giá/tích hợp `@assistant-ui/react-ink` cho composer/message primitives. Tài liệu hiện có API nối backend riêng. Không sử dụng UI runtime làm nơi điều phối tool loop. Core/application sở hữu execution; assistant-ui chỉ nhận/sản xuất UI state.
+### Runtime logging cho CLI (2026-09-25)
 
-### Tiêu chí TUI
+- [x] F21: `CliLogger` NDJSON theo ngày trong `<state-dir>/logs/`, 0600, xoay 5 MB giữ 3 đoạn, redact secret, flush/close; `blackhole logs [n]` xem lại.
+- [x] F22: Wire vào lifecycle (cli_start, session_open, signal, fatal, uncaught/unhandled), run events (state, tool_failed, model_retry, completion_rejected, run_finished) và mcp_connect_failed.
+- [x] F23: Tests unit (redact/rotate/recent 0700) + E2E spawn CLI lỗi → trace có stack trong log; CLI check 20/20.
 
-- Có input rõ ràng, model/provider hiện tại, trạng thái running/completed/failed/canceled.
-- Streaming không làm mất input, không tự thực thi tool lần thứ hai.
-- Enter gửi, Esc hủy lượt đang chạy, Ctrl+C hủy hoặc thoát; khôi phục terminal khi lỗi.
-- Hỗ trợ Unicode, tiếng Việt, terminal hẹp và resize; trạng thái có chữ, không chỉ màu.
-- Tool activity và lỗi hiển thị ngắn; output dài có giới hạn.
-- Có chế độ không tương tác/JSON dành cho CI và pipe.
-- UI chỉ gọi application service; cùng service được kiểm thử không cần render terminal.
-- Session storage của ứng dụng là nguồn chính; không dùng file thread list không có locking của assistant-ui làm kho chia sẻ nhiều process.
+### Chống lặp sau compact + giảm token + readOnlyHint (2026-09-25)
 
-## 5. Chuyển lab
+- [x] P1: checkpoint `lastToolCalls` thêm `argumentDigest` (redact, ≤160 ký tự) — sau compact model thấy CHÍNH XÁC đã gọi gì với path nào. Bằng chứng từ run GymFlow: 9 lần compact trong 11 phút, lastToolCalls chỉ có hash không đọc được.
+- [x] P1: `summarizeP2` nhúng `tools: [{name, args}]` + `resultTail` (300 ký tự cuối) vào bản tóm lược — trước đó chỉ còn "listed workspace" nên agent inspect lại từ đầu.
+- [x] P2: `command.run` maxOutputTokens 12000 → 6000; CLI wire `FileToolOutputSpill` (stateDir/spill, 0600) + tool `tool_output.read` (read-only, không prompt) để đọc lại output đầy đủ qua marker `artifact://<id>`.
+- [x] MCP readOnlyHint: orbit-mcp 0.1.5 + nebula-mcp 1.0.3 công bố annotation; mcp-client đổi risk thành "read" khi hint=true → bỏ prompt cho tra cứu (đã verify live: 5 tool orbit risk=read). Tool khác vẫn prompt.
+- Core 124/124 (thêm test digest); CLI 20/20. Đã publish orbit 0.1.5, nebula 1.0.3, core 0.3.0-alpha.8 (pending CI).
 
-1. Chụp manifest và backup working tree liên quan trước khi di chuyển.
-2. Chuyển host/provider adapters sang subpath riêng của core.
-3. Chuyển lab runner, fixtures, recordings và test của lab về `core/testing/`.
-4. Chuyển các import lab sang adapter dùng chung; core không import galaxy-code.
-5. Bổ sung entrypoint/script core để chạy lab, vẫn yêu cầu lựa chọn rõ ràng cho live provider.
-6. Giữ test sản phẩm terminal tại CLI; phân biệt baseline mock, recorded replay và live thật.
-7. Cập nhật runbook, source baseline và đường dẫn default sau khi di chuyển.
+### Lưu ý chẩn đoán
 
-### Điều kiện nghiệm thu
-
-- Lab chạy từ repo core khi CLI không nằm trong dependency graph.
-- Fixtures/scenarios được bảo toàn nội dung trước di chuyển.
-- Có thể chạy deterministic fixture và wire-mock provider độc lập.
-- File runtime npm không chứa fixtures, recordings, secrets hoặc test harness.
-
-## 6. MCP
-
-### Contract
-
-MCP client sống ở adapter. Core nhận tool definitions với ID ổn định có namespace server; mapping không phụ thuộc tên model. MCP không tự cấp trusted workspace effects.
-
-### Đường chạy
-
-Host config → connect stdio/Streamable HTTP → discover tools → kiểm tra schema/names → tạo tool snapshot → core gọi executor → kiểm tra quyền → SDK call → result có giới hạn → context dưới dạng dữ liệu ngoài.
-
-### Yêu cầu
-
-- Timeout và AbortSignal cho connect/list/call; cleanup transport khi thoát.
-- Không tự chạy command MCP lấy từ repo chưa được cấu hình rõ ràng bởi người dùng.
-- Mỗi server có namespace, allowlist công cụ và cấu hình nguồn quyền host.
-- Tool result lỗi được chuẩn hóa; lỗi sau side effect không tự retry.
-- Bảo toàn structured content; chặn output vượt hạn; không ghi credential vào transcript.
-- Resources/prompts có adapter API riêng; không tự nâng thành system instructions.
-- OAuth discovery/token refresh/PKCE đã có trong adapter (C07); UI đăng nhập host-native thuộc rollout G06 qua oauthProviderFactory.
-
-### Kiểm thử
-
-MCP server fixture cục bộ: discovery, call thành công/lỗi, namespace collision, cancellation, malformed payload, timeout, close. Không cần dịch vụ ngoài.
-
-## 7. Skills
-
-- Hỗ trợ chuẩn thư mục có `SKILL.md`, frontmatter name/description và tài nguyên tương đối.
-- Catalog metadata được nạp trước; nội dung chỉ khi kích hoạt; tài nguyên chỉ khi cần.
-- Scope explicit: user và workspace; đường dẫn canonical, không đọc vượt root qua traversal/symlink.
-- Duplicate names có lỗi rõ ràng hoặc qualified ID; không ghi đè âm thầm.
-- Nội dung có hash/version để biết skill đổi giữa hai lượt.
-- Skill không trực tiếp cấp quyền shell/network. Script được thực thi qua host tool policy.
-- Cho phép chọn skill chủ động và tool load skill theo catalog; trace ghi skill ID/hash đã nạp.
-- Giới hạn số skill, byte mỗi file, catalog và tổng context.
-- Tests: YAML hợp lệ/sai, Unicode, collision, traversal, symlink, lazy read và runtime nhận đúng skill.
-
-## 8. Long-term memory
-
-### Mô hình dữ liệu
-
-Tách run checkpoint, episode, decision/preference/lesson và code index. Memory record có ID, scope, kind, text/summary, source, created/updated time, revision, status, supersedes và điều kiện áp dụng. Dữ kiện code có hash/anchor khi có thể kiểm chứng.
-
-### Storage và phạm vi
-
-- Store dùng chung theo host/user, phân vùng bắt buộc theo repository và worktree khi cần.
-- SQLite/FTS là baseline local; transaction, concurrent writers, schema version, retention và forget cần được kiểm thử.
-- Không dùng đường dẫn desktop cố định làm contract. Không buộc mở Quasar để CLI đọc memory.
-- Cài đặt SQLite thuộc adapter, core chỉ biết MemoryPort.
-- Không đưa dữ liệu ký ức cá nhân hoặc DB vào git/npm.
-
-### Read path
-
-Xác định scope từ host → lọc quyền/scope → tìm exact/lexical → chọn hit theo ngân sách → kiểm tra stale/superseded → nạp nguồn chi tiết nếu cần → đưa vào context như lịch sử có nguồn.
-
-### Write path
-
-Sự kiện hoặc yêu cầu remember → kiểm tra nguồn → tạo candidate → redaction → dedupe/idempotency → persist revision → index. Bản ghi do model tự rút ra là candidate, không tự trở thành quy tắc người dùng. Ghi nhớ quyết định explicit của người dùng phải giữ provenance riêng.
-
-### Tính đúng
-
-- Quyết định mới có thể supersede bản cũ, giữ lịch sử nhưng recall mặc định chỉ lấy bản hiệu lực.
-- Forget phải có hiệu lực với các đường retrieval và dữ liệu dẫn xuất do hệ thống sở hữu.
-- Memory không cấp approval và test cũ không làm task mới đạt completion gate.
-- Recall rỗng khác với lỗi storage; timeout/offline fallback phải hiển thị trong trace.
-- Tự động tổng hợp chạy nền cần lịch, ngân sách và chống tự củng cố; không coi số lần recall là chứng minh đúng.
-
-### Nguồn tham khảo
-
-- Graphify: https://github.com/Graphify-Labs/graphify — code graph/provenance và reflection.
-- Codebase Memory MCP: https://github.com/DeusData/codebase-memory-mcp — incremental index và generation.
-- OpenHuman memory split: https://github.com/tinyhumansai/openhuman/blob/main/crates/openhuman-core/src/memory/README.md
-- DeepSeek Harness: https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md
-- Codex memories: https://learn.chatgpt.com/docs/customization/memories
-- Graphiti: https://github.com/getzep/graphiti — temporal validity.
-
-Baseline cần dùng được trước khi thêm embedding/graph reranking. Tái sử dụng semantics từ nghiên cứu và Memory Tree hiện tại; migration dữ liệu Quasar phải có backup, kiểm tra scope và không làm mất dữ liệu. Không import nguyên engine desktop vào runtime core.
-
-## 9. Profile và tính tương thích
-
-Profile coding giữ các kiểm tra workspace/write/validation/diff đang có. Profile assistant/research chọn prompt và completion requirements phù hợp, vẫn giữ tool correlation, cancellation, token/deadline budget và policy. Public exports cũ còn hoạt động; API mới là additive.
-
-Provider-specific thinking nằm ở adapter/config. UI nhận capability để hiển thị lựa chọn hợp lệ. Test live phải ghi provider, model, settings và phiên bản adapter; không giả định mọi model có cùng thang thinking.
-
-## 10. Validation và phát hành
-
-1. Typecheck/build core và CLI.
-2. Core regression suite; lab deterministic/wire mock/replay.
-3. MCP local protocol test, skills filesystem boundary tests, memory persistence/scope/concurrency tests.
-4. CLI pipe/JSON tests; TUI render/input/cancel và PTY smoke.
-5. `npm pack --dry-run`: package boundaries, không kéo lab hoặc dữ liệu cá nhân vào npm.
-6. Một live smoke với model đã cấu hình khi môi trường khả dụng; báo riêng nếu provider không chạy được, không đánh dấu mock là live.
-7. `graphify update .` từ workspace root sau sửa code.
-8. Release chỉ sau checks; giữ bindings trusted publishing. Version/release cần phản ánh package thực sự tương thích, không tự đánh dấu mọi phase hoàn thành.
-
-## 11. Tiến độ
-
-Theo dõi tại [GALAXY_AGENT_PLATFORM_TODO.md](GALAXY_AGENT_PLATFORM_TODO.md). Mỗi mục chỉ đánh dấu hoàn thành khi có implementation và bằng chứng kiểm thử; các mục future không được tính vào phần đã giao.
-
-## 12. Phạm vi đã triển khai ngày 23/09
-
-- 15 adapter production chuyển từ CLI vào core subpaths; `NodeToolExecutor` dùng chung, deterministic doubles chỉ nằm trong lab private.
-- Toàn bộ lab source/test/scripts/fixtures/live/campaigns/docs chuyển về `galaxy-ai-coder-core/testing`. Manifest đối chiếu xác nhận 47 fixture/scenario/recording nguyên byte.
-- Core có `agent` contracts, composition executor, `contextData` có giới hạn/trust envelope, và assistant/research profile với completion mặc định phù hợp. Coding profile giữ gate cũ.
-- MCP stdio + Streamable HTTP đã thực sự connect/list/call, kiểm tra schema qua SDK, cấp quyền trước dispatch, abort/deadline và đóng kết nối. Resources/prompts có API; chưa có màn hình quản lý/OAuth.
-- Skills có catalog user/workspace, namespace, YAML frontmatter, content/resource loading, hash/path/size bounds. Chưa có marketplace/install/update.
-- Memory v1 có SQLite/FTS5, scope do host ràng buộc, source/hash/revision/status/trust, dedupe, optimistic concurrency, candidate/confirm, recall/forget. `key + revision + status` biểu diễn supersession; kind/conditions/source commit anchors và graph vẫn là bước sau.
-- CLI/TUI có thực thi thật qua core, activity/approval/status, input tiếng Việt, cancellation, JSON mode, conversation session và các lệnh skills/memory/MCP. `--session` phục hồi hội thoại; chưa phải resume execution checkpoint trong sản phẩm CLI.
-- Provider đang chạy: Ollama/local/cloud với cấu hình sẵn có và thinking do adapter xử lý. Không coi đây là đã viết xong direct SDK adapters cho Gemini/Claude/DeepSeek.
-- Không đổi version/npm identity/repo/workflow publisher identity. Chưa push/publish. Trước khi release CLI độc lập phải thay dependency `file:../galaxy-ai-coder-core` bằng version core đã publish tương thích.
-
-## 13. Phân kỳ tiếp theo và điều kiện qua cổng
-
-| Giai đoạn | Công việc | Điều kiện nghiệm thu |
-|---|---|---|
-| P1 nền tảng (đợt này) | Core ports/adapters, private lab, CLI/TUI, MCP/skills/memory v1 | Typecheck/build/test; mock protocol; live lab; PTY; npm boundaries |
-| P2 host rollout | VS Code port bindings, Quasar IPC adapter, giữ UI riêng | Cùng bộ conformance chạy trên từng host; không phụ thuộc CLI; rollback từng host |
-| P3 memory nâng cao | Typed notes/conditions, source revision, stale code invalidation, Graphify/CBM adapter; migration desktop | Recall benchmark với corpus có nhãn; không trộn scope; migration dry-run/backup/rollback, forget lan đến index |
-| P4 providers và trải nghiệm | Direct providers, capability/model/thinking picker, MCP OAuth/resources UI, session manager | Contract tests theo provider, retry/cancel/rate-limit, không chung một thang thinking giả định |
-| P5 khai thác dài hạn | Background consolidation, embedding/hybrid ranking, temporal relations, retention | So sánh lexical baseline, budget/latency đo được, chống tự củng cố thông tin sai |
-
-### Benchmark memory trước khi chọn graph/vector engine
-
-1. Tạo corpus có decision, preference, lesson, code facts, nguồn lỗi thời và dữ liệu scope khác; đánh dấu câu trả lời đúng bằng tay.
-2. Đo Recall@5/10, precision, tỷ lệ stale recall và cross-scope leakage, p50/p95 latency, số token đưa vào model.
-3. So sánh FTS baseline với embeddings/hybrid/graph trên cùng corpus và cùng token budget; không chọn graph vì số node lớn.
-4. Tình huống bắt buộc: rename/delete file, amend/rebase, workspace khác, supersede decision, forget, crash giữa write/index, hai host cùng ghi.
-5. Chỉ đưa backend mới vào default khi chất lượng tốt hơn, invalidation/forget đúng và có đường quay lại FTS.
-
-### Rollout memory từ Quasar
-
-- Liệt kê schema, version, scope và semantics hiện tại trước khi chuyển.
-- Tạo backup readonly, báo cáo số row và hash kiểm kê; không sửa DB gốc trong dry-run.
-- Map những hàng thiếu provenance thành candidate, không tự xem chúng là preference đã xác nhận.
-- Import sang DB mới theo transaction/chunk có resume marker; giữ mapping ID cũ → ID mới.
-- Kiểm tra truy vấn, supersession và forget trên bản sao; chỉ chuyển consumer sau khi đạt.
-- Không bật hai hệ cùng ghi vào cùng schema chưa có concurrency contract.
-
-### Điều kiện phát hành
-
-Giữ nguyên trusted-publisher bindings. Release core trước; CLI pin version tương thích sau; chạy kiểm thử artifact cài từ tarball rồi mới push release commit. Bản làm việc hiện tại dùng local file dependency có chủ ý, không được coi là một bản CLI npm đã sẵn sàng cài độc lập.
-
-
-## 14. Sửa TUI theo phản hồi thực tế (2026-09-24)
-
-Mục tiêu: một màn hình terminal có header cố định, vùng giữa cuộn được và input cố định ở đáy. Thinking, nội dung trả lời và tool phải xuất hiện theo thứ tự phát sinh, không gom tool thành log riêng dưới message.
-
-### Phân chia trách nhiệm và cách thực hiện
-
-1. `galaxy-code/src/timeline.ts` chuyển event core thành các phần hiển thị có thứ tự. Thinking lấy từ provider, không tự suy diễn. Text/thinking cùng loại được nối theo từng lượt model; tool được định danh bằng call ID và cập nhật kết quả ngay tại chỗ.
-2. Tool dùng data parts của assistant-ui, không dùng tool-call parts có thể bị UI runtime thực thi lần nữa. Core vẫn là bên duy nhất thực thi tool.
-3. Tên tool thân thiện kèm command/path/check; trạng thái có chữ và màu. Exit code khác 0 hoặc project validation thất bại phải hiển thị lỗi dù transport trả kết quả thành công.
-4. `tui.tsx` dùng alternate screen và kích thước stdout. Không dùng Ink Static cho lịch sử. Chỉ render các dòng nằm trong viewport; header, trạng thái, approval và input có chiều cao riêng. Resize tính lại phần giữa, không đẩy input xuống scrollback.
-5. Auto-follow ở cuối khi đang chạy; PageUp tạm dừng follow, PageDown/Ctrl+G trở về cuối. Ctrl+T thu gọn thinking, Ctrl+O mở chi tiết tool. Giữ log ngắn mặc định nhưng cho phép xem kết quả tool khi cần.
-6. `composer.tsx` dùng state của assistant-ui và dựng input một dòng, cuộn ngang theo con trỏ. Chia ký tự theo grapheme, đo cell width để không cắt dấu tiếng Việt/emoji. Paste được giữ ở một dòng, phím cuộn không lọt vào prompt.
-7. Approval luôn hiện phía trên input; y/n chỉ giải quyết yêu cầu đang chờ. Core tạo AbortSignal riêng cho mỗi request, hủy prompt khi timeout/cancel mà không hủy toàn run. CLI chọn tối đa 5 phút; host khác giữ timeout mặc định nếu không cấu hình.
-8. Thư mục không có Git: CLI không cung cấp git_operation và ghép `NodeWorkspaceReviewExecutor`. Adapter này chụp baseline trước tác vụ, trả before/after cùng hash cho thay đổi văn bản, kiểm tra tính ổn định và attestation diff-review. Không tự tạo repository, không bỏ yêu cầu validation của completion gate.
-
-### Điều kiện nghiệm thu
-
-- Transcript có thinking → message → tool → kết quả tiếp theo; kết quả cập nhật đúng call, không lặp final text và không thực thi tool ở UI.
-- Stream/hội thoại dài, output lỗi dài, Unicode/emoji và paste dài không làm header/input trôi.
-- Cuộn lên không bị stream kéo xuống; thu/phóng terminal giữ vùng nhập và approval nhìn thấy được.
-- Pending approval hết hạn/abort phải đóng, không nhận quyết định muộn cho call khác.
-- Tool exit nonzero được hiển thị lỗi; chi tiết đọc được qua Ctrl+O.
-- Thử tạo project Node.js + node:test ở thư mục không Git đi qua validation và completion gate thực tế.
-- Thoát Ctrl+C/SIGINT/SIGTERM dọn runtime và trả terminal khỏi alternate screen.
-
-### Giới hạn hiện tại
-
-- Cuộn bằng chuột/trackpad qua SGR mouse reporting (1000/1006) hoặc ↑/↓/PageUp/PageDown. Terminal cần bật hỗ trợ mouse reporting; không còn dựa vào scrollback của alternate screen.
-- Timeline chi tiết hiện giữ trong bộ nhớ của TUI; `--session` phục hồi user/final-answer text. Persist/replay timeline có version schema, giới hạn dung lượng và chính sách retention là việc tiếp theo.
-- Reviewer cho thư mục không Git giới hạn baseline text 8 MiB, từng file 128 KiB và report thay đổi 24 KiB; từ chối attestation nếu thiếu/truncated/không ổn định hoặc có special entry. Dùng Git cho các dự án vượt phạm vi này.
-- TUI cần terminal ít nhất 12 cột × 8 dòng; nghiệm thu compact ở 40×8 và PTY ở 48×16. Các picker/provider/graph memory đang ở những phase riêng trong mục 13.
-
-
-## 15. Streaming thật và cuộn chuột (2026-09-24)
-
-Phản hồi người dùng đã chỉ ra hai thiếu sót của bản trước: UI nhận event streaming nhưng Ollama adapter đọc hết HTTP body rồi mới normalize, và list chỉ hỗ trợ PageUp/PageDown nên cuộn chuột không có tác dụng. Lần smoke trước chỉ chứng minh nội dung xuất hiện, chưa chứng minh delta đến trước EOF.
-
-### Thiết kế sửa
-
-- Đọc body dưới dạng async byte iterator; TextDecoder giữ phần UTF-8 dở dang giữa các chunk, tách NDJSON theo newline và phát event ngay. Chỉ giữ phần dòng JSON chưa hoàn tất, không giữ toàn bộ response. Giới hạn tổng response 8 MiB tiếp tục được áp dụng.
-- Stateful normalizer dùng chung cho live/replay: duy trì content, thinking, usage, terminal state và tool-call IDs. Replay helper cũ vẫn dùng được. Hủy reader khi abort, lỗi byte limit, lỗi protocol hoặc consumer dừng sớm; không phát thêm một started event khi lỗi xảy ra giữa stream.
-- TUI bật SGR mouse reporting trong alternate screen. Wheel/trackpad chỉ cuộn vùng giữa; click/release không thành prompt text. Arrow keys cuộn từng dòng; PageUp/PageDown cuộn từng trang. Cập nhật vị trí theo state trước đó để nhiều wheel events trong một packet không bị mất.
-- Auto-follow chỉ chạy khi ở cuối; người dùng đọc lịch sử không bị token mới kéo xuống. Ctrl+G trở về cuối. Ô trạng thái có dải dòng đang xem.
-- Tắt mouse reporting và khôi phục màn hình khi thoát, kể cả đường exit đồng bộ không chạy được async finally.
-
-### Điều kiện nghiệm thu bổ sung
-
-1. HTTP vẫn mở nhưng UI đã hiển thị thinking và text; thêm delta sau đó cập nhật tiếp, rồi mới gửi done/EOF.
-2. UTF-8 bị chia giữa emoji không bị hỏng; malformed stream/cancel/byte limit vẫn có lỗi rõ ràng và giải phóng reader.
-3. Wheel lên/xuống, nhiều wheel events nối nhau, ↑/↓, PageUp/PageDown đều thay đổi viewport mà giữ header/input.
-4. Khi người dùng cuộn lên, gửi thêm token không làm thay đổi dòng đang đọc. Draft không nhận chuỗi mã mouse.
-5. Provider thật có nhiều frame trước completion; raw PTY ghi nhận bật/tắt mouse reporting và trả alternate screen.
-
-Tham chiếu: [Ollama streaming](https://docs.ollama.com/api/streaming), [terminal control sequences](https://xtermjs.org/docs/api/vtfeatures/). Chi tiết tương tác với phím được đối chiếu thêm với source Ink đang cài trong workspace.
-
-
-## 16. Composer macOS, footer và activity indicator (2026-09-24)
-
-### Nguyên nhân và thay đổi
-
-1. Composer cũ vẽ caret bằng inverse text nhưng không đặt con trỏ thật của terminal. Bộ gõ tiếng Việt đặt preedit tại vị trí con trỏ sau footer, rồi mới commit vào composer khi kết thúc từ. Dùng `useCursor` của Ink để đồng bộ hàng/cột thật với cửa sổ input; cột tính bằng display width, không dùng độ dài UTF-16.
-2. Ink 6.8 nhận byte DEL `0x7f` của phím Delete macOS thành `key.delete`, khiến composer xoá tiến ở cuối câu và không thay đổi gì. Pin Ink 7.1.1, tương thích peer của assistant-ui/React hiện tại, để phân biệt backspace với CSI `3~` (Fn+Delete). Không sửa trực tiếp node_modules.
-3. Giữ draft/cursor refs đồng bộ trong handler để nhiều sự kiện xoá/gõ trong một packet không dùng state React cũ. Dấu kết hợp và emoji được xử lý theo grapheme.
-4. Kiểm chứng PTY phát hiện Ink 7.1.1 lệch hàng caret trong nhánh render đầy chiều cao không có newline; đặc biệt con trỏ tiếp tục trôi khi chỉ di chuyển caret. Reserve một hàng trống cuối terminal cho newline, giữ header/input cố định và tránh ANSI writer cạnh tranh với Ink. Terminal cao 8 hàng dùng input không border.
-5. Token context giữ ý nghĩa dữ liệu cũ, chuyển xuống cùng hàng phím tắt, căn phải; phần help co lại trước token khi màn hình hẹp.
-6. Activity chỉ animate khi run còn hoạt động: Connecting → Thinking/Responding → Running tools/Validating/Review theo event thật. Spinner 120 ms và dấu chấm đổi nhịp; thành công unmount indicator/timer, không còn nhãn Hoàn tất. Lỗi, huỷ và yêu cầu quyền vẫn có phản hồi riêng.
-
-### Nghiệm thu
-
-- Input hiển thị đúng ô trước khi gõ space; caret thật đi cùng ký tự kể cả khi dùng ←/→, cuộn ngang input dài, resize.
-- Delete xoá lùi; Fn+Delete xoá tiến; dấu ghép/emoji được xoá nguyên grapheme; delete lặp không làm mất draft.
-- Footer token căn phải tại 40/100/160 cột, không tăng chiều cao khung; activity thay đổi và dừng timer sau completion.
-- Giữ regression HTTP streaming, scroll giữ vị trí, approval và keyboard shortcuts.
-- `scripts/verify-tui-input.py` kiểm tra PTY thật với emulator pyte; OS IME không được tự động điều khiển, vì vậy kết quả này xác nhận terminal protocol/caret và committed Unicode, không phải kiểm chứng thủ công mọi bộ gõ macOS.
-
-Tham chiếu: [Ink useCursor](https://github.com/vadimdemedes/ink#usecursor), [Ink 7 sửa phân biệt Backspace/Delete](https://github.com/vadimdemedes/ink/releases/tag/v7.0.0).
-
-## 17. Bundle MCP/skills, E06 migration và C07 OAuth (2026-09-24)
-
-### Quyết định
-
-1. galaxy-code mặc định nạp 2 MCP server first-party (`orbit`, `nebula`) bằng `npx -y @galaxy-stack/...`; `--no-galaxy-mcp` tắt hoàn toàn. Config người dùng ghi đè mặc định.
-2. 2 skill `orbit-framework` (từ orbit-mcp) và `galaxy-ui` (từ galaxy-design) đóng gói vào `galaxy-code/skills/`, scope `bundled/`, lazy load như skill thường.
-3. Memory desktop (Quasar Memory Tree) chuyển qua `blackhole memory import-quasar <db>`: luôn backup nguồn vào `<state-dir>/import-backups/`, chỉ đọc bản sao, import leaf active thành confirmed với provenance `quasar:<source>`, key ổn định theo source_ref, idempotent.
-4. OAuth MCP: dùng SDK flow (RFC 9728 discovery, dynamic registration, PKCE, refresh); callback localhost chạy trong FileOAuthProvider; `blackhole mcp login/logout` quản trị; token 0600. UI host-native để dành cho G06 qua oauthProviderFactory.
-
-### Sửa lỗi phát hiện
-
-- orbit-mcp 0.1.2 trên npm mất shebang → shell thực thi bundle như bash, MCP handshake chết. Build thêm guard script, publish 0.1.4 (trusted publishing), galaxy-code kết nối lại được.
-- McpAgentClient.login mất provider khi reconnect (chỉ truyền 3 đối số) → sau login client vẫn không mang token. Đã truyền provider vào open() thứ hai.
-- FileOAuthProvider getter sync đọc listener trước khi bind xong → race crash. Callback giờ khởi động trong constructor, mọi method async chờ `ready`, close() trả port.
-
-### Nghiệm thu
-
-- Live: `blackhole mcp` kết nối orbit (scaffold/graphql/security tools) + nebula (component/coverage tools); `blackhole skills` thấy và load 2 skill bundle.
-- Core 123/123 (2 test OAuth mới: E2E fixture cục bộ + lưu trữ 0600/clear); CLI 17/17 kèm 2 test migration fixture; typecheck + build qua cả hai repo.
-- E06 live với `~/.galaxy/desktop/memory/memory.db`: 15 notes imported, backup lưu, FTS recall được, chạy lại 0 imported/15 skipped.
-- Chưa push/publish galaxy-code; orbit-mcp đã push và CI publish 0.1.4 thành công.
-
-## 18. Runtime log cho CLI (2026-09-25)
-
-### Thiết kế
-
-- `src/logs.ts` `CliLogger`: NDJSON mỗi ngày `cli-YYYY-MM-DD.ndjson` trong `<stateDir>/logs/`, quyền 0600/0700, serialize ghi qua promise queue, xoay ở 5 MB giữ tối đa 3 đoạn, redact pattern secret trước khi ghi, `flush()` cho shutdown.
-- Sự kiện: `cli_start`, `session_open`, `run_started`, `state`, `tool_failed` (kèm summary), `model_retry`, `completion_rejected`, `run_finished` (state + error), `mcp_connect_failed`, `signal`, `fatal`, `uncaught_exception`, `unhandled_rejection`. Không log content/thinking delta (noise + dung lượng).
-- `blackhole logs [n]` in N mục mới nhất kèm đường dẫn file log.
-- Crash handlers giữ trace sau khi stderr/alternate screen biến mất: `uncaughtException` log + exit(1); `unhandledRejection` log + exitCode.
-
-### Nghiệm thu
-
-- Unit: JSON lines hợp lệ, redact `api_key`/`token`, rotate tạo `.1`/`.2`/`.3` đúng hạn mức, `recent()` mới nhất trước.
-- E2E spawn CLI với action sai → exit 1, log chứa `cli_start`, `session_open`, `fatal` kèm stack; demo thật `blackhole logs`.
-- CLI check 20/20 (typecheck + build).
-
-## 19. Chống lặp sau compact + giảm token + readOnlyHint (2026-09-25)
-
-### Nguyên nhân (từ log thật)
-
-Run GymFlow 11 phút có 9 chu kỳ compacting→executing. Chuỗi: tool output lớn (bun install, knowledge docs) → chạm ngưỡng 150K → compact → bản tóm lược chỉ còn "listed workspace" (không path/args) → agent inspect lại → đầy lại. Hậu quả: lặp công việc, hao token, chậm.
-
-### Thay đổi
-
-1. **Checkpoint digest (P1)**: `lastToolCalls` thêm `argumentDigest` = JSON đối số redact ≤160 ký tự; validator chấp nhận; restore giữ nguyên. Sau compact model đọc được chính xác đã inspect path/query nào.
-2. **Enriched compaction summary (P1)**: `summarizeP2` mỗi item thêm `tools` (tên + args redact ≤200) và `resultTail` (300 ký tự cuối kết quả). Hết thời đại summary "listed workspace".
-3. **Hạ cap command.run (P2)**: maxOutputTokens 12000 → 6000.
-4. **Spill + read-back (P2)**: CLI wire `FileToolOutputSpill` (stateDir/spill, 0600) và tool `tool_output.read` (read-only) — output dài vượt hạn mức được spill ra file, context chỉ giữ head/tail + marker `artifact://<id>`; agent tự đọc lại khi cần. Đây là pattern Claude Code (persist to disk, read back).
-5. **readOnlyHint (user feedback)**: orbit-mcp/nebula-mcp công bố `readOnlyHint: true` (đúng chuẩn MCP — chỉ trả text, không mutate); CLI đổi risk thành "read" theo hint → AgentToolExecutor tự cho phép không prompt. Tool không hint vẫn prompt.
-
-### Nghiệm thu
-
-- Core 124/124 (test mới: checkpoint có digest `"path":"src"`, redact, ≤161 ký tự; compacted summary chứa `tools[{name,args}]`).
-- CLI 20/20 qua check. Live: 5 tool orbit risk=read qua npx 0.1.5; nebula 1.0.3 published.
-- So sánh với hệ thống khác: pattern P1 tương đương todo/state P0 của Claude Code; P2 tương đương "persist to disk, read back" — cả hai là chuẩn chung của các agent ổn định.
+- Log run GymFlow (2026-09-25 09:39): 9 lần compacting→executing trong 11 phút; checkpoint `lastToolCalls` lặp `list_files`/`read_file`/`orbit_knowledge_topics` — bằng chứng trực tiếp vòng xoáy compact-mất-ngữ-cảnh-làm-lại.

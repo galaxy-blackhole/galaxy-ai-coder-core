@@ -3311,3 +3311,33 @@ START 2026-09-25 17:49:24 +07:00 (2026-09-25T10:49:24.105Z). [Progress](<.galaxy
 2026-09-25 17:49:27 +07:00 (2026-09-25T10:49:27.642Z) | PASSED | PASS 124/124 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-25T10-49-24-091Z-IICyMN/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T10-49-24-091Z-IICyMN/summary.json>).
+
+## Core tests 2026-09-25T10-59-38-631Z-liP7VT
+
+START 2026-09-25 17:59:38 +07:00 (2026-09-25T10:59:38.635Z). [Progress](<.galaxy/tests/2026-09-25T10-59-38-631Z-liP7VT/summary.md>). Commit: c435ee175ea6e5722d8469a30256b2f455d1b163; source SHA-256: aae89e1a62b253d1f18c37f504c7cda6f7595cb8064007542cb63878bc0707f0.
+
+### Finished 2026-09-25T10-59-38-631Z-liP7VT
+
+2026-09-25 17:59:42 +07:00 (2026-09-25T10:59:42.251Z) | PASSED | PASS 124/124 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-25T10-59-38-631Z-liP7VT/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T10-59-38-631Z-liP7VT/summary.json>).
+
+## Core tests 2026-09-25T11-07-26-321Z-3wwCWv
+
+START 2026-09-25 18:07:26 +07:00 (2026-09-25T11:07:26.325Z). [Progress](<.galaxy/tests/2026-09-25T11-07-26-321Z-3wwCWv/summary.md>). Commit: c435ee175ea6e5722d8469a30256b2f455d1b163; source SHA-256: 03ea34aecc69db8b6e556759697dea52fa92dccc442cac49e360c6df66646514.
+
+### Finished 2026-09-25T11-07-26-321Z-3wwCWv
+
+2026-09-25 18:07:29 +07:00 (2026-09-25T11:07:29.851Z) | PASSED | PASS 124/124 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-25T11-07-26-321Z-3wwCWv/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T11-07-26-321Z-3wwCWv/summary.json>).
+
+## Core tests 2026-09-25T11-10-01-300Z-sVORMD
+
+START 2026-09-25 18:10:01 +07:00 (2026-09-25T11:10:01.306Z). [Progress](<.galaxy/tests/2026-09-25T11-10-01-300Z-sVORMD/summary.md>). Commit: c435ee175ea6e5722d8469a30256b2f455d1b163; source SHA-256: 0cca9147b82c57878fb08b0b50cc4db78280c6ac4cf92d54ffa8c3995892477e.
+
+### Finished 2026-09-25T11-10-01-300Z-sVORMD
+
+2026-09-25 18:10:04 +07:00 (2026-09-25T11:10:04.892Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-25T11-10-01-300Z-sVORMD/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T11-10-01-300Z-sVORMD/summary.json>).

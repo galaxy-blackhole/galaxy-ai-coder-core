@@ -111,12 +111,9 @@ export async function boundAiCoderToolOutput(input: Readonly<{
   const markerTokens = estimator.estimateText(marker);
   const availableBytes = Math.max(1, maxBytes - markerBytes);
   const availableTokens = Math.max(1, maxTokens - markerTokens);
-  const head = sliceToBudget(
-    input.content,
-    Math.max(1, Math.floor(availableBytes * (1 - tailFraction))),
-    Math.max(1, Math.floor(availableTokens * (1 - tailFraction))),
-    estimator,
-  );
+  // The tail is anchored to the END of the value by construction, so JSON
+  // fields near the end survive; overshoot is absorbed by shrinking the head,
+  // never by re-slicing from the front which would cut the tail mid-value.
   const reversedTail = sliceToBudget(
     [...input.content].reverse().join(""),
     Math.max(1, Math.floor(availableBytes * tailFraction)),
@@ -124,9 +121,24 @@ export async function boundAiCoderToolOutput(input: Readonly<{
     estimator,
   );
   const tail = [...reversedTail].reverse().join("");
-  let content = `${head}${marker}${tail}`;
-  if (utf8Bytes(content) > maxBytes || estimator.estimateText(content) > maxTokens) {
-    content = sliceToBudget(content, maxBytes, maxTokens, estimator);
+  const tailBytes = utf8Bytes(tail);
+  const tailTokens = estimator.estimateText(tail);
+  // Head source excludes the tail region so head+tail never double-counts.
+  const tailCharacters = tail.length;
+  const headSource = input.content.length > tailCharacters ? input.content.slice(0, input.content.length - tailCharacters) : "";
+  let headTokenBudget = Math.max(0, availableTokens - tailTokens);
+  let head = "";
+  let content = "";
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const headBytes = Math.max(0, availableBytes - tailBytes);
+    head = headTokenBudget <= 0 || headBytes === 0 ? "" : sliceToBudget(headSource, headBytes, headTokenBudget, estimator);
+    content = `${head}${marker}${tail}`;
+    const contentTokens = estimator.estimateText(content);
+    const contentBytes = utf8Bytes(content);
+    if (contentTokens <= maxTokens && contentBytes <= maxBytes) break;
+    const overshoot = Math.max(contentTokens - maxTokens, Math.ceil((contentBytes - maxBytes) / 4));
+    headTokenBudget = Math.max(0, headTokenBudget - overshoot - 16);
+    if (headTokenBudget === 0 && head === "") break;
   }
   return Object.freeze({
     artifact,

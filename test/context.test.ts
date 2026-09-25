@@ -331,3 +331,19 @@ test("tool output is bounded and points to the complete artifact", async () => {
   assert.match(bounded.content, /artifact:\/\/artifact-1/);
   assert.equal(artifacts.length, 1);
 });
+
+test("bounded output keeps the tail end intact even when the estimator drifts", async () => {
+  const sentinel = '"truncated":true,"derivedMutations":[]}';
+  const bounded = await boundAiCoderToolOutput({
+    content: `${"2026-09-05T00:00:00Z INFO request completed status=200\n".repeat(9000)}${sentinel}`,
+    limits: Object.freeze({ maxBytes: 32_000, maxTokens: 6_000, tailFraction: 0.25 }),
+    runId: "run-tail",
+    toolCallId: "call-tail",
+    toolName: "command_run",
+  });
+  assert.equal(bounded.truncated, true);
+  assert.ok(bounded.content.includes('"truncated":true'), "the tail end must never be cut mid-value");
+  assert.ok(bounded.content.endsWith(sentinel.slice(-64)), "the tail must stay anchored to the value end");
+  assert.ok(bounded.returnedBytes <= 32_000);
+  assert.ok(bounded.returnedTokens <= 6_400, `tokens=${bounded.returnedTokens}`);
+});
