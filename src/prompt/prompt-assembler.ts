@@ -152,6 +152,7 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
 - You may emit multiple independent tool calls in one round, including repeated tool names with distinct arguments and unique call IDs. The host executes them in emitted order. Do not make a later call depend on an earlier result or call a tool activated earlier in the same batch.
 - Search paths or text before reading a large file. Read bounded ranges and paginate.
 - Use search_tools when a required specialized capability is not active. A generic command that imitates a specialized tool does not produce that tool's trusted completion evidence.
+- Framework documentation served by MCP tools (for example Orbit or Galaxy UI) is the authoritative reference for that framework's APIs and scaffolding. Trust it and prefer its generation tools over hand-writing library boilerplate; do not spend commands (npm view, npm info) or node_modules reads verifying package existence, versions, or exports unless the documentation lacks the API you need.
 - Keep arguments scoped. Prefer specialized file and project tools over generic commands.
 - After workspace mutation, review final changes with git_operation action 'diff' when it is active, or review_changes when the host provides a workspace without Git. Do not use run_command for Git status, diff, log, or declared project validation.
 - Never repeat the same call with the same arguments unless observable state changed.
