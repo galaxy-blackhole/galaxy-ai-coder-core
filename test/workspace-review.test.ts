@@ -31,7 +31,12 @@ test("incomplete or special-entry reviews never attest successful completion evi
   const { root, context, workspace } = await setup(t);
   const review = await NodeWorkspaceReviewExecutor.create(workspace, context);
   await writeFile(join(root, "large.txt"), "x".repeat(25000));
-  const bounded = await review.execute(call, context); assert.equal(bounded.ok, false); assert.equal(bounded.effects, undefined); assert.match(bounded.summary, /24 KiB/);
+  const bounded = await review.execute(call, context); assert.equal(bounded.ok, true, bounded.summary);
+  assert.equal(bounded.effects?.diffReview?.diffHash !== undefined, true, "a bounded review still grants diff evidence");
+  const boundedContent = JSON.parse(bounded.content) as { mode: string; changes: { path: string; preview: string | null; previewTruncated: boolean }[] };
+  assert.equal(boundedContent.mode, "bounded-summary");
+  assert.ok(boundedContent.changes.some((change) => change.previewTruncated === true), "the oversized file must appear with a truncated preview");
+  assert.match(bounded.summary, /Đã kiểm tra/);
   await rm(join(root, "large.txt")); await symlink("missing", join(root, "link"));
   const link = await review.execute(call, context); assert.equal(link.ok, false); assert.equal(link.effects, undefined);
   const controller = new AbortController(); controller.abort();

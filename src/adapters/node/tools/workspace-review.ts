@@ -35,6 +35,7 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
       const changes = diffNodeWorkspaceSnapshots(this.baseline, current).writes;
       const reviewed: unknown[] = [];
       let bytes = 0;
+      let degraded = false;
       for (const change of changes) {
         let before: string | null = null; let after: string | null = null;
         if (!["file", "directory", "missing"].includes(change.beforeKind) || !["file", "directory", "missing"].includes(change.afterKind)) throw new Error(`Cannot fully review special entry ${change.path}; use a Git repository for this workspace.`);
@@ -47,13 +48,35 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
           if (!read.ok || read.data.truncated || read.data.contentSha256 !== change.afterHash) throw new Error(`Cannot fully review stable text for ${change.path}; no review evidence was granted.`);
           after = read.data.content;
         }
-        const entry = { ...change, before, after };
-        bytes += Buffer.byteLength(JSON.stringify(entry));
-        if (bytes > MAX_REVIEW_BYTES) throw new Error("Change review exceeds 24 KiB. Use Git for larger changes; no review evidence was granted.");
-        reviewed.push(entry);
+        const full = { ...change, before, after };
+        // Scaffold-scale changes overflow the 24 KiB full-text cap. Degrade to a
+        // bounded per-file summary (hashes + previews) instead of refusing: in a
+        // non-Git workspace there is no alternative review evidence path.
+        if (bytes + Buffer.byteLength(JSON.stringify(full)) > MAX_REVIEW_BYTES) {
+          degraded = true;
+          const afterSize = after === null ? 0 : Buffer.byteLength(after, "utf8");
+          const preview = (text: string | null) => {
+            if (text === null) return { preview: null, previewTruncated: false };
+            const cut = text.length > 600 ? `${text.slice(0, 600)}…` : text;
+            return { preview: cut, previewTruncated: text.length > 600 };
+          };
+          const beforePreview = preview(before); const afterPreview = preview(after);
+          const entry = {
+            path: change.path,
+            beforeKind: change.beforeKind, afterKind: change.afterKind,
+            beforeHash: change.beforeHash, afterHash: change.afterHash,
+            afterSize, ...beforePreview, ...afterPreview,
+          };
+          bytes += Buffer.byteLength(JSON.stringify(entry));
+          if (bytes > MAX_REVIEW_BYTES) continue;
+          reviewed.push(entry);
+          continue;
+        }
+        bytes += Buffer.byteLength(JSON.stringify(full));
+        reviewed.push(full);
       }
       if ((await this.snapshotter.capture(context)).stateVersion !== current.stateVersion) throw new Error("Workspace changed during review. Run review_changes again.");
-      const content = JSON.stringify({ comparison: "task-start-to-current", changes: reviewed });
+      const content = JSON.stringify({ comparison: "task-start-to-current", mode: degraded ? "bounded-summary" : "full-text", changes: reviewed });
       return { ok: true, canonicalToolId: "workspace.review", content, summary: `Đã kiểm tra ${changes.length} thay đổi so với đầu tác vụ (không cần Git).`, trust: "workspace", effectsAuthority: "host", effects: { inspectedPaths: ["."], diffReview: { diffHash: sha256Text(content) } }, outputLimits: { maxBytes: 32768, maxTokens: 16384 } };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

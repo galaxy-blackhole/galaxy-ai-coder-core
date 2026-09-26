@@ -2946,6 +2946,16 @@ export class AiCoderRunController {
       const researchEvidence = completionRejectionResearchEvidence(session, content);
       const remediation = gate.issues.flatMap((item) => {
         if (item.code === "DIFF_NOT_REVIEWED") {
+          // In a workspace without Git the git advice is a trap: the model
+          // searched the catalog for a tool that can never exist and drained
+          // the turn budget. Point it to the workspace review tool instead.
+          const activeCanonicalIds = session.toolSet ? Object.values(session.toolSet.canonicalToolIds) : [];
+          const gitAvailable = activeCanonicalIds.includes("git.diff") || activeCanonicalIds.includes("git.exec");
+          if (!gitAvailable) {
+            return [
+              "DIFF_NOT_REVIEWED next action: this workspace has no Git, so call review_changes (workspace review) once after the last workspace mutation to obtain diff-review evidence. If review_changes reports the change exceeds its size cap, run it again after removing temporary artifacts; output from run_command does not provide trusted diff_review evidence.",
+            ];
+          }
           return [
             "DIFF_NOT_REVIEWED next action: call git_operation with action 'diff' after the last workspace mutation. If git_operation is not active, first call search_tools with query 'final git diff' and category 'git', then call git_operation on the following turn. Output from run_command, including git diff or git status, does not provide trusted diff_review evidence.",
           ];
