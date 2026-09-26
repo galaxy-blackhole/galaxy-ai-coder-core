@@ -179,3 +179,4 @@ Backup trước migration có 243 file và working-tree diff; vị trí local đ
 
 - [x] P2 root cause: derivedDirectories chỉ khớp đường dẫn gốc — `backend/node_modules` bị phân loại durable → hàng nghìn write path + hash nhúng vào mandatory state P0 mỗi lượt → MANDATORY_CONTEXT_TOO_LARGE (1.48M tokens). Fix: match theo segment bất kỳ trong path + thêm `.bun-cache`. Cap `mandatoryState.editedFiles` (200 + total) và checkpoint `edits` (500 + editsTotal). Chứng minh bằng script diff với node_modules lồng nhau: class=derived, writes rỗng.
 - Fix đi kèm: head/tail bounding neo tail vào cuối giá trị (tránh cắt đứt JSON như `"truncated":tru`) — regression test trong context.test.ts.
+- [x] F25: Verify runtime budget cho deepseek 1M: soft 455,475 / compaction 637,665 / eviction-tighten scale theo tỷ lệ profile. Wire `--approval full` vào authorize (trước đó option tồn tại nhưng authorize vẫn gọi permission prompt).

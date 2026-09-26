@@ -664,7 +664,10 @@ export class AiCoderContextManager {
       + this.estimateToolDefinitions(input.tools)
       + this.estimateMessages(nextMessages)
       + vision.estimatedVisionTokens;
-    const toolResultPressure = rawToolTokens > 16_000 && rawToolTokens / Math.max(1, rawInputTokens) > 0.35;
+    // Scale with the window: a fixed 16K threshold compacted a 1M-context model
+    // six times in eight minutes on trivial scaffolding work.
+    const toolResultPressure = rawToolTokens > Math.max(16_000, Math.floor(budget.hardInputTokens * 0.1))
+      && rawToolTokens / Math.max(1, rawInputTokens) > 0.35;
     const pressureBeforeAssembly = classifyAiCoderContextPressure(rawInputTokens, rawInputTokens, budget);
     const checkpointReason = input.forceCheckpointReason
       ?? (pressureBeforeAssembly === "blocked" || pressureBeforeAssembly === "compact" ? "context_threshold"

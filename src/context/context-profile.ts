@@ -100,13 +100,14 @@ export function resolveAiCoderContextBudget(
   // hard ceiling. Clamping the configured 160K target directly to an 8K/24K hard
   // ceiling made compaction unreachable: the request was classified as blocked
   // before the compact state could ever be observed.
-  const softInputTokens = Math.max(1, Math.min(
-    profile.softInputTokens,
-    Math.floor(hardInputTokens * 0.75),
-  ));
+  // Long-context deployments (1M) must not keep compacting at the profile's
+  // 150K target designed for ~200K models. Scale the operating target and the
+  // compaction trigger with the real window; small windows clamp as before.
+  const scaledSoftInputTokens = Math.max(profile.softInputTokens, Math.floor(hardInputTokens * 0.5));
+  const softInputTokens = Math.max(1, Math.min(scaledSoftInputTokens, Math.floor(hardInputTokens * 0.75)));
   const compactionHeadroom = Math.min(4_096, Math.max(1, Math.floor(hardInputTokens * 0.1)));
   const compactionThreshold = Math.min(
-    profile.compactionThreshold,
+    Math.max(profile.compactionThreshold, Math.floor(hardInputTokens * 0.7)),
     Math.max(softInputTokens, hardInputTokens - compactionHeadroom),
   );
   const configuredCompaction = Math.max(1, profile.compactionThreshold);
