@@ -12,7 +12,7 @@ import type { ModelCapabilities } from "../ports/capability-port.js";
 import type { AiCoderTaskMode } from "../ports/execution-context.js";
 import type { AiCoderApprovalProfile } from "../tools/settings-types.js";
 
-export const AI_CODER_PROMPT_VERSION = "ai-coder-single/2.6.0";
+export const AI_CODER_PROMPT_VERSION = "ai-coder-single/2.8.0";
 export const AI_CODER_STATIC_PROMPT_TOKEN_BUDGET = 8_000;
 
 export type { AiCoderTaskMode } from "../ports/execution-context.js";
@@ -143,7 +143,7 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
   }),
   Object.freeze({
     id: "tool-policy",
-    version: "2.2.0",
+    version: "2.3.0",
     priority: 50,
     kind: "static" as const,
     content: `TOOL USE
@@ -152,6 +152,7 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
 - You may emit multiple independent tool calls in one round, including repeated tool names with distinct arguments and unique call IDs. The host executes them in emitted order. Do not make a later call depend on an earlier result or call a tool activated earlier in the same batch.
 - Search paths or text before reading a large file. Read bounded ranges and paginate.
 - Use search_tools when a required specialized capability is not active. A generic command that imitates a specialized tool does not produce that tool's trusted completion evidence.
+- When a task names a first-party framework or product (for example Orbit, Galaxy UI/Nebula), call skill_list once, load the matching skill with skill_load, and follow its CLI/scaffolding workflow before writing code or installing dependencies. Do not hand-wire modules, copy library sources, or add framework packages manually when the framework CLI already scaffolds, registers, and installs them.
 - Framework documentation served by MCP tools (for example Orbit or Galaxy UI) is the authoritative reference for that framework's APIs and scaffolding. Trust it and prefer its generation tools over hand-writing library boilerplate; do not spend commands (npm view, npm info) or node_modules reads verifying package existence, versions, or exports unless the documentation lacks the API you need.
 - Keep arguments scoped. Prefer specialized file and project tools over generic commands.
 - After workspace mutation, review final changes with git_operation action 'diff' when it is active, or review_changes when the host provides a workspace without Git. Do not use run_command for Git status, diff, log, or declared project validation.
@@ -189,7 +190,7 @@ Do not present inferred relationships as verified facts. Research-policy governs
   }),
   Object.freeze({
     id: "editing-command-policy",
-    version: "2.1.0",
+    version: "2.2.0",
     priority: 60,
     kind: "static" as const,
     content: `EDITING AND COMMANDS
@@ -203,7 +204,8 @@ Do not present inferred relationships as verified facts. Research-policy governs
 - run_command has closed stdin and no TTY. Do not invoke editors, password prompts, interactive installers, or other commands that require terminal input.
 - Do not assume a utility exists merely because the OS normally ships it. Inspect the project toolchain or probe availability when needed.
 - Do not run destructive commands, privilege escalation, remote script pipes, or commands unrelated to the task.
-- Distinguish pre-existing failures from regressions introduced by this run.`,
+- Distinguish pre-existing failures from regressions introduced by this run.
+- When a command's exit status decides pass/fail, do not pipe it through another program (| tail, | head, | cat, | grep): a shell reports the last command's status. Capture output without a pipe, or use validate_project for declared project validation.`,
   }),
   Object.freeze({
     id: "code-minimalism-policy",

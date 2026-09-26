@@ -37,6 +37,15 @@ export type AiCoderVisionBucket = "large" | "medium" | "small" | "thumbnail";
 
 export type AiCoderTokenLedgerEntry = Readonly<{
   actualInput: number | null;
+  /** Prompt-cache hits reported by providers that expose them (0 when supported and all missed). */
+  cachedInput: number | null;
+  /** cachedInput / actualInput when both are known, else null. */
+  cacheHitRate: number | null;
+  /** Session-cumulative provider input tokens (sum over completed turns). */
+  cumulativeActualInput: number;
+  cumulativeCachedInput: number;
+  /** cumulativeCachedInput / cumulativeActualInput, matching a session-level UI. */
+  cumulativeCacheHitRate: number | null;
   categories: AiCoderTokenCategories;
   compactionCount: number;
   contextWindow: number;
@@ -227,6 +236,7 @@ export class AiCoderTokenLedger {
   }>, estimator: AiCoderTokenEstimator): AiCoderTokenLedgerEntry {
     const usage = input.usage ?? {};
     const actualInput = numericValue(usage, ["prompt_eval_count", "input_tokens", "prompt_tokens", "inputTokens"]);
+    const cachedInput = numericValue(usage, ["prompt_cache_hit_tokens", "cached_tokens", "cachedInputTokens", "cache_read_input_tokens"]);
     const providerOutputTokens = numericValue(usage, ["eval_count", "output_tokens", "completion_tokens", "outputTokens"]);
     const estimatedThinking = estimator.estimateText(input.thinking ?? "");
     const estimatedVisible = estimator.estimateText(input.visibleOutput ?? "");
@@ -237,8 +247,15 @@ export class AiCoderTokenLedger {
       ? estimatedVisible
       : Math.max(0, providerOutputTokens - thinkingTokens);
     const categories = Object.freeze({ ...EMPTY_CATEGORIES, ...input.categories });
+    const cumulativeActualInput = this.entries.reduce((sum, item) => sum + (item.actualInput ?? 0), 0) + (actualInput ?? 0);
+    const cumulativeCachedInput = this.entries.reduce((sum, item) => sum + (item.cachedInput ?? 0), 0) + (cachedInput ?? 0);
     const entry = Object.freeze({
       actualInput,
+      cachedInput,
+      cacheHitRate: actualInput === null || actualInput === 0 || cachedInput === null ? null : cachedInput / actualInput,
+      cumulativeActualInput,
+      cumulativeCachedInput,
+      cumulativeCacheHitRate: cumulativeActualInput === 0 ? null : cumulativeCachedInput / cumulativeActualInput,
       categories,
       compactionCount: input.compactionCount,
       contextWindow: input.contextWindow,

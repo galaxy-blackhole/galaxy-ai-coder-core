@@ -27,6 +27,20 @@ test("scratch workspace review covers added, edited and deleted text without cre
   assert.equal((await workspace.stat({ path: ".git" }, context)).ok, true);
   assert.equal((await review.execute({ ...call, arguments: { path: "../outside" } }, context)).ok, false);
 });
+test("binary or oversized files are reviewed by hash without failing the whole review", async t => {
+  const { root, context, workspace } = await setup(t);
+  await writeFile(join(root, "seed.txt"), "seed");
+  const review = await NodeWorkspaceReviewExecutor.create(workspace, context);
+  await writeFile(join(root, "image.bin"), Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x80, 0x81, 0x82]));
+  const result = await review.execute(call, context);
+  assert.equal(result.ok, true, result.summary);
+  assert.ok(result.effects?.diffReview?.diffHash, "an opaque review still grants diff evidence");
+  const content = JSON.parse(result.content) as { mode: string; opaquePaths: string[]; changes: { path: string; textReviewed?: boolean }[] };
+  assert.ok(content.opaquePaths.includes("image.bin"));
+  assert.equal(content.changes.find(change => change.path === "image.bin")?.textReviewed, false);
+  assert.match(content.mode, /opaque/);
+});
+
 test("incomplete or special-entry reviews never attest successful completion evidence", async t => {
   const { root, context, workspace } = await setup(t);
   const review = await NodeWorkspaceReviewExecutor.create(workspace, context);

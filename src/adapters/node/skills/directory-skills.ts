@@ -22,7 +22,20 @@ function describe(id: string, source: string, content: string): SkillDescriptor 
   if (!front) throw new Error(`Skill ${id} requires YAML frontmatter.`);
   const metadata: unknown = parse(front[1]!, { maxAliasCount: 20 });
   if (!metadata || typeof metadata !== "object" || !("name" in metadata) || !("description" in metadata) || typeof metadata.name !== "string" || typeof metadata.description !== "string" || !metadata.name.trim() || !metadata.description.trim() || metadata.description.length > 2048) throw new Error(`Invalid skill metadata: ${id}`);
-  return { id, name: metadata.name, description: metadata.description, source, contentHash: createHash("sha256").update(content).digest("hex") };
+  const record = metadata as Readonly<Record<string, unknown>>;
+  const version = record.version;
+  if (version !== undefined && (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))) throw new Error(`Invalid skill version: ${id}`);
+  const rawTags = record.tags;
+  if (rawTags !== undefined && (!Array.isArray(rawTags) || rawTags.some((tag) => typeof tag !== "string" || !tag.trim() || tag.length > 32))) throw new Error(`Invalid skill tags: ${id}`);
+  return {
+    id,
+    name: metadata.name,
+    description: metadata.description,
+    source,
+    contentHash: createHash("sha256").update(content).digest("hex"),
+    ...(version === undefined ? {} : { version: version as string }),
+    ...(rawTags === undefined ? {} : { tags: Object.freeze((rawTags as string[]).map(tag => tag.trim())) }),
+  };
 }
 export class DirectorySkills implements AgentSkillsPort {
   private readonly entries = new Map<string, { root: string; hash: string }>();

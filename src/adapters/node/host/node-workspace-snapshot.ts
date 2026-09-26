@@ -5,6 +5,7 @@ import { lstat, open, readdir, readlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
+import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
 
 const MAX_ENTRIES = 100_000;
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -44,20 +45,7 @@ export type NodeWorkspaceSnapshotOptions = Readonly<{
  * budget, and their mutations never enter authored oracle evidence.
  */
 export const DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS: NodeWorkspaceSnapshotOptions = Object.freeze({
-  derivedDirectories: Object.freeze([
-    ".cache",
-    ".gradle",
-    ".mypy_cache",
-    ".next",
-    ".parcel-cache",
-    ".pytest_cache",
-    ".bun-cache",
-    ".turbo",
-    ".vite",
-    "__pycache__",
-    "node_modules",
-    "target",
-  ]),
+  derivedDirectories: GENERATED_WORKSPACE_DIRECTORIES,
 });
 
 export type NodeWorkspaceObservedMutation = Readonly<{
@@ -262,7 +250,9 @@ export class NodeWorkspaceSnapshotter {
         accountEntry();
         const childSegments = Object.freeze([...segments, name]);
         const relativePath = workspacePath(childSegments);
-        const derived = inheritedDerived || childSegments.some((segment) => this.derivedDirectories.has(segment));
+        const derived = inheritedDerived
+          || childSegments.some((segment) => this.derivedDirectories.has(segment))
+          || isGeneratedWorkspaceFileName(name);
         const absolutePath = join(absoluteDirectory, name);
         const info = await lstat(absolutePath);
         if (info.isDirectory() && !info.isSymbolicLink()) {

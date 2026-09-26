@@ -260,6 +260,17 @@ export type AiCoderRuntimeEventPayload =
       type: "completion_rejected";
     }>
   | Readonly<{ pressure: AiCoderContextPressure; tokens: number; type: "context_pressure" }>
+  | Readonly<{
+      ledger: Readonly<{
+        actualInput: number | null;
+        cacheHitRate: number | null;
+        cachedInput: number | null;
+        cumulativeCacheHitRate: number | null;
+        outputTokens: number;
+        turn: number;
+      }>;
+      type: "token_ledger";
+    }>
   | Readonly<{ transition: AiCoderStateTransition; type: "state" }>;
 
 export type AiCoderRuntimeEvent = AiCoderRuntimeEventPayload & Readonly<{

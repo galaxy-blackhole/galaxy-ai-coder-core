@@ -42,6 +42,26 @@ export interface OllamaCodingModelOptions {
   readonly requestTimeoutMs?: number;
   /** Provider-owned control; named effort levels are only supported by some Ollama models. */
   readonly thinking?: boolean | "low" | "medium" | "high";
+  /**
+   * Set to "in-history" only when the model's chat template has been verified to
+   * read a later system message as the effective prompt (append instead of
+   * rewriting the leading system message keeps the prefix cache warm).
+   */
+  readonly systemPromptUpdate?: "in-place" | "in-history" | "unknown";
+}
+
+/**
+ * Ollama models whose chat template has been probed to read a later system
+ * message as the effective prompt (see docs/CACHE_HIT.md). Only add a model
+ * after running the code-word probe against it; anything unmatched stays
+ * in-place. An explicit systemPromptUpdate option always wins.
+ */
+const VERIFIED_IN_HISTORY_MODELS: readonly RegExp[] = Object.freeze([
+  /(?:^|\/)gemma3(?=[:/]|$)/i,
+  /(?:^|\/)deepseek-v4\.1-flash(?=[:/]|$)/i,
+]);
+export function verifiedSystemPromptUpdate(model: string): "in-history" | "unknown" {
+  return VERIFIED_IN_HISTORY_MODELS.some((pattern) => pattern.test(model)) ? "in-history" : "unknown";
 }
 
 export interface OllamaModelDiagnostics {
@@ -363,10 +383,15 @@ export class OllamaCodingModel implements CodingModelAdapter {
         output: Object.freeze({ text: "supported" as const, image: "unknown" as const }),
         parallelToolCalling: toolCalling === "supported" ? "supported" as const : "unknown" as const,
         preserveThinking: thinking === "optional" || thinking === "required" ? "supported" as const : "unknown" as const,
+        // Ollama >= 0.34 reports prefix reuse (prompt_eval_cached_count), so the
+        // runtime may keep a stable finalization prefix. In-history system-message
+        // semantics still depend on the model template and stay opt-in.
+        promptCache: "supported" as const,
         streaming: "supported" as const,
         // Ollama Cloud does not currently support structured outputs. A local
         // model advertising the standard API can still use the format field.
         structuredOutput: cloudModel ? "unknown" as const : "supported" as const,
+        systemPromptUpdate: this.options.systemPromptUpdate ?? verifiedSystemPromptUpdate(this.options.model),
         thinking,
         tokenCounting: "unsupported" as const,
         toolCalling,

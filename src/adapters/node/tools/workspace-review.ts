@@ -34,21 +34,29 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
       const current = await this.snapshotter.capture(context);
       const changes = diffNodeWorkspaceSnapshots(this.baseline, current).writes;
       const reviewed: unknown[] = [];
+      const opaquePaths: string[] = [];
       let bytes = 0;
       let degraded = false;
       for (const change of changes) {
-        let before: string | null = null; let after: string | null = null;
+        let before: string | null = null; let after: string | null = null; let textReviewed = true;
         if (!["file", "directory", "missing"].includes(change.beforeKind) || !["file", "directory", "missing"].includes(change.afterKind)) throw new Error(`Cannot fully review special entry ${change.path}; use a Git repository for this workspace.`);
         if (change.beforeKind === "file") {
           before = this.contents.get(change.path) ?? null;
-          if (before === null) throw new Error(`Baseline text unavailable for ${change.path}; no review evidence was granted.`);
+          // A binary or oversized baseline file has no cached text; review it by hash.
+          if (before === null) { textReviewed = false; opaquePaths.push(change.path); }
         }
         if (change.afterKind === "file") {
           const read = await this.workspace.readText({ path: change.path, maxBytes: 128 * 1024 }, context);
-          if (!read.ok || read.data.truncated || read.data.contentSha256 !== change.afterHash) throw new Error(`Cannot fully review stable text for ${change.path}; no review evidence was granted.`);
-          after = read.data.content;
+          if (read.ok && !read.data.truncated && read.data.contentSha256 === change.afterHash) after = read.data.content;
+          else if (read.ok && !read.data.truncated) throw new Error(`Workspace file changed during review: ${change.path}. Run review_changes again.`);
+          else {
+            // Binary or oversized content: keep hash/kind evidence and disclose text was not reviewed.
+            textReviewed = false;
+            if (!opaquePaths.includes(change.path)) opaquePaths.push(change.path);
+          }
         }
-        const full = { ...change, before, after };
+        const textFlag = textReviewed ? {} : { textReviewed: false as const };
+        const full = { ...change, before, after, ...textFlag };
         // Scaffold-scale changes overflow the 24 KiB full-text cap. Degrade to a
         // bounded per-file summary (hashes + previews) instead of refusing: in a
         // non-Git workspace there is no alternative review evidence path.
@@ -65,7 +73,7 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
             path: change.path,
             beforeKind: change.beforeKind, afterKind: change.afterKind,
             beforeHash: change.beforeHash, afterHash: change.afterHash,
-            afterSize, ...beforePreview, ...afterPreview,
+            afterSize, ...textFlag, ...beforePreview, ...afterPreview,
           };
           bytes += Buffer.byteLength(JSON.stringify(entry));
           if (bytes > MAX_REVIEW_BYTES) continue;
@@ -76,8 +84,9 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
         reviewed.push(full);
       }
       if ((await this.snapshotter.capture(context)).stateVersion !== current.stateVersion) throw new Error("Workspace changed during review. Run review_changes again.");
-      const content = JSON.stringify({ comparison: "task-start-to-current", mode: degraded ? "bounded-summary" : "full-text", changes: reviewed });
-      return { ok: true, canonicalToolId: "workspace.review", content, summary: `Đã kiểm tra ${changes.length} thay đổi so với đầu tác vụ (không cần Git).`, trust: "workspace", effectsAuthority: "host", effects: { inspectedPaths: ["."], diffReview: { diffHash: sha256Text(content) } }, outputLimits: { maxBytes: 32768, maxTokens: 16384 } };
+      const mode = degraded ? (opaquePaths.length ? "bounded-summary+opaque" : "bounded-summary") : opaquePaths.length ? "text+opaque" : "full-text";
+      const content = JSON.stringify({ comparison: "task-start-to-current", mode, opaquePaths, changes: reviewed });
+      return { ok: true, canonicalToolId: "workspace.review", content, summary: `Đã kiểm tra ${changes.length} thay đổi so với đầu tác vụ (không cần Git)${opaquePaths.length ? `; ${opaquePaths.length} tệp nhị phân/lớn chỉ theo hash` : ""}.`, trust: "workspace", effectsAuthority: "host", effects: { inspectedPaths: ["."], diffReview: { diffHash: sha256Text(content) } }, outputLimits: { maxBytes: 32768, maxTokens: 16384 } };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, canonicalToolId: "workspace.review", content: JSON.stringify({ error: message }), summary: message, trust: "trusted", error: { code: "WORKSPACE_REVIEW_FAILED", message, retryable: false } };

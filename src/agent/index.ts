@@ -17,12 +17,24 @@ export interface MemoryRecord {
   readonly trust: "candidate" | "confirmed";
   readonly updatedAt: string;
 }
+/** Optional host-supplied embedding provider; without it memory stays lexical + recency. */
+export interface AgentEmbeddingPort {
+  /** Stable model identifier; vectors from different models are never mixed. */
+  readonly model: string;
+  embed(texts: readonly string[]): Promise<readonly (readonly number[])[]>;
+}
+export interface AgentMemoryConsolidation {
+  removedOrphanEmbeddings: number;
+  removedSuperseded: number;
+}
 /** A port instance is bound to a host-selected scope, never a model-selected scope. */
 export interface AgentMemoryPort {
   search(query: string, options?: { limit?: number; includeCandidates?: boolean }): Promise<readonly MemoryRecord[]>;
   remember(input: { key: string; content: string; source: string; trust?: "candidate" | "confirmed"; expectedRevision?: number }): Promise<MemoryRecord>;
   history(key: string): Promise<readonly MemoryRecord[]>;
   forget(key: string): Promise<number>;
+  /** Optional: prune superseded revisions and orphan vectors to bound storage. */
+  consolidate?(options?: { keepSupersededRevisions?: number }): AgentMemoryConsolidation;
   close(): void;
 }
 export interface SkillDescriptor {
@@ -31,6 +43,9 @@ export interface SkillDescriptor {
   readonly description: string;
   readonly source: string;
   readonly contentHash: string;
+  /** Optional semver declared in frontmatter; used by the marketplace. */
+  readonly version?: string;
+  readonly tags?: readonly string[];
 }
 export interface AgentSkillsPort {
   list(): Promise<readonly SkillDescriptor[]>;

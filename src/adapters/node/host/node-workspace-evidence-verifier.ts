@@ -12,23 +12,12 @@ import { lstat, open, readdir, readlink, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
+import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName, isGeneratedWorkspacePath } from "./workspace-generated-state.js";
 
 const IGNORED_DIRECTORIES = new Set([
-  ".cache",
   ".galaxy",
   ".git",
-  ".gradle",
-  ".mypy_cache",
-  ".next",
-  ".parcel-cache",
-  ".pytest_cache",
-  ".turbo",
-  ".vite",
-  "__pycache__",
-  "coverage",
-  "dist",
-  "node_modules",
-  "target",
+  ...GENERATED_WORKSPACE_DIRECTORIES,
 ]);
 const MAX_ENTRIES = 100_000;
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -182,6 +171,7 @@ export class NodeWorkspaceEvidenceVerifier implements AiCoderResumeWorkspaceVeri
       for (const child of children) {
         checkContext(context);
         if (child.isDirectory() && IGNORED_DIRECTORIES.has(child.name)) continue;
+        if (isGeneratedWorkspaceFileName(child.name)) continue;
         if (child.name.endsWith(".galaxy-code.lock")) continue;
         accountEntry();
         const absolutePath = join(absoluteDirectory, child.name);
@@ -211,6 +201,7 @@ export class NodeWorkspaceEvidenceVerifier implements AiCoderResumeWorkspaceVeri
       children.sort((left, right) => compareCodeUnits(left.name, right.name));
       for (const child of children) {
         checkContext(context);
+        if (isGeneratedWorkspaceFileName(child.name)) continue;
         if (child.name.endsWith(".galaxy-code.lock")) continue;
         accountEntry();
         const absolutePath = join(absoluteDirectory, child.name);
@@ -281,6 +272,9 @@ export class NodeWorkspaceEvidenceVerifier implements AiCoderResumeWorkspaceVeri
       checkContext(context);
       const lexicalPath = this.scope.resolveLexical(activeFile.path);
       const workspacePath = relative(this.workspaceRoot, lexicalPath).split("\\").join("/") || ".";
+      // Generated paths (build output, tsbuildinfo) must not enter the durable
+      // fingerprint even when they were tracked as active paths.
+      if (isGeneratedWorkspacePath(workspacePath.split("/"))) continue;
       let pathInfo;
       try {
         pathInfo = await lstat(lexicalPath);

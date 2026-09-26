@@ -12,6 +12,9 @@ export interface ResolvedOllamaConnection {
   readonly baseUrl: string;
   readonly configPath: string;
   readonly credentialSource: CredentialSource;
+  /** Optional embedding model + endpoint declared by the same manual entry. */
+  readonly embeddingBaseUrl?: string;
+  readonly embeddingModel?: string;
   readonly model: string;
 }
 
@@ -92,11 +95,15 @@ export async function resolveOllamaConnection(
     ?? optionalNonEmpty(manual?.model)
     ?? DEFAULT_AI_CODER_CORE_SETTINGS.singleAgent.model;
   if (model.trim().length === 0) throw new Error("Ollama model must be non-empty.");
+  const embeddingModel = optionalNonEmpty(manual?.embeddingModel);
+  const embeddingBaseUrl = optionalNonEmpty(manual?.embeddingBaseUrl);
   return Object.freeze({
     ...(apiKey === undefined ? {} : { apiKey }),
     baseUrl,
     configPath,
     credentialSource,
+    ...(embeddingModel === undefined ? {} : { embeddingModel }),
+    ...(embeddingBaseUrl === undefined ? {} : { embeddingBaseUrl: safeProviderBaseUrl(embeddingBaseUrl) }),
     model: model.trim(),
   });
 }

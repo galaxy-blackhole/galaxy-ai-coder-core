@@ -126,9 +126,13 @@ export function createOllamaChatNormalizer(options: NormalizeOllamaChatOptions) 
 
       const inputTokens = nonNegativeInteger(rawChunk.prompt_eval_count);
       const outputTokens = nonNegativeInteger(rawChunk.eval_count);
+      // Ollama >= 0.34 reports prefix-cache reuse as prompt_eval_cached_count;
+      // the OpenAI-compatible /v1 path reports prompt_tokens_details.cached_tokens.
+      const cachedInputTokens = nonNegativeInteger(rawChunk.prompt_eval_cached_count);
       const usage = Object.freeze({
         ...(inputTokens === undefined ? {} : { inputTokens }),
         ...(outputTokens === undefined ? {} : { outputTokens }),
+        ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
         ...(inputTokens === undefined || outputTokens === undefined ? {} : { totalTokens: inputTokens + outputTokens }),
       });
       if (Object.keys(usage).length > 0) events.push(Object.freeze({ type: "usage", usage }));

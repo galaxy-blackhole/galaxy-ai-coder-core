@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-stack/ai-coder-core",
-  "version": "0.3.0-alpha.16",
+  "version": "0.3.0-alpha.17",
   "private": false,
   "description": "Platform-neutral runtime for the Galaxy AI Coder single agent. Core exception under @galaxy-stack, versioned by the galaxy-blackhole organization. Consumed by galaxy-code (Blackhole CLI), galaxy-vscode-extension, and galaxy-desktop.",
   "license": "MIT",

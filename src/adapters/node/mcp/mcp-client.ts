@@ -6,6 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { createHash } from "node:crypto";
 import type { AgentTool } from "../../../agent/index.js";
+import type { ToolExecutionContext } from "../../../ports/execution-context.js";
 import { FileOAuthProvider } from "./oauth-provider.js";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 
@@ -21,7 +22,17 @@ export type McpConnection = { name: string; timeoutMs?: number } & (
 );
 /** Server annotations are display hints, never authorization or verified runtime effects. */
 export class McpAgentClient {
-  private constructor(private readonly client: Client, readonly name: string, private readonly timeout: number) {}
+  private client: Client;
+  readonly name: string;
+  private constructor(
+    private readonly config: McpConnection,
+    private readonly timeout: number,
+    private readonly provider: OAuthClientProvider | undefined,
+    client: Client,
+  ) {
+    this.client = client;
+    this.name = config.name;
+  }
   static async connect(config: McpConnection, signal?: AbortSignal, options?: McpConnectOptions): Promise<McpAgentClient> {
     if (!/^[a-zA-Z0-9_-]{1,48}$/.test(config.name)) throw new Error("Invalid MCP server name.");
     const timeout = Math.max(100, Math.min(120000, config.timeoutMs ?? 30000));
@@ -47,7 +58,7 @@ export class McpAgentClient {
       await client.connect(transport as unknown as Transport, { timeout, ...(signal ? { signal } : {}) });
       // Drain stderr to prevent a verbose local server blocking on a full pipe.
       if (transport instanceof StdioClientTransport) transport.stderr?.on("data", () => {});
-      return new McpAgentClient(client, config.name, timeout);
+      return new McpAgentClient(config, timeout, provider, client);
     } catch (error) {
       await transport.close().catch(() => {});
       if (provider && error instanceof UnauthorizedError) return undefined;
@@ -93,7 +104,18 @@ export class McpAgentClient {
           trust: "external",
           definition: { type: "function", function: { name, description: (tool.description ?? tool.name).slice(0, 4096), parameters: tool.inputSchema } },
           execute: async (args, context) => {
-            const result = await this.client.callTool({ name: tool.name, arguments: { ...args } }, undefined, { signal: context.signal, timeout: Math.max(1, Math.min(this.timeout, context.deadline - Date.now())) });
+            const readOnly = (tool.annotations as { readOnlyHint?: boolean } | undefined)?.readOnlyHint === true;
+            let result;
+            try {
+              result = await this.call(tool.name, args, context);
+            } catch (error) {
+              // Restore the connection for later calls. Only a side-effect-free
+              // tool is retried; a failed mutation keeps its unknown outcome.
+              let reconnected = false;
+              try { await this.reconnect(context.signal); reconnected = true; } catch { /* keep the original failure */ }
+              if (!readOnly || !reconnected) throw error;
+              result = await this.call(tool.name, args, context);
+            }
             if (result.isError) throw new Error(`MCP ${this.name}/${tool.name}: ${JSON.stringify(result.content).slice(0, 2048)}`);
             return { server: this.name, tool: tool.name, trust: "external", result };
           },
@@ -109,5 +131,18 @@ export class McpAgentClient {
   readResource(uri: string, signal?: AbortSignal) { return this.client.readResource({ uri }, { timeout: this.timeout, ...(signal ? { signal } : {}) }); }
   listPrompts(cursor?: string) { return this.client.listPrompts(cursor ? { cursor } : {}, { timeout: this.timeout }); }
   getPrompt(name: string, args: Record<string, string>, signal?: AbortSignal) { return this.client.getPrompt({ name, arguments: args }, { timeout: this.timeout, ...(signal ? { signal } : {}) }); }
+  /** Reopen the transport after a failure; the config and credentials are reused. */
+  private async reconnect(signal?: AbortSignal): Promise<void> {
+    const next = await McpAgentClient.open(this.config, this.timeout, signal, this.provider);
+    if (!next) throw new Error(`MCP server ${this.name} requires authentication.`);
+    await this.client.close().catch(() => {});
+    this.client = next.client;
+  }
+  private call(name: string, args: Readonly<Record<string, unknown>>, context: ToolExecutionContext) {
+    return this.client.callTool({ name, arguments: { ...args } }, undefined, {
+      signal: context.signal,
+      timeout: Math.max(1, Math.min(this.timeout, context.deadline - Date.now())),
+    });
+  }
   async close(): Promise<void> { await this.client.close(); }
 }

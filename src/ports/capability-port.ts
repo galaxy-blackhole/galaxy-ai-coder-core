@@ -52,9 +52,17 @@ export type ModelCapabilities = Readonly<{
   }>;
   parallelToolCalling: CapabilityState;
   preserveThinking: CapabilityState;
+  /** Provider prefix/KV cache support. "unknown" must not be treated as a hit guarantee. */
+  promptCache?: CapabilityState;
   streaming: CapabilityState;
   structuredOutput: CapabilityState;
   supportedImageMimeTypes?: readonly string[];
+  /**
+   * "in-history" means the route reads the latest system message anywhere in
+   * the request as the effective prompt, so a changed prompt can be appended
+   * after cached history instead of rewriting the leading system message.
+   */
+  systemPromptUpdate?: "in-place" | "in-history" | "unknown";
   thinking: ThinkingCapability;
   tokenCounting: CapabilityState;
   toolCalling: CapabilityState;

@@ -3521,3 +3521,183 @@ START 2026-09-26 16:05:15 +07:00 (2026-09-26T09:05:15.469Z). [Progress](<.galaxy
 2026-09-26 16:05:19 +07:00 (2026-09-26T09:05:19.592Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-26T09-05-15-463Z-rLobqe/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T09-05-15-463Z-rLobqe/summary.json>).
+
+## Core tests 2026-09-26T13-25-27-191Z-nC3qUj
+
+START 2026-09-26 20:25:27 +07:00 (2026-09-26T13:25:27.200Z). [Progress](<.galaxy/tests/2026-09-26T13-25-27-191Z-nC3qUj/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: d627f1b376fccdefc7901c75cb4b03c6bd9880372eab4e2a3c1ba0320168652a.
+
+### Finished 2026-09-26T13-25-27-191Z-nC3qUj
+
+2026-09-26 20:25:30 +07:00 (2026-09-26T13:25:30.656Z) | PASSED | PASS 128/128 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-25-27-191Z-nC3qUj/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-25-27-191Z-nC3qUj/summary.json>).
+
+## Core tests 2026-09-26T13-26-40-314Z-pulCTS
+
+START 2026-09-26 20:26:40 +07:00 (2026-09-26T13:26:40.318Z). [Progress](<.galaxy/tests/2026-09-26T13-26-40-314Z-pulCTS/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 35168a0b8cc987e917790cd7af335b83d2258d68570f53e17a0c78bf2c9e573e.
+
+### Finished 2026-09-26T13-26-40-314Z-pulCTS
+
+2026-09-26 20:26:43 +07:00 (2026-09-26T13:26:43.681Z) | PASSED | PASS 128/128 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-26-40-314Z-pulCTS/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-26-40-314Z-pulCTS/summary.json>).
+
+## Core tests 2026-09-26T13-30-34-937Z-cR1zKR
+
+START 2026-09-26 20:30:34 +07:00 (2026-09-26T13:30:34.942Z). [Progress](<.galaxy/tests/2026-09-26T13-30-34-937Z-cR1zKR/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 4adda2a33bf6c993c0560f9e3bc988d0574e97da1b91383bdcec2a360e9b6db5.
+
+### Finished 2026-09-26T13-30-34-937Z-cR1zKR
+
+2026-09-26 20:30:38 +07:00 (2026-09-26T13:30:38.290Z) | PASSED | PASS 130/130 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-30-34-937Z-cR1zKR/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-30-34-937Z-cR1zKR/summary.json>).
+
+## Core tests 2026-09-26T13-33-30-432Z-2oyxJM
+
+START 2026-09-26 20:33:30 +07:00 (2026-09-26T13:33:30.435Z). [Progress](<.galaxy/tests/2026-09-26T13-33-30-432Z-2oyxJM/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 96ad47e692a0214e57e2acd94752f8e344654030b9cc1151203f21c90db3673a.
+
+### Finished 2026-09-26T13-33-30-432Z-2oyxJM
+
+2026-09-26 20:33:34 +07:00 (2026-09-26T13:33:34.405Z) | PASSED | PASS 136/136 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-33-30-432Z-2oyxJM/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-33-30-432Z-2oyxJM/summary.json>).
+
+## Core tests 2026-09-26T13-44-23-308Z-yj2hXi
+
+START 2026-09-26 20:44:23 +07:00 (2026-09-26T13:44:23.313Z). [Progress](<.galaxy/tests/2026-09-26T13-44-23-308Z-yj2hXi/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 01a513609227b08cebf536a5321c7643999221395bf963f01675bc91c1b74f9d.
+
+### Finished 2026-09-26T13-44-23-308Z-yj2hXi
+
+2026-09-26 20:44:27 +07:00 (2026-09-26T13:44:27.243Z) | PASSED | PASS 141/142 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-44-23-308Z-yj2hXi/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-44-23-308Z-yj2hXi/summary.json>).
+
+## Core tests 2026-09-26T13-49-50-859Z-0sl1k4
+
+START 2026-09-26 20:49:50 +07:00 (2026-09-26T13:49:50.866Z). [Progress](<.galaxy/tests/2026-09-26T13-49-50-859Z-0sl1k4/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: f5bff2458dae9a85250f1b4e3ce6aa48df7d2fde1b7a8f3125829abdd04d22ea.
+
+### Finished 2026-09-26T13-49-50-859Z-0sl1k4
+
+2026-09-26 20:49:55 +07:00 (2026-09-26T13:49:55.209Z) | PASSED | PASS 143/144 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-49-50-859Z-0sl1k4/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-49-50-859Z-0sl1k4/summary.json>).
+
+## Core tests 2026-09-26T13-50-37-187Z-RnKPo6
+
+START 2026-09-26 20:50:37 +07:00 (2026-09-26T13:50:37.189Z). [Progress](<.galaxy/tests/2026-09-26T13-50-37-187Z-RnKPo6/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: f5bff2458dae9a85250f1b4e3ce6aa48df7d2fde1b7a8f3125829abdd04d22ea.
+
+### Finished 2026-09-26T13-50-37-187Z-RnKPo6
+
+2026-09-26 20:50:41 +07:00 (2026-09-26T13:50:41.431Z) | PASSED | PASS 143/144 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-50-37-187Z-RnKPo6/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-50-37-187Z-RnKPo6/summary.json>).
+
+## Core tests 2026-09-26T13-53-30-794Z-csFcGb
+
+START 2026-09-26 20:53:30 +07:00 (2026-09-26T13:53:30.804Z). [Progress](<.galaxy/tests/2026-09-26T13-53-30-794Z-csFcGb/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 77c016e494d1a284260b01dada0224dcc5236b14865e7604a8e7300fa4a4f8c8.
+
+### Finished 2026-09-26T13-53-30-794Z-csFcGb
+
+2026-09-26 20:53:35 +07:00 (2026-09-26T13:53:35.650Z) | PASSED | PASS 144/145 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-53-30-794Z-csFcGb/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-53-30-794Z-csFcGb/summary.json>).
+
+## Core tests 2026-09-26T13-53-47-440Z-ncOW6n
+
+START 2026-09-26 20:53:47 +07:00 (2026-09-26T13:53:47.448Z). [Progress](<.galaxy/tests/2026-09-26T13-53-47-440Z-ncOW6n/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 77c016e494d1a284260b01dada0224dcc5236b14865e7604a8e7300fa4a4f8c8.
+
+### Finished 2026-09-26T13-53-47-440Z-ncOW6n
+
+2026-09-26 20:53:52 +07:00 (2026-09-26T13:53:52.318Z) | PASSED | PASS 144/145 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T13-53-47-440Z-ncOW6n/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T13-53-47-440Z-ncOW6n/summary.json>).
+
+## Core tests 2026-09-26T14-09-28-032Z-h2WR3h
+
+START 2026-09-26 21:09:28 +07:00 (2026-09-26T14:09:28.042Z). [Progress](<.galaxy/tests/2026-09-26T14-09-28-032Z-h2WR3h/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 73d7fec734e3a26da72ac030a8548d05749f50b478cc4d2d40f293eee3b2c42b.
+
+### Finished 2026-09-26T14-09-28-032Z-h2WR3h
+
+2026-09-26 21:09:32 +07:00 (2026-09-26T14:09:32.351Z) | PASSED | PASS 145/146 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-09-28-032Z-h2WR3h/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-09-28-032Z-h2WR3h/summary.json>).
+
+## Core tests 2026-09-26T14-16-26-468Z-XYbEj5
+
+START 2026-09-26 21:16:26 +07:00 (2026-09-26T14:16:26.470Z). [Progress](<.galaxy/tests/2026-09-26T14-16-26-468Z-XYbEj5/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 31f4ff8a6cb9e286ca868fc85cffb899213fc3dcac94d1753ff911d4ebd91e65.
+
+### Finished 2026-09-26T14-16-26-468Z-XYbEj5
+
+2026-09-26 21:16:30 +07:00 (2026-09-26T14:16:30.943Z) | PASSED | PASS 146/147 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-16-26-468Z-XYbEj5/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-16-26-468Z-XYbEj5/summary.json>).
+
+## Core tests 2026-09-26T14-28-07-740Z-CyFIYc
+
+START 2026-09-26 21:28:07 +07:00 (2026-09-26T14:28:07.744Z). [Progress](<.galaxy/tests/2026-09-26T14-28-07-740Z-CyFIYc/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 203dcb784e0029a8c684eca37bd0efb094223590bf61f1bc61bac068d8b226d7.
+
+### Finished 2026-09-26T14-28-07-740Z-CyFIYc
+
+2026-09-26 21:28:12 +07:00 (2026-09-26T14:28:12.421Z) | PASSED | PASS 146/147 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-28-07-740Z-CyFIYc/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-28-07-740Z-CyFIYc/summary.json>).
+
+## Core tests 2026-09-26T14-39-23-788Z-moF4fm
+
+START 2026-09-26 21:39:23 +07:00 (2026-09-26T14:39:23.795Z). [Progress](<.galaxy/tests/2026-09-26T14-39-23-788Z-moF4fm/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 744d0281c82bb611f4b3033016c0336860f6ad91e03cdc60fa2f31296452c7ea.
+
+### Finished 2026-09-26T14-39-23-788Z-moF4fm
+
+2026-09-26 21:39:27 +07:00 (2026-09-26T14:39:27.944Z) | PASSED | PASS 146/147 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-39-23-788Z-moF4fm/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-39-23-788Z-moF4fm/summary.json>).
+
+## Core tests 2026-09-26T14-39-44-789Z-36wUvW
+
+START 2026-09-26 21:39:44 +07:00 (2026-09-26T14:39:44.793Z). [Progress](<.galaxy/tests/2026-09-26T14-39-44-789Z-36wUvW/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: be7f27c5cc3e8431d0c1c6b80b209b18f5fa7d7f2feca4c4820dad7f58af5035.
+
+### Finished 2026-09-26T14-39-44-789Z-36wUvW
+
+2026-09-26 21:39:48 +07:00 (2026-09-26T14:39:48.971Z) | PASSED | PASS 147/148 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-39-44-789Z-36wUvW/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-39-44-789Z-36wUvW/summary.json>).
+
+## Core tests 2026-09-26T14-47-55-241Z-e3A9fR
+
+START 2026-09-26 21:47:55 +07:00 (2026-09-26T14:47:55.244Z). [Progress](<.galaxy/tests/2026-09-26T14-47-55-241Z-e3A9fR/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 540ff9e3e9edfad32c0cb24dace91df012e90098248b16701a4b91e979bcb753.
+
+### Finished 2026-09-26T14-47-55-241Z-e3A9fR
+
+2026-09-26 21:47:59 +07:00 (2026-09-26T14:47:59.687Z) | PASSED | PASS 148/149 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T14-47-55-241Z-e3A9fR/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T14-47-55-241Z-e3A9fR/summary.json>).
+
+## Core tests 2026-09-26T15-05-07-266Z-sP4tdJ
+
+START 2026-09-26 22:05:07 +07:00 (2026-09-26T15:05:07.270Z). [Progress](<.galaxy/tests/2026-09-26T15-05-07-266Z-sP4tdJ/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 6632bf82c842a50b1ee638b50778e63a17bed135a36b87979c75ece589234513.
+
+### Finished 2026-09-26T15-05-07-266Z-sP4tdJ
+
+2026-09-26 22:05:11 +07:00 (2026-09-26T15:05:11.702Z) | PASSED | PASS 149/150 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T15-05-07-266Z-sP4tdJ/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T15-05-07-266Z-sP4tdJ/summary.json>).
+
+## Core tests 2026-09-26T15-12-06-431Z-svZWpJ
+
+START 2026-09-26 22:12:06 +07:00 (2026-09-26T15:12:06.442Z). [Progress](<.galaxy/tests/2026-09-26T15-12-06-431Z-svZWpJ/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 89ccade0c91f2832f011e7ebc55c46b38adb8fc863cb20f828e3301f12e9bc2d.
+
+### Finished 2026-09-26T15-12-06-431Z-svZWpJ
+
+2026-09-26 22:12:11 +07:00 (2026-09-26T15:12:11.020Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T15-12-06-431Z-svZWpJ/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T15-12-06-431Z-svZWpJ/summary.json>).
+
+## Core tests 2026-09-26T15-32-17-474Z-GDrgHw
+
+START 2026-09-26 22:32:17 +07:00 (2026-09-26T15:32:17.482Z). [Progress](<.galaxy/tests/2026-09-26T15-32-17-474Z-GDrgHw/summary.md>). Commit: c5eccb13eb53f59360613605dbfc8afa7d21c55f; source SHA-256: 89ccade0c91f2832f011e7ebc55c46b38adb8fc863cb20f828e3301f12e9bc2d.
+
+### Finished 2026-09-26T15-32-17-474Z-GDrgHw
+
+2026-09-26 22:32:21 +07:00 (2026-09-26T15:32:21.944Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T15-32-17-474Z-GDrgHw/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T15-32-17-474Z-GDrgHw/summary.json>).

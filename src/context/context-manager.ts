@@ -51,6 +51,8 @@ export type AiCoderContextItem = Readonly<{
   kind: AiCoderContextItemKind;
   lastUsedTurn: number;
   messages: readonly CodingMessage[];
+  /** Overrides the kind-based message order; used for in-history system updates. */
+  physicalOrder?: number;
   priority: AiCoderContextPriority;
   relevance: number;
   stale: boolean;
@@ -182,7 +184,8 @@ function categoryForItem(item: AiCoderContextItem): keyof AiCoderTokenCategories
   return "history";
 }
 
-function physicalOrder(item: AiCoderContextItem): number {
+function contextPhysicalOrder(item: AiCoderContextItem): number {
+  if (item.physicalOrder !== undefined) return item.physicalOrder;
   if (item.kind === "policy") return 0;
   if (item.kind === "task") return 1;
   if (item.kind === "checkpoint") return 2;
@@ -272,6 +275,7 @@ export class AiCoderContextManager {
     kind: AiCoderContextItemKind;
     lastUsedTurn: number;
     messages: readonly CodingMessage[];
+    physicalOrder?: number;
     priority: AiCoderContextPriority;
     relevance: number;
     stale?: boolean;
@@ -291,6 +295,7 @@ export class AiCoderContextManager {
       kind: input.kind,
       lastUsedTurn: input.lastUsedTurn,
       messages,
+      ...(input.physicalOrder === undefined ? {} : { physicalOrder: input.physicalOrder }),
       priority: input.priority,
       relevance: clampScore(input.relevance),
       stale: input.stale ?? false,
@@ -350,13 +355,30 @@ export class AiCoderContextManager {
     });
   }
 
-  replaceSystemPrompt(systemPrompt: string, turn: number): void {
-    this.items = this.items.filter((item) => item.id !== "system-policy");
+  replaceSystemPrompt(systemPrompt: string, turn: number, mode: "in-place" | "in-history" = "in-place"): void {
+    const messages = [Object.freeze({ role: "system" as const, content: systemPrompt })];
+    if (mode === "in-history") {
+      // Keep the leading system prompt byte-stable so a provider prefix cache
+      // survives a mid-run prompt change. addItem dedupes identical content.
+      this.addItem({
+        id: `system-policy-in-history-${turn}`,
+        kind: "policy",
+        lastUsedTurn: turn,
+        messages,
+        physicalOrder: 10,
+        priority: "P0",
+        relevance: 1,
+        summary: "Galaxy AI Coder system policy update (in-history)",
+        trust: "trusted",
+      });
+      return;
+    }
+    this.items = this.items.filter((item) => item.id !== "system-policy" && item.physicalOrder !== 10);
     this.addItem({
       id: "system-policy",
       kind: "policy",
       lastUsedTurn: turn,
-      messages: [Object.freeze({ role: "system", content: systemPrompt })],
+      messages,
       priority: "P0",
       relevance: 1,
       summary: "Galaxy AI Coder system policy",
@@ -555,7 +577,7 @@ export class AiCoderContextManager {
       turn,
     );
     if (p2Summary && p2Summary.tokenCount <= remaining) selected.push(p2Summary);
-    selected.sort((left, right) => physicalOrder(left) - physicalOrder(right)
+    selected.sort((left, right) => contextPhysicalOrder(left) - contextPhysicalOrder(right)
       || left.lastUsedTurn - right.lastUsedTurn
       || compareAiCoderText(left.id, right.id));
     const categories: Record<keyof AiCoderTokenCategories, number> = {
