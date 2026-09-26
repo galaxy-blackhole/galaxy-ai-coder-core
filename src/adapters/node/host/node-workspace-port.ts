@@ -56,6 +56,11 @@ function dependencyReadError(path: string): PortError {
 function isDependencyPath(path: string): boolean {
   return path.split(/[\\/]/).some((segment) => NON_READABLE_SEGMENTS.has(segment));
 }
+/** After an install, package manifests, declarations and READMEs are cheap ground truth; full library source trees are not. */
+function isDependencyGroundTruth(path: string): boolean {
+  const file = path.split(/[\\/]/).at(-1) ?? "";
+  return file === "package.json" || file === "README.md" || file.endsWith(".d.ts");
+}
 
 function failure(code: PortErrorCode, message: string, retryable = false): PortFailure {
   return Object.freeze({
@@ -457,7 +462,7 @@ export class NodeWorkspacePort implements WorkspacePort {
   }
 
   async readText(input: Readonly<{ cursor?: string; endLine?: number; maxBytes?: number; path: string; startLine?: number }>, context: ToolExecutionContext): Promise<PortResult<WorkspaceReadTextResult>> {
-    if (isDependencyPath(String(input.path))) return failure("UNSUPPORTED", dependencyReadError(String(input.path)).message, false);
+    if (isDependencyPath(String(input.path)) && !isDependencyGroundTruth(String(input.path))) return failure("UNSUPPORTED", dependencyReadError(String(input.path)).message, false);
     const canceled = checkContext(context);
     if (canceled !== undefined) return canceled;
     try {

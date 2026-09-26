@@ -76,7 +76,7 @@ const DEFAULT_BUDGET: AiCoderRunBudget = Object.freeze({
   maxModelRetries: 3,
   modelRetryDelaysMs: Object.freeze([1_000, 3_000, 8_000]),
   maxRepeatedToolRequests: 2,
-  maxToolCalls: 128,
+  maxToolCalls: 256,
   maxTurns: 48,
   noProgressPolicy: "advisory",
   observationNudgeThresholds: Object.freeze([3, 5, 8]),
