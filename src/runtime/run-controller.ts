@@ -2945,6 +2945,16 @@ export class AiCoderRunController {
       const messages = gate.issues.map((item) => `${item.code}: ${item.detail}`);
       const researchEvidence = completionRejectionResearchEvidence(session, content);
       const remediation = gate.issues.flatMap((item) => {
+        if (item.code === "WORKSPACE_EVIDENCE_STALE") {
+          return [
+            "WORKSPACE_EVIDENCE_STALE next action: workspace changed after those validations ran, so their evidence is void. Re-run validate_project with the SAME checks for each stale id AFTER the latest mutation; a validation older than the last write never counts. Do not re-run validations that are already current.",
+          ];
+        }
+        if (item.code === "WRITE_NOT_VALIDATED") {
+          return [
+            "WRITE_NOT_VALIDATED next action: run validate_project (checks covering the written paths) AFTER the final write; a validation older than the write does not count. If the project has no matching script, create the smallest correct test script first, then validate.",
+          ];
+        }
         if (item.code === "DIFF_NOT_REVIEWED") {
           // In a workspace without Git the git advice is a trap: the model
           // searched the catalog for a tool that can never exist and drained
