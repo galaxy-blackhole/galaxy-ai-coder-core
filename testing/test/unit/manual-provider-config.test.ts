@@ -45,7 +45,7 @@ test("Ollama connection uses environment credentials and core defaults when manu
   assert.equal(connection.credentialSource, "environment");
   assert.equal(connection.apiKey, "environment-secret");
   assert.equal(connection.baseUrl, "https://ollama.com");
-  assert.equal(connection.model, "glm-5.3-flash:cloud");
+  assert.equal(connection.model, "deepseek-v4.1-flash:cloud");
 });
 
 test("Ollama connection rejects unsafe base URLs and malformed Galaxy config", async (context) => {
