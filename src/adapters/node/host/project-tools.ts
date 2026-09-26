@@ -384,7 +384,12 @@ export async function validateProject(
     const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
     if (code === "CANCELED") return terminalResults("cancelled", "Run canceled during project detection.");
     if (code === "DEADLINE_EXCEEDED") return terminalResults("timed_out", "Run deadline elapsed during project detection.");
-    throw error;
+    // Models sometimes pass a file path (the artifact they just created) instead
+    // of a project directory. That is a scoping mistake, not an unknown side
+    // effect: fall back to the workspace root instead of failing the run.
+    if (code === "INVALID_INPUT") {
+      project = await detectProject(workspace, ".", context);
+    } else throw error;
   }
   for (const check of checks) {
     if (context.signal.aborted) {

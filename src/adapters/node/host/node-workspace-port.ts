@@ -1,6 +1,7 @@
 import type {
   PortFailure,
   PortErrorCode,
+  PortError,
   PortResult,
   ToolExecutionContext,
   WorkspaceApplyPatchResult,
@@ -42,6 +43,19 @@ const SEARCH_READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SEARCH_LINE_CHARACTERS = 1024 * 1024;
 const MAX_SCANNED_ENTRIES = 100_000;
 const IGNORED_DIRECTORY_NAMES = new Set([".git", "node_modules", "dist", "coverage"]);
+/** Reading generated dependency sources floods context with library internals; framework docs live in MCP tools and skill documents instead. */
+const NON_READABLE_SEGMENTS = new Set(["node_modules", ".bun-cache"]);
+function dependencyReadError(path: string): PortError {
+  return Object.freeze({
+    code: "UNSUPPORTED" as PortErrorCode,
+    message: `${path} nằm trong thư mục dependency (node_modules/.bun-cache) — không đọc source thư viện bằng file tools. Dùng framework MCP tools (vd orbit/nebula) hoặc tài liệu docs để tra API.`,
+    retryable: false,
+    suggestedAction: "Dùng MCP tools của framework hoặc tìm trong docs; chỉ đọc source authored trong workspace.",
+  });
+}
+function isDependencyPath(path: string): boolean {
+  return path.split(/[\\/]/).some((segment) => NON_READABLE_SEGMENTS.has(segment));
+}
 
 function failure(code: PortErrorCode, message: string, retryable = false): PortFailure {
   return Object.freeze({
@@ -442,10 +456,8 @@ export class NodeWorkspacePort implements WorkspacePort {
     }
   }
 
-  async readText(
-    input: Readonly<{ cursor?: string; endLine?: number; maxBytes?: number; path: string; startLine?: number }>,
-    context: ToolExecutionContext,
-  ): Promise<PortResult<WorkspaceReadTextResult>> {
+  async readText(input: Readonly<{ cursor?: string; endLine?: number; maxBytes?: number; path: string; startLine?: number }>, context: ToolExecutionContext): Promise<PortResult<WorkspaceReadTextResult>> {
+    if (isDependencyPath(String(input.path))) return failure("UNSUPPORTED", dependencyReadError(String(input.path)).message, false);
     const canceled = checkContext(context);
     if (canceled !== undefined) return canceled;
     try {
@@ -528,6 +540,8 @@ export class NodeWorkspacePort implements WorkspacePort {
     }>,
     context: ToolExecutionContext,
   ): Promise<PortResult<WorkspaceSearchPathsResult>> {
+    const globTarget = String(input.path ?? ".");
+    if (isDependencyPath(globTarget) || isDependencyPath(String(input.query))) return failure("UNSUPPORTED", dependencyReadError(globTarget === "." ? String(input.query) : globTarget).message, false);
     const canceled = checkContext(context);
     if (canceled !== undefined) return canceled;
     try {
@@ -597,6 +611,7 @@ export class NodeWorkspacePort implements WorkspacePort {
           ? (line) => line.indexOf(query)
           : (line) => line.toLocaleLowerCase("en-US").indexOf(query);
       }
+      if (isDependencyPath(String(input.path ?? "."))) return failure("UNSUPPORTED", dependencyReadError(String(input.path ?? ".")).message, false);
       const offset = decodeCursor(input.cursor);
       const limit = boundedLimit(input.limit);
       const basePath = await this.scope.resolveExisting(input.path ?? ".");
