@@ -176,3 +176,6 @@ Backup trước migration có 243 file và working-tree diff; vị trí local đ
 - Log run GymFlow (2026-09-25 09:39): 9 lần compacting→executing trong 11 phút; checkpoint `lastToolCalls` lặp `list_files`/`read_file`/`orbit_knowledge_topics` — bằng chứng trực tiếp vòng xoáy compact-mất-ngữ-cảnh-làm-lại.
 
 - Publish orbit-mcp 0.1.5 + nebula-mcp 1.0.3 + ai-coder-core 0.3.0-alpha.8 (tag alpha) HOÀN TẤT qua CI trusted publishing. `blackhole-cli` vẫn chờ trusted publisher trên npmjs.com (workflow publish re-run, lỗi 404 như trước).
+
+- [x] P2 root cause: derivedDirectories chỉ khớp đường dẫn gốc — `backend/node_modules` bị phân loại durable → hàng nghìn write path + hash nhúng vào mandatory state P0 mỗi lượt → MANDATORY_CONTEXT_TOO_LARGE (1.48M tokens). Fix: match theo segment bất kỳ trong path + thêm `.bun-cache`. Cap `mandatoryState.editedFiles` (200 + total) và checkpoint `edits` (500 + editsTotal). Chứng minh bằng script diff với node_modules lồng nhau: class=derived, writes rỗng.
+- Fix đi kèm: head/tail bounding neo tail vào cuối giá trị (tránh cắt đứt JSON như `"truncated":tru`) — regression test trong context.test.ts.

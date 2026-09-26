@@ -559,7 +559,7 @@ async function validateCheckpointSnapshot(
   };
   rejectUnknown(checkpoint, "", [
     "acceptanceCriteria", "approvals", "compatibility", "completionEvidence", "constraints", "contentHash",
-    "createdAt", "decisions", "delivery", "edits", "executionBudget", "goal", "lastToolCalls", "nextAction", "noProgress", "openProblems",
+    "createdAt", "decisions", "delivery", "edits", "editsTotal", "executionBudget", "goal", "lastToolCalls", "nextAction", "noProgress", "openProblems",
     "pendingApprovals", "phase", "plan", "reason", "researchSources", "runId", "schemaVersion", "seenToolCallIds", "taskId",
     "tokenLedgerRef", "totals", "validation", "workspace",
   ]);

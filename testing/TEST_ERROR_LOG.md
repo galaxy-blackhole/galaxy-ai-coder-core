@@ -400,3 +400,77 @@ DONE counts finished steps, including failures; PASS counts successful steps. Au
 | 1/3 core:build | PASS | 2026-09-25 18:19:06 +07:00 (2026-09-25T11:19:06.309Z) | 2026-09-25 18:19:15 +07:00 (2026-09-25T11:19:15.868Z) | [stdout](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/001-core-build/stderr.log>) |
 | 2/3 cli:build | PASS | 2026-09-25 18:19:15 +07:00 (2026-09-25T11:19:15.873Z) | 2026-09-25 18:19:21 +07:00 (2026-09-25T11:19:21.224Z) | [stdout](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/002-cli-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/002-cli-build/stderr.log>) |
 | 3/3 cli:e2e | PASS | 2026-09-25 18:19:21 +07:00 (2026-09-25T11:19:21.229Z) | 2026-09-25 18:20:37 +07:00 (2026-09-25T11:20:37.496Z) | Tests: 44 passed, 0 failed, 0 skipped; total 44. Last PASS: durable project harness rejects stubs and semantic regressions. [stdout](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/003-cli-e2e/stdout.log>) / [stderr](<.galaxy/audit/2026-09-25T11-19-06-138Z-CxlDBv/003-cli-e2e/stderr.log>) |
+
+- 2026-09-26 09:54:14 +07:00 (2026-09-26T02:54:14.227Z) | run 2026-09-26T02-54-13-977Z-yEhxJg | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.md>)
+
+- 2026-09-26 09:54:14 +07:00 (2026-09-26T02:54:14.265Z) | run 2026-09-26T02-54-13-977Z-yEhxJg | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.md>)
+
+- 2026-09-26 09:54:20 +07:00 (2026-09-26T02:54:20.455Z) | run 2026-09-26T02-54-13-977Z-yEhxJg | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.md>)
+
+- 2026-09-26 09:54:20 +07:00 (2026-09-26T02:54:20.462Z) | run 2026-09-26T02-54-13-977Z-yEhxJg | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.md>)
+
+- 2026-09-26 09:54:33 +07:00 (2026-09-26T02:54:33.350Z) | run 2026-09-26T02-54-13-977Z-yEhxJg | step-passed 2/2 cli:unit | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.md>)
+
+<!-- audit-finished:2026-09-26T02-54-13-977Z-yEhxJg -->
+## Run 2026-09-26T02-54-13-977Z-yEhxJg
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-26 09:54:14 +07:00 (2026-09-26T02:54:14.227Z). Finished: 2026-09-26 09:54:33 +07:00 (2026-09-26T02:54:33.544Z).
+- Last PASS: cli:unit. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/summary.json>).
+- Source SHA-256: e949fe3f14b01e30f4e3e44e3b14de2e2d6165ddbe63e049cf2b8f90ba28bc45. Source unchanged: true.
+- Repositories: {"cli":{"head":"d36d2169c96a938a748fe5b8c926f38b05b379e8","packageVersion":"2.0.0-alpha.8"},"core":{"head":"d36d2169c96a938a748fe5b8c926f38b05b379e8","packageVersion":"0.3.0-alpha.9"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:unit"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-09-26 09:54:14 +07:00 (2026-09-26T02:54:14.265Z) | 2026-09-26 09:54:20 +07:00 (2026-09-26T02:54:20.455Z) | [stdout](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/001-core-build/stderr.log>) |
+| 2/2 cli:unit | PASS | 2026-09-26 09:54:20 +07:00 (2026-09-26T02:54:20.462Z) | 2026-09-26 09:54:33 +07:00 (2026-09-26T02:54:33.350Z) | Tests: 123 passed, 0 failed, 0 skipped; total 123. Last PASS: baseline verifies retained bytes and rejects modified source, summary and invalid paths. [stdout](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/002-cli-unit/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T02-54-13-977Z-yEhxJg/002-cli-unit/stderr.log>) |
+
+- 2026-09-26 09:54:34 +07:00 (2026-09-26T02:54:34.314Z) | run 2026-09-26T02-54-34-180Z-0fHKa1 | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.md>)
+
+- 2026-09-26 09:54:34 +07:00 (2026-09-26T02:54:34.351Z) | run 2026-09-26T02-54-34-180Z-0fHKa1 | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.md>)
+
+- 2026-09-26 09:54:40 +07:00 (2026-09-26T02:54:40.166Z) | run 2026-09-26T02-54-34-180Z-0fHKa1 | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.md>)
+
+- 2026-09-26 09:54:40 +07:00 (2026-09-26T02:54:40.172Z) | run 2026-09-26T02-54-34-180Z-0fHKa1 | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.md>)
+
+- 2026-09-26 09:55:02 +07:00 (2026-09-26T02:55:02.515Z) | run 2026-09-26T02-54-34-180Z-0fHKa1 | step-failed 2/2 cli:integration | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.md>)
+
+<!-- audit-finished:2026-09-26T02-54-34-180Z-0fHKa1 -->
+## Run 2026-09-26T02-54-34-180Z-0fHKa1
+
+- Status: **failed**. DONE 2/2; PASS 1/2; FAIL 1; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-26 09:54:34 +07:00 (2026-09-26T02:54:34.314Z). Finished: 2026-09-26 09:55:02 +07:00 (2026-09-26T02:55:02.607Z).
+- Last PASS: core:build. First failure: cli:integration. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/summary.json>).
+- Source SHA-256: e949fe3f14b01e30f4e3e44e3b14de2e2d6165ddbe63e049cf2b8f90ba28bc45. Source unchanged: true.
+- Repositories: {"cli":{"head":"d36d2169c96a938a748fe5b8c926f38b05b379e8","packageVersion":"2.0.0-alpha.8"},"core":{"head":"d36d2169c96a938a748fe5b8c926f38b05b379e8","packageVersion":"0.3.0-alpha.9"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:integration"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-09-26 09:54:34 +07:00 (2026-09-26T02:54:34.351Z) | 2026-09-26 09:54:40 +07:00 (2026-09-26T02:54:40.166Z) | [stdout](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/001-core-build/stderr.log>) |
+| 2/2 cli:integration | FAIL | 2026-09-26 09:54:40 +07:00 (2026-09-26T02:54:40.172Z) | 2026-09-26 09:55:02 +07:00 (2026-09-26T02:55:02.515Z) | Tests: 20 passed, 12 failed, 0 skipped; total not recorded. Last PASS: validate_project requires explicit approval before repository scripts execute. [stdout](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T02-54-34-180Z-0fHKa1/002-cli-integration/stderr.log>) |
+
+### Failure: cli:integration
+
+Symptom signature: af43dc424dd55dc2. Automated category: product; candidate incidents: none; diagnosed cause: not yet diagnosed.
+
+Earlier matching runs: none among retained logs. A match alone does not establish a regression.
+
+```text
+{
+  "name": "run_command proves file creation, modification, and deletion even when the command exits nonzero",
+  "file": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts",
+  "line": 5,
+  "error": "[Error [ERR_TEST_FAILURE]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ undefined\n- [\n-   {\n-     afterHash: null,\n-     afterKind: 'missing',\n-     beforeHash: 'e33dbd20d732ad6d5c1f8228c36213c9385547f29b4746940bdaccfd52852a21',\n-     beforeKind: 'file',\n-     path: 'coverage/deleted.txt'\n-   },\n-   {\n-     afterHash: '59134a4054b27a3fc30e1ac81d9b9168dc0561f65982151324a021fe8ce88d06',\n-     afterKind: 'file',\n-     beforeHash: null,\n-     beforeKind: 'missing',\n-     path: 'dist/created.txt'\n-   }\n- ]\n] {\n  code: 'ERR_TEST_FAILURE',\n  failureType: 'testCodeFailure',\n  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n  + undefined\n  - [\n  -   {\n  -     afterHash: null,\n  -     afterKind: 'missing',\n  -     beforeHash: 'e33dbd20d732ad6d5c1f8228c36213c9385547f29b4746940bdaccfd52852a21',\n  -     beforeKind: 'file',\n  -     path: 'coverage/deleted.txt'\n  -   },\n  -   {\n  -     afterHash: '59134a4054b27a3fc30e1ac81d9b9168dc0561f65982151324a021fe8ce88d06',\n  -     afterKind: 'file',\n  -     beforeHash: null,\n  -     beforeKind: 'missing',\n  -     path: 'dist/created.txt'\n  -   }\n  - ]\n  \n      at TestContext.<anonymous> (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts:574:10)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: [\n      {\n        afterHash: null,\n        afterKind: 'missing',\n        beforeHash: 'e33dbd20d732ad6d5c1f8228c36213c9385547f29b4746940bdaccfd52852a21',\n        beforeKind: 'file',\n        path: 'coverage/deleted.txt'\n      },\n      {\n        afterHash: '59134a4054b27a3fc30e1ac81d9b9168dc0561f65982151324a021fe8ce88d06',\n        afterKind: 'file',\n        beforeHash: null,\n        beforeKind: 'missing',\n        path: 'dist/created.txt'\n      }\n    ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n}",
+  "timestamp": "2026-09-26T02:55:02.493Z"
+}
+```
+
+Resolution and regression requirements: [incident register and upstream references](<docs/TEST_FAILURE_ANALYSIS.md>).

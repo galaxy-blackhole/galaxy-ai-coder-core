@@ -3381,3 +3381,23 @@ START 2026-09-26 09:31:43 +07:00 (2026-09-26T02:31:43.696Z). [Progress](<.galaxy
 2026-09-26 09:31:47 +07:00 (2026-09-26T02:31:47.374Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-26T02-31-43-689Z-zN0h28/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T02-31-43-689Z-zN0h28/summary.json>).
+
+## Core tests 2026-09-26T02-53-59-624Z-U4lg60
+
+START 2026-09-26 09:53:59 +07:00 (2026-09-26T02:53:59.631Z). [Progress](<.galaxy/tests/2026-09-26T02-53-59-624Z-U4lg60/summary.md>). Commit: d36d2169c96a938a748fe5b8c926f38b05b379e8; source SHA-256: c504d0539cdd72c32ee6a0454545d2170a0f7a117ec4386de369090c9c2ce1d6.
+
+### Finished 2026-09-26T02-53-59-624Z-U4lg60
+
+2026-09-26 09:54:03 +07:00 (2026-09-26T02:54:03.937Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T02-53-59-624Z-U4lg60/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T02-53-59-624Z-U4lg60/summary.json>).
+
+## Core tests 2026-09-26T02-58-40-322Z-YwnoDG
+
+START 2026-09-26 09:58:40 +07:00 (2026-09-26T02:58:40.327Z). [Progress](<.galaxy/tests/2026-09-26T02-58-40-322Z-YwnoDG/summary.md>). Commit: d36d2169c96a938a748fe5b8c926f38b05b379e8; source SHA-256: 2bebcd54c857738b78d5b7294c841cf325dabb6228cae9867c05a28c307585b6.
+
+### Finished 2026-09-26T02-58-40-322Z-YwnoDG
+
+2026-09-26 09:58:43 +07:00 (2026-09-26T02:58:43.976Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T02-58-40-322Z-YwnoDG/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T02-58-40-322Z-YwnoDG/summary.json>).

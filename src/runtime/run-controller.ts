@@ -836,7 +836,8 @@ function mandatoryState(session: RunSession): string {
     acceptanceCriteria: session.evidence.acceptanceCriteria,
     approvals: session.evidence.approvals,
     decisions: session.evidence.decisions,
-    editedFiles: session.evidence.writes,
+    editedFiles: session.evidence.writes.slice(-200),
+    editedFilesTotal: session.evidence.writes.length,
     executionBudget: {
       remainingModelTurns: Math.max(0, session.budget.maxTurns - session.modelTurns),
       remainingToolCalls: Math.max(0, session.budget.maxToolCalls - session.toolCalls),
@@ -3066,7 +3067,8 @@ export class AiCoderRunController {
       constraints: Object.freeze([...(session.request.constraints ?? [])]),
       decisions: Object.freeze([...session.evidence.decisions]),
       delivery: Object.freeze({ attachmentsDelivered: session.attachmentsDelivered }),
-      edits: Object.freeze(session.evidence.writes.map((item) => Object.freeze({
+      editsTotal: session.evidence.writes.length,
+      edits: Object.freeze(session.evidence.writes.slice(-500).map((item) => Object.freeze({
         afterHash: item.afterHash,
         ...(item.afterKind !== undefined ? { afterKind: item.afterKind } : {}),
         beforeHash: item.beforeHash,

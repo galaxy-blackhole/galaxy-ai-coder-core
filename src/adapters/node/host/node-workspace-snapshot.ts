@@ -51,6 +51,7 @@ export const DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS: NodeWorkspaceSnapshotO
     ".next",
     ".parcel-cache",
     ".pytest_cache",
+    ".bun-cache",
     ".turbo",
     ".vite",
     "__pycache__",
@@ -261,7 +262,7 @@ export class NodeWorkspaceSnapshotter {
         accountEntry();
         const childSegments = Object.freeze([...segments, name]);
         const relativePath = workspacePath(childSegments);
-        const derived = inheritedDerived || this.derivedDirectories.has(relativePath);
+        const derived = inheritedDerived || childSegments.some((segment) => this.derivedDirectories.has(segment));
         const absolutePath = join(absoluteDirectory, name);
         const info = await lstat(absolutePath);
         if (info.isDirectory() && !info.isSymbolicLink()) {
