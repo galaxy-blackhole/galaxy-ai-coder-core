@@ -3701,3 +3701,75 @@ START 2026-09-26 22:32:17 +07:00 (2026-09-26T15:32:17.482Z). [Progress](<.galaxy
 2026-09-26 22:32:21 +07:00 (2026-09-26T15:32:21.944Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-26T15-32-17-474Z-GDrgHw/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T15-32-17-474Z-GDrgHw/summary.json>).
+
+## Core tests 2026-09-26T16-13-35-676Z-7NbmDi
+
+START 2026-09-26 23:13:35 +07:00 (2026-09-26T16:13:35.678Z). [Progress](<.galaxy/tests/2026-09-26T16-13-35-676Z-7NbmDi/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: 46b680dba8632c5f5fb374600830c94881c56898facc03eee2e5787e2ed8ebae.
+
+### Finished 2026-09-26T16-13-35-676Z-7NbmDi
+
+2026-09-26 23:13:39 +07:00 (2026-09-26T16:13:39.631Z) | FAILED | PASS 150/152 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### mutation snapshotter never reports generated output as durable writes
+
+Recorded: 2026-09-26 23:13:39 +07:00 (2026-09-26T16:13:39.623Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:47.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly deep-equal:<br>+ actual - expected<br><br>  [<br>+   'dist/assets/bundle.js',<br>    'src/index.ts'<br>  ]<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:<br>  + actual - expected<br>  <br>    [<br>  +   'dist/assets/bundle.js',<br>      'src/index.ts'<br>    ]<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:58:10)<br>      at async Test.run (node:internal/test_runner/test:1409:7)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: [ 'dist/assets/bundle.js', 'src/index.ts' ],<br>    expected: [ 'src/index.ts' ],<br>    operator: 'deepStrictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-26T16-13-35-676Z-7NbmDi/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-13-35-676Z-7NbmDi/summary.json>).
+
+## Core tests 2026-09-26T16-13-47-294Z-xvnsUC
+
+START 2026-09-26 23:13:47 +07:00 (2026-09-26T16:13:47.296Z). [Progress](<.galaxy/tests/2026-09-26T16-13-47-294Z-xvnsUC/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: 46b680dba8632c5f5fb374600830c94881c56898facc03eee2e5787e2ed8ebae.
+
+### Finished 2026-09-26T16-13-47-294Z-xvnsUC
+
+2026-09-26 23:13:51 +07:00 (2026-09-26T16:13:51.183Z) | FAILED | PASS 150/152 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### mutation snapshotter never reports generated output as durable writes
+
+Recorded: 2026-09-26 23:13:51 +07:00 (2026-09-26T16:13:51.176Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:47.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly deep-equal:<br>+ actual - expected<br><br>  [<br>+   'dist/assets/bundle.js',<br>    'src/index.ts'<br>  ]<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:<br>  + actual - expected<br>  <br>    [<br>  +   'dist/assets/bundle.js',<br>      'src/index.ts'<br>    ]<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:58:10)<br>      at async Test.run (node:internal/test_runner/test:1409:7)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: [ 'dist/assets/bundle.js', 'src/index.ts' ],<br>    expected: [ 'src/index.ts' ],<br>    operator: 'deepStrictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-26T16-13-47-294Z-xvnsUC/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-13-47-294Z-xvnsUC/summary.json>).
+
+## Core tests 2026-09-26T16-14-06-650Z-UpPMmx
+
+START 2026-09-26 23:14:06 +07:00 (2026-09-26T16:14:06.652Z). [Progress](<.galaxy/tests/2026-09-26T16-14-06-650Z-UpPMmx/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: 552b8ea03932fce808c4cd74a305c719f5738594e39b3de4e215f96b5e67cad9.
+
+### Finished 2026-09-26T16-14-06-650Z-UpPMmx
+
+2026-09-26 23:14:10 +07:00 (2026-09-26T16:14:10.788Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T16-14-06-650Z-UpPMmx/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-14-06-650Z-UpPMmx/summary.json>).
+
+## Core tests 2026-09-26T16-15-17-115Z-43K1ES
+
+START 2026-09-26 23:15:17 +07:00 (2026-09-26T16:15:17.131Z). [Progress](<.galaxy/tests/2026-09-26T16-15-17-115Z-43K1ES/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: 65b7cecd244fe3e3ac5e7b9f964f8354e8a24d82086c349840ec64878fb1ffb0.
+
+### Finished 2026-09-26T16-15-17-115Z-43K1ES
+
+2026-09-26 23:15:21 +07:00 (2026-09-26T16:15:21.796Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T16-15-17-115Z-43K1ES/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-15-17-115Z-43K1ES/summary.json>).
+
+## Core tests 2026-09-26T16-16-49-571Z-riuQ5O
+
+START 2026-09-26 23:16:49 +07:00 (2026-09-26T16:16:49.580Z). [Progress](<.galaxy/tests/2026-09-26T16-16-49-571Z-riuQ5O/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: fb4cecc7799c486d2f057844a4e02b7f877e1dc4ce9138d3c344ea63131cfb81.
+
+### Finished 2026-09-26T16-16-49-571Z-riuQ5O
+
+2026-09-26 23:16:53 +07:00 (2026-09-26T16:16:53.997Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T16-16-49-571Z-riuQ5O/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-16-49-571Z-riuQ5O/summary.json>).
+
+## Core tests 2026-09-26T16-28-28-601Z-XvWjYz
+
+START 2026-09-26 23:28:28 +07:00 (2026-09-26T16:28:28.611Z). [Progress](<.galaxy/tests/2026-09-26T16-28-28-601Z-XvWjYz/summary.md>). Commit: 5aa2ef575fcb5916ad5b3b55b95f5d4f6b1553cb; source SHA-256: a78ab280f997bf2530419dc5bb2450b3b9370277eac4deb166a5379c39cac450.
+
+### Finished 2026-09-26T16-28-28-601Z-XvWjYz
+
+2026-09-26 23:28:33 +07:00 (2026-09-26T16:28:33.042Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T16-28-28-601Z-XvWjYz/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T16-28-28-601Z-XvWjYz/summary.json>).

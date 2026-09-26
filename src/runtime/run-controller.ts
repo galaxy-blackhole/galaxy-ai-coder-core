@@ -4,6 +4,7 @@ import {
   type AiCoderToolObservation,
 } from "../context/context-manager.js";
 import { compareAiCoderText } from "../deterministic-order.js";
+import { isGeneratedWorkspacePath } from "./workspace-generated-path.js";
 import {
   assertAiCoderRunCheckpoint,
   createAiCoderRunCheckpoint,
@@ -1562,11 +1563,10 @@ export class AiCoderRunController {
       if (promptChanged) await this.emitPromptSnapshot(session);
       const contextManager = session.contextManager;
       const roundToolSet = session.toolSet;
-      // On a route that reports prefix cache, keep the exact prefix (tools +
-      // history) for the finalization turn and rely on the no-dispatch guard
-      // instead of emptying the tool list, which would invalidate the cache.
-      const cacheFriendlyFinalization = session.finalizationMode && session.capabilities?.promptCache === "supported";
-      const roundDefinitions = session.finalizationMode && !cacheFriendlyFinalization
+      // The finalization turn must be tool-free (host conformance). The prompt
+      // cache still benefits from the stable message prefix and appended
+      // feedback; only the tool list is dropped.
+      const roundDefinitions = session.finalizationMode
         ? Object.freeze([])
         : roundToolSet.definitions;
       contextManager.replaceMandatoryState(mandatoryState(session), session.modelTurns);
@@ -1635,7 +1635,7 @@ export class AiCoderRunController {
             researchEvidence: completionRejectionResearchEvidence(session, round.content),
             type: "completion_rejected",
           });
-          if (session.capabilities?.promptCache !== "supported") session.contextManager.projectForFinalization();
+          session.contextManager.projectForFinalization();
           session.contextManager.addFeedback([
             "[GALAXY FINALIZATION RETRY - trusted runtime state]",
             issue,
@@ -1955,15 +1955,12 @@ export class AiCoderRunController {
   private enterFinalizationMode(session: RunSession): void {
     if (session.finalizationMode) return;
     session.finalizationMode = true;
-    const keepPrefix = session.capabilities?.promptCache === "supported";
-    if (!keepPrefix) session.contextManager?.projectForFinalization();
+    session.contextManager?.projectForFinalization();
     session.contextManager?.addFeedback([
       "[GALAXY FINALIZATION MODE - trusted runtime state]",
       "All deterministic completion evidence is satisfied and no required action remains.",
       "Return the final user-facing report now. State the verified result, changed files or behavior, validation run, and any residual risk.",
-      keepPrefix
-        ? "Tool definitions remain visible only to keep the cached prompt prefix stable. Do NOT call any tool; return only the plain-text final report."
-        : "No tool definitions will be available in the next turn. Do not request more inspection, validation, Git, checkpoint, or command calls.",
+      "No tool definitions will be available in the next turn. Do not request more inspection, validation, Git, checkpoint, or command calls.",
     ].join("\n"), session.modelTurns);
   }
 
@@ -2280,8 +2277,9 @@ export class AiCoderRunController {
       research: session.evidence.researchSources,
       writes: session.evidence.writes,
     });
+    const authoredWrites = (normalizedResult.effects?.writes ?? []).filter((write) => !isGeneratedWorkspacePath(write.path.split("/")));
     const durableAuthoredProgress = Boolean(effectCanChangeState && normalizedResult.effects && (
-      (normalizedResult.effects.writes?.length ?? 0) > 0
+      authoredWrites.length > 0
       || normalizedResult.effects.diffReview
       || normalizedResult.effects.plan
       || (normalizedResult.effects.researchSources?.length ?? 0) > 0
@@ -2297,23 +2295,6 @@ export class AiCoderRunController {
         session.repeatedToolFingerprint = 0;
         session.noProgressEpisodes = 0;
         session.lastNoProgressEpisodeTurn = -1;
-      }
-    }
-    if (effectCanChangeState && normalizedResult.ok
-      && normalizedResult.effects?.stateVersion !== undefined
-      && (normalizedResult.effects.writes?.length ?? 0) === 0) {
-      // Repeated state changes with no authored write mean the run only
-      // regenerates build output. Count it so the no-progress budget can pause
-      // the run instead of burning maxTurns (see the GymFlow livelock).
-      session.generatedChurnEvents += 1;
-      if (session.generatedChurnEvents % 6 === 0) {
-        this.countNoProgressEpisode(session);
-        session.contextManager?.addFeedback([
-          "[GALAXY GENERATED-STATE CHURN - trusted runtime state]",
-          `state-changing operations produced generated output only (build artifacts, caches, incremental metadata) ${session.generatedChurnEvents} times, with no authored workspace write.`,
-          "next_strategy: stop regenerating or deleting generated output. Submit the final report if the outcome is complete, otherwise make a durable authored change or report the blocker.",
-          "avoid: deleting build output or adding it to .gitignore to satisfy validation; generated output is excluded from durable write evidence.",
-        ].join("\n"), session.modelTurns);
       }
     }
     const observationKind = classifyToolObservation(normalizedResult);
@@ -2722,6 +2703,9 @@ export class AiCoderRunController {
     }
     const cyclingPaths: string[] = [];
     for (const write of effects.writes ?? []) {
+      // Build output/caches are durable host effects (run_command proof) but are
+      // not authored source; keep them out of the authored write evidence.
+      if (isGeneratedWorkspacePath(write.path.split("/"))) continue;
       const beforeState = workspaceStateKey(write.beforeKind, write.beforeHash);
       const afterState = workspaceStateKey(write.afterKind, write.afterHash);
       let history = session.writeStateHistory.get(write.path) ?? [];

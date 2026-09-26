@@ -12,7 +12,7 @@ import { lstat, open, readdir, readlink, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
-import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName, isGeneratedWorkspacePath } from "./workspace-generated-state.js";
+import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".galaxy",
@@ -272,9 +272,8 @@ export class NodeWorkspaceEvidenceVerifier implements AiCoderResumeWorkspaceVeri
       checkContext(context);
       const lexicalPath = this.scope.resolveLexical(activeFile.path);
       const workspacePath = relative(this.workspaceRoot, lexicalPath).split("\\").join("/") || ".";
-      // Generated paths (build output, tsbuildinfo) must not enter the durable
-      // fingerprint even when they were tracked as active paths.
-      if (isGeneratedWorkspacePath(workspacePath.split("/"))) continue;
+      // Active files are always verified, even inside ignored/generated
+      // directories (host conformance): the model pinned them explicitly.
       let pathInfo;
       try {
         pathInfo = await lstat(lexicalPath);

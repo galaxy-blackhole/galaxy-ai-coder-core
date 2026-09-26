@@ -1,12 +1,12 @@
-# 2026-09-26 — Finalization giữ prefix cache và allowlist in-history
+# 2026-09-26 — Finalization tool-free, allowlist in-history, cache accounting
 
-Vùng: runtime/adapters
+Vùng: runtime/adapters/context
 
 ## Sau
-- Khi `ModelCapabilities.promptCache === "supported"`, lượt finalization **không** project context và **không** rỗng hoá tool list; giữ nguyên prefix (system+tools+history), chỉ append instruction. Tool call ở finalization vẫn không dispatch (guard cũ). Đo live: cached 2432 → **6016** (hit 66% → 75%).
+- Lượt finalization vẫn **tool-free** + project context (host conformance): lượt cuối không gửi tool definitions và không dispatch tool call. (Thử nghiệm giữ tools để tối ưu cache đã bị revert vì vi phạm conformance.)
 - `OllamaCodingModel` map `promptCache: "supported"` (Ollama báo `prompt_eval_cached_count`).
 - `verifiedSystemPromptUpdate(model)`: mặc định `in-history` cho model đã probe template (`gemma3*`, `deepseek-v4.1-flash*`); còn lại in-place. Option `systemPromptUpdate` luôn thắng.
+- Token ledger thêm `cachedInput`, `cacheHitRate` và luỹ kế phiên (`cumulativeCacheHitRate`); map `prompt_eval_cached_count` → `cachedInputTokens`.
 
 ## Test hồi quy
-- `test/cache-hit.test.ts`: allowlist verified/unverified + capability override.
-- A/B lặp 3 lần/arm trong `docs/CACHE_HIT.md`.
+- `test/cache-hit.test.ts`: allowlist verified/unverified, capability override, cumulative ledger.

@@ -5,7 +5,7 @@ import { lstat, open, readdir, readlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
-import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
+import { isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
 
 const MAX_ENTRIES = 100_000;
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -45,7 +45,23 @@ export type NodeWorkspaceSnapshotOptions = Readonly<{
  * budget, and their mutations never enter authored oracle evidence.
  */
 export const DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS: NodeWorkspaceSnapshotOptions = Object.freeze({
-  derivedDirectories: GENERATED_WORKSPACE_DIRECTORIES,
+  // Build/output directories (dist, build, coverage, out) stay durable so
+  // run_command can attest the mutations it performed; the runtime filters them
+  // from authored evidence instead. Only caches/dependency trees are derived.
+  derivedDirectories: Object.freeze([
+    ".cache",
+    ".gradle",
+    ".mypy_cache",
+    ".next",
+    ".parcel-cache",
+    ".pytest_cache",
+    ".bun-cache",
+    ".turbo",
+    ".vite",
+    "__pycache__",
+    "node_modules",
+    "target",
+  ]),
 });
 
 export type NodeWorkspaceObservedMutation = Readonly<{
