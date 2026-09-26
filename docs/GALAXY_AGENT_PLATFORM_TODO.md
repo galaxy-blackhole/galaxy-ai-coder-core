@@ -176,3 +176,5 @@ Backup trước migration có 243 file và working-tree diff; vị trí local đ
 - Log run GymFlow (2026-09-25 09:39): 9 lần compacting→executing trong 11 phút; checkpoint `lastToolCalls` lặp `list_files`/`read_file`/`orbit_knowledge_topics` — bằng chứng trực tiếp vòng xoáy compact-mất-ngữ-cảnh-làm-lại.
 
 - Publish orbit-mcp 0.1.5 + nebula-mcp 1.0.3 + ai-coder-core 0.3.0-alpha.8 (tag alpha) HOÀN TẤT qua CI trusted publishing. `blackhole-cli` vẫn chờ trusted publisher trên npmjs.com (workflow publish re-run, lỗi 404 như trước).
+- [x] F24: Đổi model mặc định CLI sang deepseek-v4.1-flash:cloud (test timeout của user); MCP bundled timeout 60s → 120s cho cold-start npx sau khi publish server mới. Smoke: run completed 29s sau 1 lần MCP timeout do npx cache lạnh (mcp_connect_failed đã ghi log).
+- Publish core 0.3.0-alpha.8 + orbit 0.1.5 + nebula 1.0.3 hoàn tất; blackhole-cli chờ trusted publisher npmjs.com.

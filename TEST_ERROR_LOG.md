@@ -3341,3 +3341,33 @@ START 2026-09-25 18:10:01 +07:00 (2026-09-25T11:10:01.306Z). [Progress](<.galaxy
 2026-09-25 18:10:04 +07:00 (2026-09-25T11:10:04.892Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-25T11-10-01-300Z-sVORMD/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T11-10-01-300Z-sVORMD/summary.json>).
+
+## Core tests 2026-09-25T14-30-40-174Z-eAomIh
+
+START 2026-09-25 21:30:40 +07:00 (2026-09-25T14:30:40.179Z). [Progress](<.galaxy/tests/2026-09-25T14-30-40-174Z-eAomIh/summary.md>). Commit: 92aacd276c19ccf6dcbefae1deb26534e0afdacb; source SHA-256: 0afca0032ac4674bdc95b33ebc42184910100ff60341b166035ecbf06427c494.
+
+### Finished 2026-09-25T14-30-40-174Z-eAomIh
+
+2026-09-25 22:31:10 +07:00 (2026-09-25T15:31:10.824Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-25T14-30-40-174Z-eAomIh/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-25T14-30-40-174Z-eAomIh/summary.json>).
+
+## Core tests 2026-09-26T01-02-19-280Z-22hDqN
+
+START 2026-09-26 08:02:19 +07:00 (2026-09-26T01:02:19.300Z). [Progress](<.galaxy/tests/2026-09-26T01-02-19-280Z-22hDqN/summary.md>). Commit: 92aacd276c19ccf6dcbefae1deb26534e0afdacb; source SHA-256: 0a1186467b5672030cc3cd673b990a2ad5fe295672f8871bacfdee61c64c9be2.
+
+### Finished 2026-09-26T01-02-19-280Z-22hDqN
+
+2026-09-26 08:02:25 +07:00 (2026-09-26T01:02:25.827Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T01-02-19-280Z-22hDqN/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T01-02-19-280Z-22hDqN/summary.json>).
+
+## Core tests 2026-09-26T01-03-03-399Z-jglRXX
+
+START 2026-09-26 08:03:03 +07:00 (2026-09-26T01:03:03.402Z). [Progress](<.galaxy/tests/2026-09-26T01-03-03-399Z-jglRXX/summary.md>). Commit: 92aacd276c19ccf6dcbefae1deb26534e0afdacb; source SHA-256: 0a1186467b5672030cc3cd673b990a2ad5fe295672f8871bacfdee61c64c9be2.
+
+### Finished 2026-09-26T01-03-03-399Z-jglRXX
+
+2026-09-26 08:03:07 +07:00 (2026-09-26T01:03:07.159Z) | PASSED | PASS 125/125 tests; FAIL 0; CANCELED 0; SKIP 0. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-26T01-03-03-399Z-jglRXX/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-26T01-03-03-399Z-jglRXX/summary.json>).

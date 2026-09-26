@@ -61,7 +61,7 @@ export const DEFAULT_AI_CODER_CORE_SETTINGS: AiCoderCoreSettings = Object.freeze
     maxToolCalls: 48,
     maxToolRounds: 24,
     maxTurns: 24,
-    model: "glm-5.3-flash:cloud",
+    model: "deepseek-v4.1-flash:cloud",
     preserveThinking: true,
     provider: "ollama",
     requestTimeoutMs: 180_000,
