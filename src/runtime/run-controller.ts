@@ -85,6 +85,17 @@ const DEFAULT_BUDGET: AiCoderRunBudget = Object.freeze({
   toolOutput: Object.freeze({ maxBytes: 48_000, maxTokens: 12_000, tailFraction: 0.25 }),
 });
 
+/** Common model aliases for Galaxy tool names, mapped only when the target is active. */
+const TOOL_NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  bash: "run_command", shell: "run_command", exec: "run_command", execute: "run_command", terminal: "run_command",
+  read: "read_file", cat: "read_file", view_file: "read_file",
+  write: "write_file", create_file: "write_file",
+  edit: "edit_file", str_replace: "edit_file", replace: "edit_file", apply_patch: "edit_file",
+  glob: "glob_files", find_files: "glob_files",
+  grep: "search_text", search: "search_text",
+  ls: "list_files", list: "list_files",
+});
+
 const STABLE_OBSERVATION_TOOL_IDS = new Set([
   "artifact.list",
   "artifact.read",
@@ -1973,20 +1984,28 @@ export class AiCoderRunController {
     if (new Set(callIds).size !== callIds.length || callIds.some((id) => !id.trim())) {
       throw new AiCoderRuntimeError("INVALID_MODEL_STREAM", "Model returned duplicate or empty toolCallId values.");
     }
+    // Models trained on other agent frameworks occasionally emit well-known
+    // aliases (for example "bash" for run_command). Map an alias onto the
+    // canonical model name when it is active this round.
+    const visibleNames = new Set(roundToolSet.definitions.map((definition) => definition.function.name));
+    const normalizedCalls = calls.map((call) => {
+      if (visibleNames.has(call.name)) return call;
+      const alias = TOOL_NAME_ALIASES[call.name];
+      return alias !== undefined && visibleNames.has(alias) ? Object.freeze({ ...call, name: alias }) : call;
+    });
+    const unavailableName = normalizedCalls.find((call) => !visibleNames.has(call.name))?.name;
+    if (unavailableName !== undefined) {
+      throw new AiCoderRuntimeError(
+        "INVALID_MODEL_STREAM",
+        `Tool ${unavailableName} was not active in the registry snapshot shown to the model for this round.`,
+      );
+    }
     const reusedId = callIds.find((id) => session.evidence.seenToolCallIds.has(id));
     if (reusedId !== undefined) {
       throw new AiCoderRuntimeError("INVALID_MODEL_STREAM", `toolCallId ${reusedId} was already used in this run.`);
     }
     if (session.toolCalls + calls.length > session.budget.maxToolCalls) {
       throw new AiCoderRuntimeError("MAX_TOOL_CALLS", `AI Coder reached maxToolCalls=${session.budget.maxToolCalls}.`);
-    }
-    const visibleNames = new Set(roundToolSet.definitions.map((definition) => definition.function.name));
-    const unavailableName = calls.find((call) => !visibleNames.has(call.name))?.name;
-    if (unavailableName !== undefined) {
-      throw new AiCoderRuntimeError(
-        "INVALID_MODEL_STREAM",
-        `Tool ${unavailableName} was not active in the registry snapshot shown to the model for this round.`,
-      );
     }
     const prepared: PreparedToolCall[] = [];
     for (const call of calls) {
@@ -2032,7 +2051,9 @@ export class AiCoderRunController {
     const callRecord = {
       // Bounded, redacted digest so the post-compaction checkpoint shows WHICH
       // paths/queries were already inspected; hashes alone cannot stop re-listing.
-      argumentDigest: redactAiCoderCheckpointText(canonicalJson(call.arguments)).slice(0, 160),
+      argumentDigest: redactAiCoderCheckpointText(canonicalJson(call.arguments))
+        .replace(/"contentSha256":"[a-f0-9]{64}"/gu, '"contentSha256":"<re-read to refresh>"')
+        .slice(0, 160),
       argumentsHash,
       idempotencyKey,
       name: call.name,

@@ -480,7 +480,11 @@ export class AiCoderContextManager {
         const assistantCalls = assistantMessage && "toolCalls" in assistantMessage ? assistantMessage.toolCalls : [];
         const toolDigests = assistantCalls.slice(0, 4).map((call) => ({
           name: call.name,
-          args: redactAiCoderCheckpointText(canonicalJson(call.arguments)).slice(0, 200),
+          // Strip content hashes: a hash captured before compaction is stale,
+          // and surfacing it makes the model reuse it as an edit precondition.
+          args: redactAiCoderCheckpointText(canonicalJson(call.arguments))
+            .replace(/"contentSha256":"[a-f0-9]{64}"/gu, '"contentSha256":"<re-read to refresh>"')
+            .slice(0, 200),
         }));
         const lastToolMessage = [...item.messages].reverse().find((message) => message.role === "tool");
         return Object.freeze({
