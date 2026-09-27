@@ -16,6 +16,7 @@
 
 /** Generated directory basenames. Any path segment equal to one of these marks the subtree. */
 export const GENERATED_WORKSPACE_DIRECTORIES: readonly string[] = Object.freeze([
+  ".galaxy",
   ".bun-cache",
   ".cache",
   ".gradle",

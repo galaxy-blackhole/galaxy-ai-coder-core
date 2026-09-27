@@ -1,11 +1,11 @@
 import type { AiCoderWorkspaceEntryKind, RunExecutionContext } from "../../../index.js";
 import { createHash } from "node:crypto";
-import { constants as fileConstants } from "node:fs";
+import { constants as fileConstants, readFileSync } from "node:fs";
 import { lstat, open, readdir, readlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
-import { isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
+import { isGeneratedWorkspacePath } from "./workspace-generated-state.js";
 
 const MAX_ENTRIES = 100_000;
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -45,9 +45,11 @@ export type NodeWorkspaceSnapshotOptions = Readonly<{
  * budget, and their mutations never enter authored oracle evidence.
  */
 export const DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS: NodeWorkspaceSnapshotOptions = Object.freeze({
-  // Build/output directories (dist, build, coverage, out) stay durable so
-  // run_command can attest the mutations it performed; the runtime filters them
-  // from authored evidence instead. Only caches/dependency trees are derived.
+  // Build/output directories (dist, build, coverage, out) are classified as
+  // derived so their mutations never void validation or diff-review evidence.
+  // The runtime also filters them from authored evidence and progress, so
+  // regenerating build output never resets the no-progress budget.
+  // .gitignore-derived directories are merged in NodeWorkspaceSnapshotter.create().
   derivedDirectories: Object.freeze([
     ".cache",
     ".gradle",
@@ -59,7 +61,11 @@ export const DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS: NodeWorkspaceSnapshotO
     ".turbo",
     ".vite",
     "__pycache__",
+    "build",
+    "coverage",
+    "dist",
     "node_modules",
+    "out",
     "target",
   ]),
 });
@@ -148,6 +154,42 @@ function snapshotVersion(entries: readonly NodeWorkspaceSnapshotEntry[]): string
   return `sha256:${hash.digest("hex")}`;
 }
 
+/** Extract directory basenames from .gitignore that look like build/output dirs. */
+function readGitignoreDerivedDirectories(workspaceRoot: string): readonly string[] {
+  try {
+    const raw = readFileSync(join(workspaceRoot, ".gitignore"), "utf8");
+    if (raw.length > 64 * 1024) return [];
+    const dirs = new Set<string>();
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("!")) continue;
+      if (!trimmed.endsWith("/") && !trimmed.endsWith("/**")) continue;
+      const base = trimmed.replace(/\/+$/, "").replace(/\*\*$/, "").replace(/\/+$/, "").split("/").pop() ?? "";
+      if (base.length > 0 && !base.includes("*") && !base.includes(".") && base !== "src" && base !== "app" && base !== "lib" && base !== "test" && base !== "tests" && base !== "spec") {
+        dirs.add(base);
+      }
+    }
+    return [...dirs];
+  } catch {
+    return [];
+  }
+}
+
+/** Read derived directories declared by .galaxy/workspace.json in the workspace. */
+function readWorkspaceManifest(workspaceRoot: string): readonly string[] {
+  try {
+    const raw = readFileSync(join(workspaceRoot, ".galaxy", "workspace.json"), "utf8");
+    if (raw.length > 16 * 1024) return [];
+    const parsed = JSON.parse(raw) as { derivedDirectories?: unknown };
+    if (!Array.isArray(parsed.derivedDirectories)) return [];
+    return parsed.derivedDirectories.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim().length > 0 && !entry.includes(".."),
+    );
+  } catch {
+    return [];
+  }
+}
+
 export class NodeWorkspaceSnapshotter {
   private readonly derivedDirectories: ReadonlySet<string>;
   private readonly maxHashedBytes: number;
@@ -161,7 +203,11 @@ export class NodeWorkspaceSnapshotter {
     workspaceRoot: string,
     options: NodeWorkspaceSnapshotOptions = {},
   ): Promise<NodeWorkspaceSnapshotter> {
-    for (const path of options.derivedDirectories ?? []) {
+    const manifestDerived = readWorkspaceManifest(workspaceRoot);
+    const gitignoreDerived = readGitignoreDerivedDirectories(workspaceRoot);
+    const mergedDerived = [...new Set([...(options.derivedDirectories ?? []), ...manifestDerived, ...gitignoreDerived])];
+    const mergedOptions: NodeWorkspaceSnapshotOptions = { ...options, derivedDirectories: Object.freeze(mergedDerived) };
+    for (const path of mergedOptions.derivedDirectories ?? []) {
       if (!path || path === "." || path.includes("\\") || path.startsWith("/")
         || path.split("/").some((part) => !part || part === "." || part === "..")) {
         throw new Error(`Invalid derived workspace directory: ${path || "<empty>"}.`);
@@ -170,7 +216,7 @@ export class NodeWorkspaceSnapshotter {
     if (!Number.isSafeInteger(options.maxHashedBytes ?? MAX_BYTES) || (options.maxHashedBytes ?? MAX_BYTES) < 1) {
       throw new Error("Workspace snapshot maxHashedBytes must be a positive safe integer.");
     }
-    return new NodeWorkspaceSnapshotter(await WorkspaceScope.create(workspaceRoot), options);
+    return new NodeWorkspaceSnapshotter(await WorkspaceScope.create(workspaceRoot), mergedOptions);
   }
 
   async capture(context: RunExecutionContext): Promise<NodeWorkspaceSnapshot> {
@@ -268,7 +314,7 @@ export class NodeWorkspaceSnapshotter {
         const relativePath = workspacePath(childSegments);
         const derived = inheritedDerived
           || childSegments.some((segment) => this.derivedDirectories.has(segment))
-          || isGeneratedWorkspaceFileName(name);
+          || isGeneratedWorkspacePath(childSegments);
         const absolutePath = join(absoluteDirectory, name);
         const info = await lstat(absolutePath);
         if (info.isDirectory() && !info.isSymbolicLink()) {
