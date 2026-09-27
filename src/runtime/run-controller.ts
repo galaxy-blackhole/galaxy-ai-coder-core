@@ -1989,9 +1989,24 @@ export class AiCoderRunController {
     // canonical model name when it is active this round.
     const visibleNames = new Set(roundToolSet.definitions.map((definition) => definition.function.name));
     const normalizedCalls = calls.map((call) => {
-      if (visibleNames.has(call.name)) return call;
-      const alias = TOOL_NAME_ALIASES[call.name];
-      return alias !== undefined && visibleNames.has(alias) ? Object.freeze({ ...call, name: alias }) : call;
+      let normalized = call;
+      if (!visibleNames.has(normalized.name)) {
+        const alias = TOOL_NAME_ALIASES[normalized.name];
+        if (alias !== undefined && visibleNames.has(alias)) normalized = Object.freeze({ ...normalized, name: alias });
+      }
+      if (normalized.name === "edit_file") {
+        // The edit precondition is optional and advisory at the agent layer:
+        // a hash remembered from an earlier turn or compacted context is stale
+        // and would otherwise loop on PRECONDITION_FAILED. Drop it and let the
+        // oldText match be the guard. The port still enforces a precondition
+        // when a host supplies one directly.
+        const args = normalized.arguments;
+        if (args !== null && typeof args === "object" && !Array.isArray(args) && "precondition" in args) {
+          const { precondition: _drop, ...rest } = args as Record<string, unknown>;
+          normalized = Object.freeze({ ...normalized, arguments: Object.freeze(rest) });
+        }
+      }
+      return normalized;
     });
     const unavailableName = normalizedCalls.find((call) => !visibleNames.has(call.name))?.name;
     if (unavailableName !== undefined) {
