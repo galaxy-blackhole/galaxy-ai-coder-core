@@ -11,7 +11,8 @@ export type AiCoderRuntimeErrorCode =
   | "PAUSED"
   | "PERSISTENCE_ERROR"
   | "PROVIDER_ERROR"
-  | "TOOL_EXECUTION";
+  | "TOOL_EXECUTION"
+  | "TOOL_TIMEOUT";
 
 export class AiCoderRuntimeError extends Error {
   constructor(

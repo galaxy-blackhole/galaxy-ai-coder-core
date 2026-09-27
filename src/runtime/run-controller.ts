@@ -1665,7 +1665,7 @@ export class AiCoderRunController {
         const observations: AiCoderToolObservation[] = [];
         for (let index = 0; index < preparedCalls.length; index += 1) {
           const preparedCall = preparedCalls[index]!;
-          observations.push(await this.executeToolCall(session, preparedCall, roundToolSet));
+          observations.push(await this.executeToolCallGuarded(session, preparedCall, roundToolSet));
           if (session.evidence.pendingApprovals.size && index + 1 < preparedCalls.length) {
             for (const skipped of preparedCalls.slice(index + 1)) {
               observations.push(await this.recordApprovalBlockedToolCall(session, skipped, roundToolSet));
@@ -2019,6 +2019,31 @@ export class AiCoderRunController {
       }
     }
     return Object.freeze(prepared);
+  }
+
+  /**
+   * Bound a single tool dispatch. A native or host tool that blocks forever
+   * would otherwise hang the whole run; a timeout fails the run cleanly with a
+   * diagnosable code instead.
+   */
+  private async executeToolCallGuarded(
+    session: RunSession,
+    prepared: PreparedToolCall,
+    roundToolSet: AiCoderRuntimeToolSet,
+  ): Promise<AiCoderToolObservation> {
+    const timeoutMs = 600_000;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        this.executeToolCall(session, prepared, roundToolSet),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new AiCoderRuntimeError("TOOL_TIMEOUT", `Tool ${prepared.call.name} did not return within ${timeoutMs}ms.`)), timeoutMs);
+          timer.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   private async executeToolCall(
