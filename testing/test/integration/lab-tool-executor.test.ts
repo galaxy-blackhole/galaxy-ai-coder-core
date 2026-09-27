@@ -537,17 +537,17 @@ test("run_command proves file creation, modification, and deletion even when the
   testContext.after(() => rm(workspaceRoot, { recursive: true, force: true }));
   await Promise.all([
     mkdir(join(workspaceRoot, ".git"), { recursive: true }),
-    mkdir(join(workspaceRoot, "coverage"), { recursive: true }),
-    mkdir(join(workspaceRoot, "dist"), { recursive: true }),
+    mkdir(join(workspaceRoot, "reports"), { recursive: true }),
+    mkdir(join(workspaceRoot, "artifacts"), { recursive: true }),
     mkdir(join(workspaceRoot, "node_modules"), { recursive: true }),
   ]);
-  await writeFile(join(workspaceRoot, "coverage/deleted.txt"), "delete me\n", "utf8");
+  await writeFile(join(workspaceRoot, "reports/deleted.txt"), "delete me\n", "utf8");
   await writeFile(join(workspaceRoot, "node_modules/modified.txt"), "before\n", "utf8");
   await writeFile(join(workspaceRoot, "mutate-command.cjs"), [
     "const fs = require('node:fs');",
-    "fs.writeFileSync('dist/created.txt', 'created\\n');",
+    "fs.writeFileSync('artifacts/created.txt', 'created\\n');",
     "fs.writeFileSync('node_modules/modified.txt', 'after\\n');",
-    "fs.unlinkSync('coverage/deleted.txt');",
+    "fs.unlinkSync('reports/deleted.txt');",
     "fs.writeFileSync('.git/ignored.txt', 'git internal\\n');",
     "fs.writeFileSync('transient.galaxy-code.lock', 'lock\\n');",
     "process.exitCode = 7;",
@@ -573,18 +573,18 @@ test("run_command proves file creation, modification, and deletion even when the
   const independentlyObserved = diffNodeWorkspaceSnapshots(beforeSnapshot, afterSnapshot);
   assert.deepEqual(result.effects?.writes, [
     {
-      afterHash: null,
-      afterKind: "missing",
-      beforeHash: sha256Text("delete me\n"),
-      beforeKind: "file",
-      path: "coverage/deleted.txt",
-    },
-    {
       afterHash: sha256Text("created\n"),
       afterKind: "file",
       beforeHash: null,
       beforeKind: "missing",
-      path: "dist/created.txt",
+      path: "artifacts/created.txt",
+    },
+    {
+      afterHash: null,
+      afterKind: "missing",
+      beforeHash: sha256Text("delete me\n"),
+      beforeKind: "file",
+      path: "reports/deleted.txt",
     },
   ]);
   assert.deepEqual(independentlyObserved.observedMutations
