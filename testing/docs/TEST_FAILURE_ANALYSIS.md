@@ -169,7 +169,7 @@ Các lỗi cũ phải kiểm tra lại sau live: parser INC-001 không được 
 
 Trạng thái: **OFFLINE VERIFIED**; live xác minh do người dùng chạy.
 
-Ngày 19/09/2026, sau khi đọc lại [repeat-tool-reminder của DeepSeek Harness](../../deepseek-harness-master/packages/guard/repeat-tool-reminder/src/index.ts), kết luận trước ("giữ nguyên 2/2/2 vì đã có nudge") bị thu hồi: nudge cũ vẫn gọi `countNoProgressEpisode`, nên lời nhắc đọc-only có thể góp trực tiếp vào pause, và guard fingerprint/chu kỳ vẫn chặn observation. Thay đổi:
+Ngày 19/09/2026, sau khi đọc lại [repeat-tool-reminder của DSH gốc](../../deepseek-harness-master/packages/guard/repeat-tool-reminder/src/index.ts), kết luận trước ("giữ nguyên 2/2/2 vì đã có nudge") bị thu hồi: nudge cũ vẫn gọi `countNoProgressEpisode`, nên lời nhắc đọc-only có thể góp trực tiếp vào pause, và guard fingerprint/chu kỳ vẫn chặn observation. Thay đổi:
 
 - `AiCoderRunBudget` thêm `noProgressPolicy` (`advisory` mặc định, `strict`) và `observationNudgeThresholds` (mặc định `[3, 5, 8]`, mượn mốc DeepSeek). Validation fail-loud: mảng khác rỗng, tối đa 8, số nguyên >= 2, không trùng, được chuẩn hóa tăng dần.
 - Chế độ `advisory` (mặc định): observation đọc-only luôn được dispatch, nhận feedback tin cậy tại các mốc nudge, và chỉ bị block khi vượt mốc cuối; nudge không tăng `noProgressEpisodes`. Fingerprint/cycle guard bỏ qua observation trong advisory; mutation, approval, failed-mutation-family và unknown-outcome giữ nguyên guard cứng.
@@ -553,7 +553,7 @@ Test `test-audit.test.mjs` assert danh sách live step cứng — campaign mới
 **Runs:** rHyeb4 (test fail), DVAjws (test fail + deadline).
 **Triệu chứng:** Test "multiple lines share one tier" — model viết code đọc đúng SPEC (sum 60+40=100 → platinum 10% → 4600) nhưng test fixture expects 2300 (gold 5%).
 **Nguyên nhân gốc:** Bug trong scenario fixture — **test contradicts SPEC**. SPEC ghi `tierFor(totalQuantity)` maps **the summed order quantity** (L7). Model pass (yUo6qZ) workaround bằng cách dùng `max(line.qty)` thay vì `sum`, kèm comment nhận diện "immutable test pins this rule".
-**So sánh hệ thống khác:** DeepSeek Harness dùng snapshot replay offline, không phụ thuộc live output. Codex CLI và Claude Code dùng deterministic fixtures riêng để tránh mâu thuẫn spec/test.
+**So sánh hệ thống khác:** harness nền dùng snapshot replay offline, không phụ thuộc live output. Codex CLI và Claude Code dùng deterministic fixtures riêng để tránh mâu thuẫn spec/test.
 **Fix Galaxy (alpha.8):** Sửa `pricing.test.mjs` trong scenario fixture: `discountCents: 2300` → `4600`, `totalCents: 43700` → `41400`. Reference implementation (sum → platinum → 10%) pass 8/8 offline.
 **Lỗi phát sinh:** Không.
 

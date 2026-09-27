@@ -88,7 +88,7 @@ this version; the internal working versions `0.2.0`–`0.2.2` were never publish
 - Configurable observation guard policy:
   - `AiCoderRunBudget.noProgressPolicy`: `advisory` (default) and `strict`.
   - `AiCoderRunBudget.observationNudgeThresholds` (default `[3, 5, 8]`,
-    following the DeepSeek Harness `repeat-tool-reminder` design): escalating
+    following the upstream DSH `repeat-tool-reminder` design): escalating
     trusted nudges for repeated read-only observations; blocking only after the
     final threshold. Advisory nudges no longer count toward
     `maxNoProgressEpisodes`; the `strict` policy preserves the older

@@ -4,7 +4,7 @@
 
 - `AiCoderRunBudget.noProgressPolicy`: `advisory` (mặc định) và `strict`.
 - `AiCoderRunBudget.observationNudgeThresholds` (mặc định `[3, 5, 8]`, theo
-  tư tưởng repeat-tool-reminder của DeepSeek Harness): các mốc nhắc advisory
+  tư tưởng repeat-tool-reminder của DSH gốc): các mốc nhắc advisory
   cho observation đọc-only; block chỉ xảy ra sau mốc cuối.
 - Checkpoint lưu `noProgress.policy` và `noProgress.observationNudgeThresholds`;
   resume với cấu hình khác bị từ chối `CHECKPOINT_INCOMPATIBLE`, checkpoint cũ

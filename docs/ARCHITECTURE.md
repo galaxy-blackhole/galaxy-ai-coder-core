@@ -135,7 +135,7 @@ their call JSON is not byte-identical:
 Observation handling follows the configured `noProgressPolicy`. The default
 `advisory` policy dispatches repeated read-only observations and adds trusted
 corrective feedback at each `observationNudgeThreshold` attempt (default
-3/5/8, borrowed from DeepSeek Harness's repeat-tool-reminder design); it blocks
+3/5/8, borrowed from the upstream DSH repeat-tool-reminder design); it blocks
 only when an identical observation is requested beyond the final threshold.
 Advisory nudges do not count as no-progress episodes. The `strict` policy
 preserves the older behavior: the first exceedance nudges and counts one
