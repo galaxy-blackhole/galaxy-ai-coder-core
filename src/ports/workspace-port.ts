@@ -130,7 +130,8 @@ export interface WorkspaceWriterPort {
       newText: string;
       oldText: string;
       path: string;
-      precondition: WorkspaceMutationPrecondition;
+      /** Optional compare-and-swap guard; when omitted the patch relies on oldText alone. */
+      precondition?: WorkspaceMutationPrecondition;
       replaceAll?: boolean;
     }>,
     context: ToolExecutionContext,

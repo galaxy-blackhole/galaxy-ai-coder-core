@@ -819,7 +819,7 @@ export class NodeWorkspacePort implements WorkspacePort {
       newText: string;
       oldText: string;
       path: string;
-      precondition: WorkspaceMutationPrecondition;
+      precondition?: WorkspaceMutationPrecondition;
       replaceAll?: boolean;
     }>,
     context: ToolExecutionContext,
@@ -833,8 +833,12 @@ export class NodeWorkspacePort implements WorkspacePort {
     try {
       const absolutePath = await this.scope.resolveExisting(input.path);
       const before = await readUtf8(absolutePath, context);
-      const preconditionError = enforcePrecondition(before, input.precondition);
-      if (preconditionError !== undefined) return preconditionError;
+      // The precondition is optional: when supplied it is a strict
+      // compare-and-swap guard, when omitted the oldText match alone decides.
+      if (input.precondition !== undefined) {
+        const preconditionError = enforcePrecondition(before, input.precondition);
+        if (preconditionError !== undefined) return preconditionError;
+      }
       const occurrences = before.split(input.oldText).length - 1;
       if (occurrences === 0 || (occurrences > 1 && input.replaceAll !== true)) {
         return failure(
@@ -847,7 +851,7 @@ export class NodeWorkspacePort implements WorkspacePort {
       const after = input.replaceAll === true
         ? before.split(input.oldText).join(input.newText)
         : before.replace(input.oldText, input.newText);
-      const writeResult = await this.atomicWrite(input.path, after, input.precondition, context);
+      const writeResult = await this.atomicWrite(input.path, after, { kind: "matches_sha256", contentSha256: sha256Text(before) }, context);
       return {
         ok: true,
         data: Object.freeze({

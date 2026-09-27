@@ -831,12 +831,13 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       case "workspace.edit": {
         const replaceAll = optionalBoolean(argumentsValue, "replaceAll");
         const { before, snapshotter } = await this.mutationBaseline(context);
+        const editPrecondition = argumentsValue.precondition as { kind: "matches_sha256"; contentSha256: string } | undefined;
         const result = await this.options.workspace.applyPatch({
           path: stringArgument(argumentsValue, "path"),
           oldText: stringArgument(argumentsValue, "oldText"),
           newText: stringArgument(argumentsValue, "newText"),
           ...(replaceAll === undefined ? {} : { replaceAll }),
-          precondition: argumentsValue.precondition as { kind: "matches_sha256"; contentSha256: string },
+          ...(editPrecondition === undefined ? {} : { precondition: editPrecondition }),
         }, context);
         const after = await snapshotter.capture(context);
         const mutations = diffNodeWorkspaceSnapshots(before, after);

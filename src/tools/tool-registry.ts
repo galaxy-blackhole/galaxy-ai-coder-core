@@ -252,8 +252,8 @@ const CATALOG: AiCoderToolDescriptor[] = [
   }),
   descriptor({
     id: "workspace.edit", modelName: "edit_file", title: "Edit file",
-    description: "Replace an exact text fragment under an expected content hash. precondition must be {\"kind\":\"matches_sha256\",\"contentSha256\":\"<hash returned by read_file>\"}. Use for focused edits to existing files. Do not use when the match is ambiguous. Returns replacement count, before/after hashes, and any separately observed derived dependency mutations.",
-    category: "workspace", transport: "native", inputSchema: objectSchema({ path: WORKSPACE_PATH, oldText: STRING, newText: STRING, replaceAll: BOOLEAN, precondition: objectSchema({ kind: { const: "matches_sha256" }, contentSha256: HASH }, ["kind", "contentSha256"]) }, ["path", "oldText", "newText", "precondition"]),
+    description: "Replace an exact text fragment. oldText must match the current file exactly once (add surrounding lines if ambiguous). The optional precondition {\"kind\":\"matches_sha256\",\"contentSha256\":...} is a strict compare-and-swap guard; omit it and rely on the oldText match for a normal edit. Returns replacement count, before/after hashes, and any separately observed derived dependency mutations.",
+    category: "workspace", transport: "native", inputSchema: objectSchema({ path: WORKSPACE_PATH, oldText: STRING, newText: STRING, replaceAll: BOOLEAN, precondition: objectSchema({ kind: { const: "matches_sha256" }, contentSha256: HASH }, ["kind", "contentSha256"]) }, ["path", "oldText", "newText"]),
     outputSchema: objectSchema({ path: PATH, resolvedPath: PATH, replacements: { type: "integer", minimum: 1 }, beforeContentSha256: HASH, afterContentSha256: HASH, derivedMutations: DERIVED_MUTATION_OBSERVATION }, ["path", "resolvedPath", "replacements", "beforeContentSha256", "afterContentSha256"]),
     permissions: ["fs.workspace"], risk: "medium", mutability: "write", idempotency: "with_key", maxOutputTokens: 2_000, enabledByDefault: true,
   }),
