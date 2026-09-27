@@ -44,7 +44,7 @@ test("generated path predicate covers build output and incremental metadata", ()
   assert.equal(isGeneratedWorkspacePath(["README.md"]), false);
 });
 
-test("mutation snapshotter reports build output as durable host effects", async t => {
+test("mutation snapshotter treats build output as derived generated state", async t => {
   const root = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));
   const ctx = context(root);
@@ -55,11 +55,11 @@ test("mutation snapshotter reports build output as durable host effects", async 
   await writeFile(join(root, "src", "index.ts"), "export const value = 2;\n");
   const after = await snapshotter.capture(ctx);
   const diff = diffNodeWorkspaceSnapshots(before, after);
-  // Build output is a durable host effect so run_command can attest its
-  // mutations; only incremental metadata stays derived at the snapshot layer.
-  assert.deepEqual(diff.writes.map(write => write.path), ["dist/assets/bundle.js", "src/index.ts"]);
+  // Build output is generated state: it never enters authored write evidence,
+  // so a build that regenerates dist/ cannot void validation or diff review.
+  assert.deepEqual(diff.writes.map(write => write.path), ["src/index.ts"]);
   const derived = diff.observedMutations.filter(m => m.evidenceClass === "derived").map(m => m.path).sort();
-  assert.deepEqual(derived, ["tsconfig.tsbuildinfo"]);
+  assert.deepEqual(derived, ["dist/assets/bundle.js", "tsconfig.tsbuildinfo"]);
   // The runtime, not the snapshot, decides authored progress from these paths.
   assert.equal(isGeneratedWorkspacePath(["dist", "assets", "bundle.js"]), true);
   assert.equal(isGeneratedWorkspacePath(["src", "index.ts"]), false);

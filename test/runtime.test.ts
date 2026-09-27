@@ -1258,7 +1258,9 @@ test("run controller completes a correlated read-only tool loop", async () => {
   assert.match(systemPrompt, /"registrySnapshotHash":"sha256:tool-set"/);
   assert.match(systemPrompt, /"operatingSystem":"darwin"/);
   assert.match(systemPrompt, /"workspacePath":"\."/);
-  assert.equal(systemPrompt.includes("/workspace"), false);
+  // No host absolute workspace path leaks. The `.galaxy/workspace.json`
+  // manifest filename is workspace-relative, so match only a path segment.
+  assert.equal(/\/workspace\//.test(systemPrompt), false);
   assert.equal(systemPrompt.includes("deterministic Galaxy AI Coder test agent"), false);
 });
 

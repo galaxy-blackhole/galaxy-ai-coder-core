@@ -467,7 +467,9 @@ test("prompt uses the provider-neutral capability contract and never names legac
   assert.match(prompt.systemPrompt, /Never remove or weaken validation, security handling, accessibility support/);
   assert.match(prompt.systemPrompt, /EXTRACTED: read directly in this workspace during this run/);
   assert.match(prompt.systemPrompt, /Do not present inferred relationships as verified facts/);
-  assert.equal(prompt.systemPrompt.includes("/workspace"), false);
+  // The `.galaxy/workspace.json` manifest filename is workspace-relative;
+  // match only an absolute path segment, not that filename.
+  assert.equal(/\/workspace\//.test(prompt.systemPrompt), false);
   assert.equal(prompt.systemPrompt.includes("tool_catalog_search"), false);
   assert.equal(prompt.systemPrompt.includes("workspace_read_text"), false);
   assert.equal(prompt.systemPrompt.includes("workspace_apply_patch"), false);
