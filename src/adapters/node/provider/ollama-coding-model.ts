@@ -40,8 +40,13 @@ export interface OllamaCodingModelOptions {
   readonly fetch?: FetchLike;
   readonly model: string;
   readonly requestTimeoutMs?: number;
-  /** Provider-owned control; named effort levels are only supported by some Ollama models. */
-  readonly thinking?: boolean | "low" | "medium" | "high";
+  /**
+   * Provider-owned control. Ollama accepts a boolean or the named levels
+   * "low" | "medium" | "high" | "max" (docs/api.md: the `think` field); which
+   * levels a model actually honours depends on the model, so hosts should offer
+   * the model's declared list instead of this whole union.
+   */
+  readonly thinking?: boolean | "low" | "medium" | "high" | "max";
   /**
    * Set to "in-history" only when the model's chat template has been verified to
    * read a later system message as the effective prompt (append instead of
