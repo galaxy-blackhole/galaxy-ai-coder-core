@@ -779,3 +779,18 @@ test("git diff combines working-tree, staged, and safely quoted untracked change
   assert.equal(truncatedOutput.truncated, true);
   assert.equal(truncated.effects?.diffReview, undefined);
 });
+
+test("write_file attests a write into generated state without a durable snapshot entry", async (testContext) => {
+  const workspaceRoot = await mkdtemp(join(tmpdir(), "galaxy-tool-derived-write-"));
+  testContext.after(() => rm(workspaceRoot, { recursive: true, force: true }));
+  await mkdir(join(workspaceRoot, ".galaxy"), { recursive: true });
+  const executor = await fixtureExecutor(workspaceRoot);
+  const content = JSON.stringify({ derivedDirectories: ["dist", "build"] });
+  const result = await executor.execute({
+    arguments: { content, path: ".galaxy/workspace.json", precondition: { kind: "must_not_exist" } },
+    name: "write_file",
+    toolCallId: "derived-write",
+  }, context(workspaceRoot, { idempotencyKey: "derived-write", toolCallId: "derived-write" }));
+  assert.equal(result.ok, true, result.error?.message);
+  assert.equal(await readFile(join(workspaceRoot, ".galaxy", "workspace.json"), "utf8"), content);
+});

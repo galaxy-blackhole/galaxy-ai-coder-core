@@ -162,17 +162,29 @@ function assertTargetMutation(
     path: string;
   }>,
 ): void {
-  const target = mutations.writes.find((write) => write.path === expected.path);
   const expectedBeforeKind = expected.beforeHash === null ? "missing" : "file";
-  if (target === undefined
-    || target.beforeKind !== expectedBeforeKind
-    || target.afterKind !== "file"
-    || target.beforeHash !== expected.beforeHash
-    || target.afterHash !== expected.afterHash) {
-    throw new UnknownSideEffectOutcomeError(
-      `${canonicalToolId} returned success, but its target mutation does not match the independent workspace snapshot.`,
-    );
+  const durable = mutations.writes.find((write) => write.path === expected.path);
+  if (durable !== undefined
+    && durable.beforeKind === expectedBeforeKind
+    && durable.afterKind === "file"
+    && durable.beforeHash === expected.beforeHash
+    && durable.afterHash === expected.afterHash) {
+    return;
   }
+  // A write into generated state (for example .galaxy/workspace.json) is observed
+  // as a derived mutation: the snapshot keeps metadata fingerprints instead of a
+  // content hash, so attest the observed change rather than a durable write.
+  const derived = mutations.observedMutations.find(
+    (mutation) => mutation.path === expected.path && mutation.evidenceClass === "derived",
+  );
+  if (derived !== undefined
+    && derived.afterKind === "file"
+    && derived.beforeFingerprint !== derived.afterFingerprint) {
+    return;
+  }
+  throw new UnknownSideEffectOutcomeError(
+    `${canonicalToolId} returned success, but its target mutation does not match the independent workspace snapshot.`,
+  );
 }
 
 function structuredMutationFailure(
