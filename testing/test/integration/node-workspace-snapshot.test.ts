@@ -67,14 +67,13 @@ test("NodeWorkspaceSnapshotter is deterministic, includes build/dependency files
     await writeFile(join(workspaceRoot, "dist/bundle.js"), "bundle changed\n", "utf8");
     const workspaceChanged = await snapshotter.capture(context(workspaceRoot));
     const mutations = diffNodeWorkspaceSnapshots(first, workspaceChanged);
-    assert.deepEqual(mutations.writes, [{
-      afterHash: workspaceChanged.entries.find((entry) => entry.path === "dist/bundle.js")?.comparisonFingerprint,
-      afterKind: "file",
-      beforeHash: first.entries.find((entry) => entry.path === "dist/bundle.js")?.comparisonFingerprint,
-      beforeKind: "file",
-      path: "dist/bundle.js",
-    }]);
-    assert.deepEqual(mutations.observedMutations.map((mutation) => mutation.evidenceClass), ["durable"]);
+    // Build output is generated state: it is observed but never attested as a
+    // durable write, so regenerating it cannot void validation evidence.
+    assert.deepEqual(mutations.writes, []);
+    const changed = mutations.observedMutations.find((mutation) => mutation.path === "dist/bundle.js");
+    assert.equal(changed?.evidenceClass, "derived");
+    assert.equal(changed?.afterFingerprint, workspaceChanged.entries.find((entry) => entry.path === "dist/bundle.js")?.comparisonFingerprint);
+    assert.equal(changed?.beforeFingerprint, first.entries.find((entry) => entry.path === "dist/bundle.js")?.comparisonFingerprint);
     assert.equal(mutations.stateVersion, workspaceChanged.stateVersion);
   } finally {
     await rm(base, { force: true, recursive: true });

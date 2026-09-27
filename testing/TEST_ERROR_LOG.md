@@ -1328,3 +1328,120 @@ DONE counts finished steps, including failures; PASS counts successful steps. Au
 | 1/3 core:build | PASS | 2026-09-26 23:26:48 +07:00 (2026-09-26T16:26:48.323Z) | 2026-09-26 23:26:52 +07:00 (2026-09-26T16:26:52.256Z) | [stdout](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/001-core-build/stderr.log>) |
 | 2/3 cli:build | PASS | 2026-09-26 23:26:52 +07:00 (2026-09-26T16:26:52.262Z) | 2026-09-26 23:26:55 +07:00 (2026-09-26T16:26:55.292Z) | [stdout](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/002-cli-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/002-cli-build/stderr.log>) |
 | 3/3 cli:e2e | PASS | 2026-09-26 23:26:55 +07:00 (2026-09-26T16:26:55.296Z) | 2026-09-26 23:28:05 +07:00 (2026-09-26T16:28:05.199Z) | Tests: 44 passed, 0 failed, 0 skipped; total 44. Last PASS: durable project harness rejects stubs and semantic regressions. [stdout](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/003-cli-e2e/stdout.log>) / [stderr](<.galaxy/audit/2026-09-26T16-26-48-202Z-zANNvZ/003-cli-e2e/stderr.log>) |
+
+- 2026-09-27 22:32:15 +07:00 (2026-09-27T15:32:15.191Z) | run 2026-09-27T15-32-15-096Z-yjAXil | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.md>)
+
+- 2026-09-27 22:32:15 +07:00 (2026-09-27T15:32:15.217Z) | run 2026-09-27T15-32-15-096Z-yjAXil | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.md>)
+
+- 2026-09-27 22:32:20 +07:00 (2026-09-27T15:32:20.574Z) | run 2026-09-27T15-32-15-096Z-yjAXil | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.md>)
+
+- 2026-09-27 22:32:20 +07:00 (2026-09-27T15:32:20.579Z) | run 2026-09-27T15-32-15-096Z-yjAXil | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.md>)
+
+- 2026-09-27 22:32:31 +07:00 (2026-09-27T15:32:31.927Z) | run 2026-09-27T15-32-15-096Z-yjAXil | step-passed 2/2 cli:unit | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.md>)
+
+<!-- audit-finished:2026-09-27T15-32-15-096Z-yjAXil -->
+## Run 2026-09-27T15-32-15-096Z-yjAXil
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-27 22:32:15 +07:00 (2026-09-27T15:32:15.191Z). Finished: 2026-09-27 22:32:32 +07:00 (2026-09-27T15:32:32.034Z).
+- Last PASS: cli:unit. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/summary.json>).
+- Source SHA-256: 701a0556b3d0c5507741a8c18756c1539fd0fbfcdabb965d469b617f83188b12. Source unchanged: true.
+- Repositories: {"cli":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"2.0.0-alpha.8"},"core":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"0.3.0-alpha.19"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:unit"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-09-27 22:32:15 +07:00 (2026-09-27T15:32:15.217Z) | 2026-09-27 22:32:20 +07:00 (2026-09-27T15:32:20.574Z) | [stdout](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/001-core-build/stderr.log>) |
+| 2/2 cli:unit | PASS | 2026-09-27 22:32:20 +07:00 (2026-09-27T15:32:20.579Z) | 2026-09-27 22:32:31 +07:00 (2026-09-27T15:32:31.927Z) | Tests: 123 passed, 0 failed, 0 skipped; total 123. Last PASS: baseline verifies retained bytes and rejects modified source, summary and invalid paths. [stdout](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/002-cli-unit/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-32-15-096Z-yjAXil/002-cli-unit/stderr.log>) |
+
+- 2026-09-27 22:32:32 +07:00 (2026-09-27T15:32:32.750Z) | run 2026-09-27T15-32-32-646Z-C4za0a | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.md>)
+
+- 2026-09-27 22:32:32 +07:00 (2026-09-27T15:32:32.784Z) | run 2026-09-27T15-32-32-646Z-C4za0a | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.md>)
+
+- 2026-09-27 22:32:39 +07:00 (2026-09-27T15:32:39.207Z) | run 2026-09-27T15-32-32-646Z-C4za0a | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.md>)
+
+- 2026-09-27 22:32:39 +07:00 (2026-09-27T15:32:39.213Z) | run 2026-09-27T15-32-32-646Z-C4za0a | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.md>)
+
+- 2026-09-27 22:33:34 +07:00 (2026-09-27T15:33:34.332Z) | run 2026-09-27T15-32-32-646Z-C4za0a | step-passed 2/2 cli:integration | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.md>)
+
+<!-- audit-finished:2026-09-27T15-32-32-646Z-C4za0a -->
+## Run 2026-09-27T15-32-32-646Z-C4za0a
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-27 22:32:32 +07:00 (2026-09-27T15:32:32.750Z). Finished: 2026-09-27 22:33:34 +07:00 (2026-09-27T15:33:34.431Z).
+- Last PASS: cli:integration. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/summary.json>).
+- Source SHA-256: 701a0556b3d0c5507741a8c18756c1539fd0fbfcdabb965d469b617f83188b12. Source unchanged: true.
+- Repositories: {"cli":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"2.0.0-alpha.8"},"core":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"0.3.0-alpha.19"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:integration"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-09-27 22:32:32 +07:00 (2026-09-27T15:32:32.784Z) | 2026-09-27 22:32:39 +07:00 (2026-09-27T15:32:39.207Z) | [stdout](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/001-core-build/stderr.log>) |
+| 2/2 cli:integration | PASS | 2026-09-27 22:32:39 +07:00 (2026-09-27T15:32:39.213Z) | 2026-09-27 22:33:34 +07:00 (2026-09-27T15:33:34.332Z) | Tests: 88 passed, 0 failed, 1 skipped; total 89. Last PASS: mock live research keeps long search and multilingual fetched evidence readable after controller normalization. [stdout](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-32-32-646Z-C4za0a/002-cli-integration/stderr.log>) |
+
+- 2026-09-27 22:33:39 +07:00 (2026-09-27T15:33:39.335Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | started - - | DONE 0/3; PASS 0/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:33:39 +07:00 (2026-09-27T15:33:39.365Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-started 1/3 core:build | DONE 0/3; PASS 0/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:33:45 +07:00 (2026-09-27T15:33:45.411Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-passed 1/3 core:build | DONE 1/3; PASS 1/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:33:45 +07:00 (2026-09-27T15:33:45.416Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-started 2/3 cli:build | DONE 1/3; PASS 1/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:33:49 +07:00 (2026-09-27T15:33:49.933Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-passed 2/3 cli:build | DONE 2/3; PASS 2/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:33:49 +07:00 (2026-09-27T15:33:49.938Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-started 3/3 cli:e2e | DONE 2/3; PASS 2/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+- 2026-09-27 22:35:08 +07:00 (2026-09-27T15:35:08.305Z) | run 2026-09-27T15-33-39-219Z-8nLkKR | step-passed 3/3 cli:e2e | DONE 3/3; PASS 3/3; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.md>)
+
+<!-- audit-finished:2026-09-27T15-33-39-219Z-8nLkKR -->
+## Run 2026-09-27T15-33-39-219Z-8nLkKR
+
+- Status: **passed**. DONE 3/3; PASS 3/3; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-27 22:33:39 +07:00 (2026-09-27T15:33:39.335Z). Finished: 2026-09-27 22:35:08 +07:00 (2026-09-27T15:35:08.403Z).
+- Last PASS: cli:e2e. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/summary.json>).
+- Source SHA-256: 701a0556b3d0c5507741a8c18756c1539fd0fbfcdabb965d469b617f83188b12. Source unchanged: true.
+- Repositories: {"cli":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"2.0.0-alpha.8"},"core":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"0.3.0-alpha.19"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:e2e"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/3 core:build | PASS | 2026-09-27 22:33:39 +07:00 (2026-09-27T15:33:39.365Z) | 2026-09-27 22:33:45 +07:00 (2026-09-27T15:33:45.411Z) | [stdout](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/001-core-build/stderr.log>) |
+| 2/3 cli:build | PASS | 2026-09-27 22:33:45 +07:00 (2026-09-27T15:33:45.416Z) | 2026-09-27 22:33:49 +07:00 (2026-09-27T15:33:49.933Z) | [stdout](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/002-cli-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/002-cli-build/stderr.log>) |
+| 3/3 cli:e2e | PASS | 2026-09-27 22:33:49 +07:00 (2026-09-27T15:33:49.938Z) | 2026-09-27 22:35:08 +07:00 (2026-09-27T15:35:08.305Z) | Tests: 44 passed, 0 failed, 0 skipped; total 44. Last PASS: durable project harness rejects stubs and semantic regressions. [stdout](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/003-cli-e2e/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-33-39-219Z-8nLkKR/003-cli-e2e/stderr.log>) |
+
+- 2026-09-27 22:35:15 +07:00 (2026-09-27T15:35:15.692Z) | run 2026-09-27T15-35-15-596Z-wojZXS | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.md>)
+
+- 2026-09-27 22:35:15 +07:00 (2026-09-27T15:35:15.719Z) | run 2026-09-27T15-35-15-596Z-wojZXS | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.md>)
+
+- 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.008Z) | run 2026-09-27T15-35-15-596Z-wojZXS | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.md>)
+
+- 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.016Z) | run 2026-09-27T15-35-15-596Z-wojZXS | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.md>)
+
+- 2026-09-27 22:36:16 +07:00 (2026-09-27T15:36:16.002Z) | run 2026-09-27T15-35-15-596Z-wojZXS | step-passed 2/2 cli:integration | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.md>)
+
+<!-- audit-finished:2026-09-27T15-35-15-596Z-wojZXS -->
+## Run 2026-09-27T15-35-15-596Z-wojZXS
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-09-27 22:35:15 +07:00 (2026-09-27T15:35:15.692Z). Finished: 2026-09-27 22:36:16 +07:00 (2026-09-27T15:36:16.106Z).
+- Last PASS: cli:integration. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/summary.json>).
+- Source SHA-256: 701a0556b3d0c5507741a8c18756c1539fd0fbfcdabb965d469b617f83188b12. Source unchanged: true.
+- Repositories: {"cli":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"2.0.0-alpha.8"},"core":{"head":"3f3d8d8f3be0757d9f4db956e6502bc2f9648be7","packageVersion":"0.3.0-alpha.19"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:integration"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-09-27 22:35:15 +07:00 (2026-09-27T15:35:15.719Z) | 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.008Z) | [stdout](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/001-core-build/stderr.log>) |
+| 2/2 cli:integration | PASS | 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.016Z) | 2026-09-27 22:36:16 +07:00 (2026-09-27T15:36:16.002Z) | Tests: 88 passed, 0 failed, 1 skipped; total 89. Last PASS: mock live research keeps long search and multilingual fetched evidence readable after controller normalization. [stdout](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/002-cli-integration/stderr.log>) |
