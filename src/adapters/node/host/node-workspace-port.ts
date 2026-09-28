@@ -53,6 +53,20 @@ function dependencyReadError(path: string): PortError {
     suggestedAction: "Dùng MCP tools của framework hoặc tìm trong docs; chỉ đọc source authored trong workspace.",
   });
 }
+/**
+ * A blocked search is not a blocked read: manifests, READMEs and declaration
+ * files inside node_modules stay readable on purpose, and saying so stops the
+ * model from repeating the same rejected grep (the top tool-failure code in the
+ * 2026-09-28 E2E campaign: 8 rejections, each one wasted turn).
+ */
+function dependencySearchError(path: string): PortError {
+  return Object.freeze({
+    code: "UNSUPPORTED" as PortErrorCode,
+    message: `${path} nằm trong thư mục dependency: grep/glob trên cả cây node_modules không được phép (tốn context và không phải nguồn tài liệu). Đọc thẳng một file cụ thể vẫn hợp lệ — read_file trên package.json, README.md hoặc *.d.ts trong node_modules.`,
+    retryable: false,
+    suggestedAction: "read_file một package.json/README.md/*.d.ts cụ thể, hoặc dùng framework MCP tools và skill docs để tra API.",
+  });
+}
 function isDependencyPath(path: string): boolean {
   return path.split(/[\\/]/).some((segment) => NON_READABLE_SEGMENTS.has(segment));
 }
@@ -546,7 +560,7 @@ export class NodeWorkspacePort implements WorkspacePort {
     context: ToolExecutionContext,
   ): Promise<PortResult<WorkspaceSearchPathsResult>> {
     const globTarget = String(input.path ?? ".");
-    if (isDependencyPath(globTarget) || isDependencyPath(String(input.query))) return failure("UNSUPPORTED", dependencyReadError(globTarget === "." ? String(input.query) : globTarget).message, false);
+    if (isDependencyPath(globTarget) || isDependencyPath(String(input.query))) return failure("UNSUPPORTED", dependencySearchError(globTarget === "." ? String(input.query) : globTarget).message, false);
     const canceled = checkContext(context);
     if (canceled !== undefined) return canceled;
     try {
@@ -616,7 +630,7 @@ export class NodeWorkspacePort implements WorkspacePort {
           ? (line) => line.indexOf(query)
           : (line) => line.toLocaleLowerCase("en-US").indexOf(query);
       }
-      if (isDependencyPath(String(input.path ?? "."))) return failure("UNSUPPORTED", dependencyReadError(String(input.path ?? ".")).message, false);
+      if (isDependencyPath(String(input.path ?? "."))) return failure("UNSUPPORTED", dependencySearchError(String(input.path ?? ".")).message, false);
       const offset = decodeCursor(input.cursor);
       const limit = boundedLimit(input.limit);
       const basePath = await this.scope.resolveExisting(input.path ?? ".");

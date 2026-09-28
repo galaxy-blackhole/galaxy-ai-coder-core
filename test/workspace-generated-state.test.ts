@@ -9,6 +9,8 @@ import {
   diffNodeWorkspaceSnapshots,
 } from "../src/adapters/node/host/node-workspace-snapshot.js";
 import { NodeWorkspaceEvidenceVerifier } from "../src/adapters/node/host/node-workspace-evidence-verifier.js";
+import { NodeWorkspacePort } from "../src/adapters/node/host/node-workspace-port.js";
+import type { ToolExecutionContext } from "../src/index.js";
 import {
   isGeneratedWorkspacePath,
 } from "../src/adapters/node/host/workspace-generated-state.js";
@@ -82,4 +84,28 @@ test("workspace evidence fingerprint ignores generated output but tracks authore
   const third = await verifier.capture({ activeFiles: [], dirtyStateSummary: null }, ctx);
   assert.equal(third.ok, true);
   assert.notEqual(third.ok ? third.data.stateFingerprint : "", fingerprint);
+});
+
+test("dependency trees allow ground-truth reads but refuse search and glob", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "galaxy-deps-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const packageRoot = join(root, "node_modules", "@galaxy-stack", "orbit-core");
+  await mkdir(packageRoot, { recursive: true });
+  await writeFile(join(packageRoot, "package.json"), '{"name":"@galaxy-stack/orbit-core"}\n');
+  await writeFile(join(packageRoot, "index.d.ts"), "export declare function Controller(prefix?: string): ClassDecorator;\n");
+  await writeFile(join(packageRoot, "index.js"), "export function Controller() {}\n");
+  const context: ToolExecutionContext = {
+    workspaceRoot: root, runId: "deps", taskId: "deps", toolCallId: "deps", idempotencyKey: "deps",
+    mode: "auto", deadline: Date.now() + 30_000, signal: new AbortController().signal,
+  };
+  const workspace = await NodeWorkspacePort.create(root);
+  // The installed API is cheap ground truth: declarations and manifests stay readable.
+  assert.equal((await workspace.readText({ maxBytes: 4096, path: "node_modules/@galaxy-stack/orbit-core/index.d.ts" }, context)).ok, true);
+  assert.equal((await workspace.readText({ maxBytes: 4096, path: "node_modules/@galaxy-stack/orbit-core/package.json" }, context)).ok, true);
+  assert.equal((await workspace.readText({ maxBytes: 4096, path: "node_modules/@galaxy-stack/orbit-core/index.js" }, context)).ok, false);
+  // A refused search must name the read that is allowed, or the model repeats it.
+  const search = await workspace.searchText({ path: "node_modules/@galaxy-stack/orbit-core", query: "Controller" }, context);
+  assert.equal(search.ok, false);
+  if (!search.ok) assert.match(search.error.message, /read_file/);
+  assert.equal((await workspace.searchPaths({ path: "node_modules/@galaxy-stack/orbit-core", query: "**/*.d.ts" }, context)).ok, false);
 });
