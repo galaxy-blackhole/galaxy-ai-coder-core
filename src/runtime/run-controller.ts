@@ -146,6 +146,7 @@ type RunSession = {
   evidence: AiCoderMutableRunEvidence;
   executionId: string;
   failedToolFamilies: Map<string, number>;
+  finalizationAttempted: boolean;
   finalizationMode: boolean;
   generatedChurnEvents: number;
   hostStateVersions: Map<string, string>;
@@ -978,6 +979,7 @@ export class AiCoderRunController {
       evidence: createEvidence(requestSnapshot),
       executionId,
       failedToolFamilies: new Map(),
+      finalizationAttempted: false,
       finalizationMode: false,
       generatedChurnEvents: 0,
       hostStateVersions: new Map(),
@@ -1710,6 +1712,18 @@ export class AiCoderRunController {
       const result = await this.tryComplete(session, round.content);
       if (result) return result;
       session.finalizationMode = false;
+    }
+    // Out of turns is not out of options. A heavy step can reach the turn cap with
+    // its evidence already satisfied (observed: a gymflow step failed right after
+    // "Project validation passed"). Grant exactly one tool-free finalization turn
+    // so the run reports the evidence it has; the completion gate still decides
+    // whether that report is acceptable, and a second exhaustion still fails.
+    if (!session.finalizationAttempted && this.shouldAttemptFinalization(session)) {
+      session.finalizationAttempted = true;
+      this.enterFinalizationMode(session);
+      session.budget = Object.freeze({ ...session.budget, maxTurns: session.modelTurns + 1 });
+      await this.tracePolicyDecision(session, Object.freeze({ action: "budget_finalization_turn", maxTurns: session.budget.maxTurns }));
+      return this.runLoop(session);
     }
     throw new AiCoderRuntimeError("MAX_TURNS", `AI Coder reached maxTurns=${session.budget.maxTurns}.`);
   }
