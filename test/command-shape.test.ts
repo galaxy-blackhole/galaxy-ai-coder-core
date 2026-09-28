@@ -35,6 +35,12 @@ test("bounded project work is not a server command", () => {
   }
 });
 
+test("the advisory names the exact validate_project call", () => {
+  assert.match(validationCommandAdvisory("cd gymflow-backend && bunx tsc --noEmit") ?? "", /\{"path":"gymflow-backend","checks":\["typecheck"\]\}/);
+  assert.match(validationCommandAdvisory("bun test", "apps/api") ?? "", /\{"path":"apps\/api","checks":\["test"\]\}/);
+  assert.match(validationCommandAdvisory("npm run lint", ".") ?? "", /\{"path":"\.","checks":\["lint"\]\}/);
+});
+
 test("advises validate_project for whole-project checks but not for targeted runs", () => {
   for (const command of ["cd backend && bun test", "npm run build", "cd backend && ./node_modules/.bin/tsc --noEmit", "eslint .", "vitest run"]) {
     assert.match(validationCommandAdvisory(command) ?? "", /validate_project/, command);

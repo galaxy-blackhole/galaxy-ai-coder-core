@@ -19,7 +19,7 @@ export function looksLikeLongRunningServer(command: string): boolean {
  * budget probing ports (observed in the gymflow E2E).
  */
 /** A whole-project check run through the shell instead of validate_project. */
-const PROJECT_CHECK_COMMAND = /(?:^|[;&|]\s*)(?:(?:npm|bun|pnpm|yarn)\s+(?:run\s+)?(?:test|typecheck|lint|build)\b|(?:[^\s;&|]*\/)?(?:tsc|eslint|vitest|jest)\b)/;
+const PROJECT_CHECK_COMMAND = /(?:^|[;&|]\s*)(?:(?:npm|bun|bunx|npx|pnpx|pnpm|yarn)\s+(?:run\s+|exec\s+|dlx\s+)?(?:test|typecheck|lint|build|tsc|eslint|vitest|jest)\b|(?:[^\s;&|]*\/)?(?:tsc|eslint|vitest|jest)\b)/;
 /** A named file means the model is diagnosing one target, not running the project check. */
 const TARGETED_CHECK_ARGUMENT = /(?:\.(?:test|spec)\.[A-Za-z]+\b|(?:^|\s)[\w.-]*\/[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|vue|svelte)\b)/;
 
@@ -29,11 +29,29 @@ const TARGETED_CHECK_ARGUMENT = /(?:\.(?:test|spec)\.[A-Za-z]+\b|(?:^|\s)[\w.-]*
  * commands appeared in one gymflow E2E step that also called validate_project 12
  * times). Targeted single-file runs are diagnostics and stay advisory-free.
  */
-export function validationCommandAdvisory(command: string): string | undefined {
+/** The declared check a shell command runs, so the advisory can name it exactly. */
+function declaredCheck(command: string): "build" | "lint" | "test" | "typecheck" {
+  if (/\btsc\b|\btypecheck\b/.test(command)) return "typecheck";
+  if (/\beslint\b|\blint\b/.test(command)) return "lint";
+  if (/\b(?:vitest|jest)\b|(?:^|[;&|]\s*)(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?test\b/.test(command)) return "test";
+  return "build";
+}
+
+/** The project the command acts on: an explicit `cd` wins, then the tool's own cwd. */
+function projectPathForCommand(command: string, cwd?: string): string {
+  const changeDirectory = /(?:^|[;&|]\s*)cd\s+([^\s;&|]+)/.exec(command);
+  const candidate = changeDirectory?.[1] ?? cwd ?? ".";
+  const normalized = candidate.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return normalized === "" ? "." : normalized;
+}
+
+export function validationCommandAdvisory(command: string, cwd?: string): string | undefined {
   if (!PROJECT_CHECK_COMMAND.test(command)) return undefined;
   if (TARGETED_CHECK_ARGUMENT.test(command)) return undefined;
   if (looksLikeLongRunningServer(command)) return undefined;
-  return "This is a declared project check run through the shell, so it produces no completion evidence. Run it through validate_project with the matching check (test, typecheck, lint, build) to make the result count; keep a direct command only for diagnosis.";
+  const check = declaredCheck(command);
+  const path = projectPathForCommand(command, cwd);
+  return `This is a declared project check run through the shell, so it produces no completion evidence. Run validate_project with {"path":"${path}","checks":["${check}"]} to make the result count; keep a direct command only for diagnosis.`;
 }
 
 export function serverCommandAdvisory(command: string): string | undefined {

@@ -969,7 +969,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             truncated: data.stdoutTruncated || data.stderrTruncated,
             ...(derivedMutations === undefined ? {} : { derivedMutations }),
           }),
-          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command), validationCommandAdvisory(command)]
+          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command), validationCommandAdvisory(command, cwd)]
             .filter((part): part is string => part !== undefined && part.length > 0)
             .join(" "),
           trust: "external",

@@ -8,8 +8,12 @@ Vùng: tools/prompt
 - Model tự bật dev server để "chứng minh" dự án chạy được (xem mục 1 của journal).
 
 ## Sau
-- `command.run` trả advisory khi lệnh là check **toàn dự án** (trỏ về
-  `validate_project` với check tương ứng) hoặc khi lệnh giống server/watch.
+- `command.run` trả advisory khi lệnh là check **toàn dự án** hoặc khi lệnh giống
+  server/watch. Advisory của check nói **đúng call cần gọi**, suy ra từ chính lệnh:
+  `cd gymflow-backend && bunx tsc --noEmit` ⇒
+  `validate_project {"path":"gymflow-backend","checks":["typecheck"]}` (đường dẫn lấy
+  từ `cd` trong lệnh, nếu không có thì lấy `cwd` của tool call); nhận cả dạng
+  runner `bunx`/`npx`/`pnpx`/`exec`/`dlx`.
 - Lệnh nhắm một file (`bun test src/x.spec.ts`) **không** bị nhắc, vì
   `validate_project` không diễn đạt được; package reference (`vite@latest`) và
   đường dẫn (`assets/vite.svg`) không bị coi là server.
