@@ -24,6 +24,8 @@ test("bounded project work is not a server command", () => {
     "node --test test/*.test.js",
     "tsc --noEmit",
     "bunx @galaxy-stack/orbit-cli new gymflow-api --directory apps/api",
+    "rm -f frontend/src/assets/vite.svg frontend/src/App.css",
+    "ls frontend/src/assets/vite.svg",
   ]) {
     assert.equal(looksLikeLongRunningServer(command), false, command);
   }
