@@ -76,6 +76,19 @@ test("a workspace-scoped validation covers everything, so a later source write v
   assert.ok(codes.includes("WRITE_NOT_VALIDATED"), JSON.stringify(result.issues));
 });
 
+test("a path written and then removed does not demand validation", () => {
+  const result = evaluateAiCoderCompletion({
+    ...base,
+    validations: [validation("project.validate:build:frontend", 2, ["frontend"])],
+    writes: [
+      write("frontend/src/App.tsx", 1),
+      // A scratch probe the agent wrote and deleted in the same run.
+      Object.freeze({ ...write("probe.sale-check.ts", 3), afterHash: null, beforeHash: "sha256:probe" }),
+    ],
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.issues));
+});
+
 test("a package the run never validated still demands validation", () => {
   const result = evaluateAiCoderCompletion({
     ...base,

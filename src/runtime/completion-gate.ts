@@ -237,11 +237,17 @@ export function evaluateAiCoderCompletion(
   if ((requirements.requireValidation ?? false) && !currentValidations.some((item) => item.status === "passed")) {
     add("VALIDATION_MISSING", "A successful validation result is required.");
   }
+  // A path that no longer exists cannot be validated: requiring evidence for a
+  // scratch file the agent itself removed forced a needless re-validation round
+  // (measured: a probe file written and deleted in one gymflow step produced two
+  // WRITE_NOT_VALIDATED items).
+  const removedPaths = new Set(snapshot.writes.filter((write) => write.afterHash === null).map((write) => write.path));
   for (const write of snapshot.writes) {
     if (!write.path.trim() || !write.workspaceFingerprint.trim()
       || !isAiCoderWorkspaceMutationEvidence(write)) {
       add("WRITE_EVIDENCE_INVALID", `${write.path || "<blank>"} does not contain valid mutation evidence.`);
     }
+    if (write.afterHash === null || removedPaths.has(write.path)) continue;
     if (!isDocumentationPath(write.path) && !writeIsValidated(write, currentValidations)) {
       add("WRITE_NOT_VALIDATED", `${write.path} has no later successful validation evidence.`);
     }

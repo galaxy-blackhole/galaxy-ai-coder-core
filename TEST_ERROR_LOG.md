@@ -4031,3 +4031,29 @@ START 2026-09-28 11:45:02 +07:00 (2026-09-28T04:45:02.368Z). [Progress](<.galaxy
 2026-09-28 11:45:10 +07:00 (2026-09-28T04:45:10.066Z) | PASSED | PASS 166/167 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-28T04-45-02-362Z-MbEoEr/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T04-45-02-362Z-MbEoEr/summary.json>).
+
+## Core tests 2026-09-28T08-05-54-521Z-8T3ttE
+
+START 2026-09-28 15:05:54 +07:00 (2026-09-28T08:05:54.527Z). [Progress](<.galaxy/tests/2026-09-28T08-05-54-521Z-8T3ttE/summary.md>). Commit: b8ac0ecf6593c9c2c4d6c0c2d758885f84f211ec; source SHA-256: 0a605633ab59622c9c1db1cb30cefeb5b651aad9ba3330191ad93335fbb31372.
+
+### Finished 2026-09-28T08-05-54-521Z-8T3ttE
+
+2026-09-28 15:05:59 +07:00 (2026-09-28T08:05:59.118Z) | FAILED | PASS 166/168 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a path written and then removed does not demand validation
+
+Recorded: 2026-09-28 15:05:55 +07:00 (2026-09-28T08:05:55.428Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:79.
+
+[Error [ERR_TEST_FAILURE]: [{"code":"WRITE_EVIDENCE_INVALID","detail":"probe.sale-check.ts does not contain valid mutation evidence."}]<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: [{"code":"WRITE_EVIDENCE_INVALID","detail":"probe.sale-check.ts does not contain valid mutation evidence."}]<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:89:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-28T08-05-54-521Z-8T3ttE/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T08-05-54-521Z-8T3ttE/summary.json>).
+
+## Core tests 2026-09-28T08-06-17-246Z-U03Vg2
+
+START 2026-09-28 15:06:17 +07:00 (2026-09-28T08:06:17.252Z). [Progress](<.galaxy/tests/2026-09-28T08-06-17-246Z-U03Vg2/summary.md>). Commit: b8ac0ecf6593c9c2c4d6c0c2d758885f84f211ec; source SHA-256: 61308078853e7618e0e7f12d62ac8027fb1c3fb845d11cd24676eaf49b163880.
+
+### Finished 2026-09-28T08-06-17-246Z-U03Vg2
+
+2026-09-28 15:06:21 +07:00 (2026-09-28T08:06:21.744Z) | PASSED | PASS 167/168 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-28T08-06-17-246Z-U03Vg2/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T08-06-17-246Z-U03Vg2/summary.json>).
