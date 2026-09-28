@@ -78,6 +78,12 @@ export type AiCoderContextDiagnostic = Readonly<{
   compactionCount: number;
   currentInputTokens: number;
   hardInputTokens: number;
+  /**
+   * Ordered fingerprints of the items sent this turn (bounded). Diffing two
+   * consecutive turns names the item whose change reset the provider prefix
+   * cache — the reason per-turn cache hit drops without any visible error.
+   */
+  itemDigests?: readonly Readonly<{ hash: string; id: string; index: number; kind: AiCoderContextItemKind; tokens: number }>[];
   pressure: AiCoderContextPressure;
   profile: AiCoderTokenProfile;
   projectedInputTokens: number;
@@ -85,6 +91,9 @@ export type AiCoderContextDiagnostic = Readonly<{
   selectedItemCount: number;
   softInputTokens: number;
   taskId: string;
+  /** Fingerprint of the serialized tool block; a changing hash means the block itself moved. */
+  toolHash?: string;
+  toolTokens?: number;
   turn: number;
 }>;
 
@@ -531,6 +540,7 @@ export class AiCoderContextManager {
   ): Readonly<{
     categories: AiCoderTokenCategories;
     estimatedInputTokens: number;
+    itemDigests: readonly Readonly<{ hash: string; id: string; index: number; kind: AiCoderContextItemKind; tokens: number }>[];
     messages: readonly CodingMessage[];
     selectedItemCount: number;
   }> {
@@ -596,9 +606,17 @@ export class AiCoderContextManager {
     if (estimatedInputTokens >= budget.hardInputTokens) {
       throw new AiCoderContextBudgetError("HARD_LIMIT", `Assembled context ${estimatedInputTokens} exceeds hard input ${budget.hardInputTokens}.`);
     }
+    const itemDigests = Object.freeze(selected.slice(0, 24).map((item, index) => Object.freeze({
+      hash: aiCoderContextContentHash(item.messages.map((message) => message.content)),
+      id: item.id,
+      index,
+      kind: item.kind,
+      tokens: item.tokenCount,
+    })));
     return Object.freeze({
       categories: frozenCategories,
       estimatedInputTokens,
+      itemDigests,
       messages: Object.freeze([...selected.flatMap((item) => item.messages), ...nextMessages]),
       selectedItemCount: selected.length,
     });
@@ -715,7 +733,10 @@ export class AiCoderContextManager {
       compactionCount: this.compactionCount,
       currentInputTokens: assembled.estimatedInputTokens,
       hardInputTokens: budget.hardInputTokens,
+      itemDigests: assembled.itemDigests,
       pressure,
+      toolHash: aiCoderContextContentHash(input.tools),
+      toolTokens: this.estimateToolDefinitions(input.tools),
       profile: this.options.profile,
       projectedInputTokens: assembled.estimatedInputTokens,
       runId: this.options.runId,
