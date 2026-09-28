@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.0] - 2026-09-28 23:10 +07:00
+
+First verified stable line: the 25-prompt end-to-end flow completes with this
+runtime. The failure journal that drove the changes below lives in
+`galaxy-code/docs/TEST_FAILURE_ANALYSIS.md`.
+
+### Changed
+
+- Prompt-cache layout: the mutable run state moved after the stable prefix, so a turn
+  re-bills only its tail (measured run-wide 40% → 61%, per step 10% → 59–87%).
+- `project.validate` records the scope it really covered, so a check in one package
+  is no longer invalidated by a write in a sibling package.
+- The completion gate is scope-aware: documentation writes need no validation, a path
+  written and then removed needs none either, and untracked workspace drift still
+  voids every validation.
+- Reaching the turn budget grants one tool-free finalization turn instead of failing a
+  run whose evidence is already satisfied; `maxTurns` and the host deadline are
+  configurable through the CLI.
+- Arguments above a schema cap are clamped and reported rather than rejected; a
+  shell-run project check and a long-running server answer with an advisory that names
+  the exact `validate_project` call; a refused dependency search names the read that
+  is allowed.
+- `context_diagnostic` fingerprints every context item and the tool block each turn —
+  that is how the cache regression above was found.
+
+<details>
+<summary>Per-fix trail: 39 fragments (2026-09-19 … 2026-09-28)</summary>
+
+- Advisory guard policy cho observation (2026-09-19 00:15 +07:00) (core). [fragment](CHANGELOG.d/2026-09-19-advisory-guard-policy.md)
+- Sửa parser citation bị nhiễu Markdown (2026-09-19 11:55 +07:00) (core). [fragment](CHANGELOG.d/2026-09-19-research-citation-parsing.md)
+- Lưu evidence khi citation bị từ chối (2026-09-19 23:15 +07:00) (core). [fragment](CHANGELOG.d/2026-09-19-research-rejection-evidence.md)
+- Node test reporter ghi nhật ký (2026-09-18 23:45 +07:00) (core). [fragment](CHANGELOG.d/2026-09-19-test-journal-reporter.md)
+- Remediation cho RESEARCH_EVIDENCE_MISSING (2026-09-21 02:20 +07:00) (core). [fragment](CHANGELOG.d/2026-09-21-evidence-missing-remediation.md)
+- Nudge nhận diện bằng arguments hash (2026-09-21 00:55 +07:00) (core). [fragment](CHANGELOG.d/2026-09-21-observation-nudge-context.md)
+- Retry delay theo scenario budget + deadline-aware skip (2026-09-22 07:25 +07:00) (core). [fragment](CHANGELOG.d/2026-09-22-model-retry-budget.md)
+- Recovery turn trước no-progress pause (2026-09-22 01:07 +07:00) (core). [fragment](CHANGELOG.d/2026-09-22-no-progress-recovery-turn.md)
+- Agent platform foundation (core). [fragment](CHANGELOG.d/2026-09-23-agent-platform.md)
+- # 0.3.0-alpha.7 — 2026-09-23 07:00 +07:00 (core). [fragment](CHANGELOG.d/2026-09-23-conservative-output-reserve.md)
+- Request-scoped approvals and scratch workspace review (core). [fragment](CHANGELOG.d/2026-09-24-approval-workspace-review.md)
+- Incremental Ollama streaming (core). [fragment](CHANGELOG.d/2026-09-24-incremental-ollama.md)
+- Tail-anchored tool output bounding (core). [fragment](CHANGELOG.d/2026-09-25-tail-anchored-bounding.md)
+- Binary review không chặn, pipe guidance, test finalization (adapters/tools, prompt, runtime/test). [fragment](CHANGELOG.d/2026-09-26-binary-review-pipe-guidance-finalization-test.md)
+- Cache capability và MCP reconnect (runtime/prompt/adapters). [fragment](CHANGELOG.d/2026-09-26-cache-capability-and-mcp-reconnect.md)
+- Cache-hit (prefix reuse) harness (runtime/prompt). [fragment](CHANGELOG.d/2026-09-26-cache-hit-harness.md)
+- Cache hit rate, token_ledger event, và systemPromptUpdate option (runtime/context/adapters). [fragment](CHANGELOG.d/2026-09-26-cache-hit-rate-and-inhistory-option.md)
+- Cache hit luỹ kế (context/runtime). [fragment](CHANGELOG.d/2026-09-26-cumulative-cache-hit.md)
+- Default model: deepseek-v4.1-flash:cloud (core). [fragment](CHANGELOG.d/2026-09-26-default-model-deepseek.md)
+- Finalization tool-free, allowlist in-history, cache accounting (runtime/adapters/context). [fragment](CHANGELOG.d/2026-09-26-finalization-prefix-and-verified-inhistory.md)
+- Generated-state evidence boundary (runtime/host). [fragment](CHANGELOG.d/2026-09-26-generated-state-and-churn-guard.md)
+- Failure-injection test cho MCP reconnect (adapters/mcp). [fragment](CHANGELOG.d/2026-09-26-mcp-reconnect-fixture.md)
+- Memory hybrid ranking, semantic port và consolidation (adapters/memory). [fragment](CHANGELOG.d/2026-09-26-memory-hybrid-semantic-consolidation.md)
+- Memory recall benchmark (adapters/memory (test)). [fragment](CHANGELOG.d/2026-09-26-memory-recall-benchmark.md)
+- Ollama báo cache; adapter map vào token ledger (adapters/provider). [fragment](CHANGELOG.d/2026-09-26-ollama-cache-usage.md)
+- Ollama embedding provider (adapters/memory/config). [fragment](CHANGELOG.d/2026-09-26-ollama-embeddings-provider.md)
+- Re-record live replay fixture (testing). [fragment](CHANGELOG.d/2026-09-26-rerecord-live-fixture.md)
+- Ký số skill index (Ed25519 trust) (adapters/skills). [fragment](CHANGELOG.d/2026-09-26-skill-index-signing.md)
+- Skill versioning và marketplace (adapters/skills). [fragment](CHANGELOG.d/2026-09-26-skill-version-and-marketplace.md)
+- Build output là derived, manifest workspace (runtime/host). [fragment](CHANGELOG.d/2026-09-27-workspace-derived-build-output.md)
+- Advisory khi lệnh shell trùng check dự án hoặc chạy server (tools/prompt). [fragment](CHANGELOG.d/2026-09-28-advisory-lenh-check-va-server.md)
+- Clamp tham số vượt cap thay vì từ chối tool call (tools/adapter). [fragment](CHANGELOG.d/2026-09-28-clamp-tham-so-vuot-cap.md)
+- Fingerprint từng context item mỗi lượt (chẩn đoán cache) (context/diagnostics). [fragment](CHANGELOG.d/2026-09-28-digest-context-item.md)
+- Gate không đòi validation cho path đã bị xoá (runtime/completion-gate). [fragment](CHANGELOG.d/2026-09-28-gate-bo-qua-path-da-xoa.md)
+- Hết ngân sách lượt thì finalize một lượt trước khi fail (runtime). [fragment](CHANGELOG.d/2026-09-28-ngan-sach-luot-finalization.md)
+- project.validate ghi đúng phạm vi theo project path (tools/executor). [fragment](CHANGELOG.d/2026-09-28-scope-cua-project-validate.md)
+- Validation chỉ stale theo phạm vi nó bao phủ (runtime/completion-gate). [fragment](CHANGELOG.d/2026-09-28-staleness-theo-pham-vi.md)
+- Lỗi guard dependency nói rõ đường đọc được phép (host/workspace-port). [fragment](CHANGELOG.d/2026-09-28-thong-bao-guard-dependency.md)
+- Đặt run state đổi-mỗi-lượt ra sau prefix ổn định (cache) (context/runtime). [fragment](CHANGELOG.d/2026-09-28-thu-tu-mandatory-state-cache.md)
+
+</details>
+
 ## [0.3.0-alpha.7] - 2026-09-23 07:00 +07:00
 
 ### Fixed

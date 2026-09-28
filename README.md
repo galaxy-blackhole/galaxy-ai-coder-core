@@ -23,12 +23,12 @@ sessions, and subagents are outside the current runtime baseline.
 
 ## Versioning and release policy
 
-All releases before `1.0.0` are development quality. Every release carries an
-explicit semver pre-release tag (`x.y.z-alpha.N`) while the host conformance
-gate is still running; stable-looking `x.y.z` numbers are reserved for
-post-`1.0.0` releases. Publish pre-releases with a dist tag
-(`npm publish --tag alpha`) so `npm install @galaxy-stack/ai-coder-core@latest`
-never upgrades a consumer to an unverified alpha.
+Work in progress keeps an explicit semver pre-release tag (`x.y.z-alpha.N`) and
+publishes under the `alpha` dist tag, so `latest` never moves on unverified work.
+A plain `x.y.z` is a **verified** line: it ships only once the 25-prompt
+end-to-end flow completes against it, and its fixes are journalled in
+`galaxy-code/docs/TEST_FAILURE_ANALYSIS.md`. `1.0.0` remains the API-stability
+milestone; `0.y.z` may still change shape before then.
 
 Every behavior- or API-level fix lands in [CHANGELOG.d](CHANGELOG.d/README.md)
 as a dated fragment (date, time, area, before/after, regression requirement)
@@ -41,15 +41,15 @@ token): every push to `main` runs the conformance gate and
 [.github/workflows/publish.yml](.github/workflows/publish.yml) publishes the
 package only when `package.json` carries a version that npm does not have yet.
 Pre-release versions publish under the `alpha` dist tag, so
-`npm install @galaxy-stack/ai-coder-core@latest` never jumps to an unverified
-alpha.
+`npm install @galaxy-stack/ai-coder-core@latest` only ever lands on a verified
+line.
 
 ## Installation
 
-Install the current development line explicitly; `latest` intentionally stays
-on the last non-alpha release:
+Install the verified line, or track development explicitly:
 
 ```sh
+npm install @galaxy-stack/ai-coder-core
 npm install @galaxy-stack/ai-coder-core@alpha
 ```
 
