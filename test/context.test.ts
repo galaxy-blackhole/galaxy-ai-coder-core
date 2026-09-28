@@ -84,6 +84,43 @@ test("aged exact evidence remains raw while budget exists and survives finalizat
   )), false);
 });
 
+test("the mutable mandatory state is ordered after the stable prefix", async () => {
+  const manager = await AiCoderContextManager.create({
+    capabilities: capabilities(65_536),
+    goalMessage: "Remember the project conventions and keep working.",
+    profile: "balanced",
+    runId: "run-mandatory-order",
+    systemPrompt: "Use tools and retain evidence.",
+    taskId: "task-mandatory-order",
+  });
+  const call = Object.freeze({
+    arguments: Object.freeze({ path: "src/a.ts" }),
+    name: "read_file",
+    toolCallId: "read-a",
+  });
+  manager.addInteraction(Object.freeze({
+    content: "",
+    role: "assistant" as const,
+    thinking: "",
+    toolCalls: Object.freeze([call]),
+  }), Object.freeze([Object.freeze({
+    call,
+    content: "export const A = 1;",
+    kind: "file" as const,
+    summary: "Read src/a.ts",
+    trust: "workspace" as const,
+  })]), 1);
+  manager.replaceMandatoryState('{"phase":"executing"}', 2);
+  const prepared = await manager.prepareRound({ tools: Object.freeze([]), turn: 3 });
+  const order = (prepared.diagnostic.itemDigests ?? []).map((item) => [item.index, item.id, item.kind] as const);
+  const goal = order.find(([, id]) => id === "user-goal");
+  const evidence = order.find(([, , kind]) => kind === "file" || kind === "tool");
+  const mandatory = order.find(([, id]) => id === "runtime-mandatory-state");
+  assert.ok(goal !== undefined && evidence !== undefined && mandatory !== undefined, JSON.stringify(order));
+  assert.ok(goal[0] < evidence[0], `goal before evidence: ${JSON.stringify(order)}`);
+  assert.ok(evidence[0] < mandatory[0], `the every-turn mandatory state must trail the stable prefix: ${JSON.stringify(order)}`);
+});
+
 function checkpointPayload(): AiCoderRunCheckpointPayload {
   return Object.freeze({
     acceptanceCriteria: Object.freeze([Object.freeze({
