@@ -3995,3 +3995,19 @@ START 2026-09-28 11:00:40 +07:00 (2026-09-28T04:00:40.022Z). [Progress](<.galaxy
 2026-09-28 11:00:45 +07:00 (2026-09-28T04:00:45.564Z) | PASSED | PASS 165/166 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-28T04-00-40-019Z-eWUxCi/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T04-00-40-019Z-eWUxCi/summary.json>).
+
+## Core tests 2026-09-28T04-07-58-000Z-lo8fN8
+
+START 2026-09-28 11:07:58 +07:00 (2026-09-28T04:07:58.015Z). [Progress](<.galaxy/tests/2026-09-28T04-07-58-000Z-lo8fN8/summary.md>). Commit: 506459831227bb157387ba30588e322961d7c233; source SHA-256: bd9d29544b42b54aa8a707457108a7534fa7bda552ebc735aa1a7b1797e74df4.
+
+### Finished 2026-09-28T04-07-58-000Z-lo8fN8
+
+2026-09-28 11:08:03 +07:00 (2026-09-28T04:08:03.894Z) | FAILED | PASS 164/166 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### recognises dev servers and watchers
+
+Recorded: 2026-09-28 11:07:59 +07:00 (2026-09-28T04:07:59.250Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:5.
+
+[Error [ERR_TEST_FAILURE]: npx nodemon src/main.ts<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: npx nodemon src/main.ts<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:15:12)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-28T04-07-58-000Z-lo8fN8/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T04-07-58-000Z-lo8fN8/summary.json>).
