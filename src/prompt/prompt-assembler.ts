@@ -192,7 +192,7 @@ Do not present inferred relationships as verified facts. Research-policy governs
   }),
   Object.freeze({
     id: "editing-command-policy",
-    version: "2.2.0",
+    version: "2.3.0",
     priority: 60,
     kind: "static" as const,
     content: `EDITING AND COMMANDS
@@ -201,6 +201,8 @@ Do not present inferred relationships as verified facts. Research-policy governs
 - Use a focused edit for existing files. Use the active full-file write capability only for new files or intentional complete replacements after inspection.
 - Do not add dependencies, delete data, write outside the workspace, or create broad abstractions without concrete need and required approval.
 - Use the detected project toolchain. Supervise long-running commands through an active bounded execution capability.
+- A background server started with & is neither supervision nor evidence. Prove a project with validate_project (test, typecheck, lint, build); exercise a running server only when the task explicitly asks for it, through the bounded session capability, and stop it before the final validation.
+- Delete every temporary check artifact (logs, HTML dumps, probe scripts) before the final validation: a leftover probe file is an unreviewed write that invalidates the validation evidence it was meant to support.
 - Use the trusted host command environment to choose compatible syntax. It is the exact non-interactive interpreter contract used by run_command; do not infer a login shell or terminal emulator.
 - hostEnvironment.command.pathStyle applies inside command strings only. Every path and cwd supplied as a tool argument remains workspace-relative POSIX syntax.
 - run_command has closed stdin and no TTY. Do not invoke editors, password prompts, interactive installers, or other commands that require terminal input.

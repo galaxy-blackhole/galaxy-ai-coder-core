@@ -36,6 +36,7 @@ import {
   type NodeWorkspaceSnapshotOptions,
 } from "../host/node-workspace-snapshot.js";
 import { detectProject, validateProject, type ProjectCheck } from "../host/project-tools.js";
+import { serverCommandAdvisory } from "../../../tools/command-shape.js";
 export class ContractToolError extends Error {
   constructor(readonly code: string, message: string, readonly retryable = false, readonly suggestedAction?: string) { super(message); }
 }
@@ -967,7 +968,9 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             truncated: data.stdoutTruncated || data.stderrTruncated,
             ...(derivedMutations === undefined ? {} : { derivedMutations }),
           }),
-          summary: `Command ${data.status} with exit code ${String(data.exitCode)}.`,
+          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command)]
+            .filter((part): part is string => part !== undefined && part.length > 0)
+            .join(" "),
           trust: "external",
           ...(observedEffects === undefined ? {} : { effects: observedEffects }),
         });

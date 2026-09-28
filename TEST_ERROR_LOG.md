@@ -3793,3 +3793,29 @@ START 2026-09-28 09:11:05 +07:00 (2026-09-28T02:11:05.362Z). [Progress](<.galaxy
 2026-09-28 09:11:09 +07:00 (2026-09-28T02:11:09.936Z) | PASSED | PASS 151/152 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-28T02-11-05-354Z-1YBtXK/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-11-05-354Z-1YBtXK/summary.json>).
+
+## Core tests 2026-09-28T02-16-56-101Z-CBLUS0
+
+START 2026-09-28 09:16:56 +07:00 (2026-09-28T02:16:56.110Z). [Progress](<.galaxy/tests/2026-09-28T02-16-56-101Z-CBLUS0/summary.md>). Commit: efbd47bb21fd783be895f1d71d9f5c4567efbd26; source SHA-256: c8478e92b4e97dba2062ea827bfd509fe4fbeaad318941fb65a090507eaaf1b0.
+
+### Finished 2026-09-28T02-16-56-101Z-CBLUS0
+
+2026-09-28 09:17:00 +07:00 (2026-09-28T02:17:00.641Z) | FAILED | PASS 153/155 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### recognises dev servers and watchers
+
+Recorded: 2026-09-28 09:16:57 +07:00 (2026-09-28T02:16:57.029Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:5.
+
+[Error [ERR_TEST_FAILURE]: cd apps/web &amp;&amp; ./node_modules/.bin/vite --port 5199 --strictPort<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: cd apps/web &amp;&amp; ./node_modules/.bin/vite --port 5199 --strictPort<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:15:12)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-28T02-16-56-101Z-CBLUS0/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-16-56-101Z-CBLUS0/summary.json>).
+
+## Core tests 2026-09-28T02-17-24-831Z-9EDpwb
+
+START 2026-09-28 09:17:24 +07:00 (2026-09-28T02:17:24.836Z). [Progress](<.galaxy/tests/2026-09-28T02-17-24-831Z-9EDpwb/summary.md>). Commit: efbd47bb21fd783be895f1d71d9f5c4567efbd26; source SHA-256: 4ae339c3ebd4344fd4324691be736ba4a5d0bc031f3a45b9b5249b8d996ec786.
+
+### Finished 2026-09-28T02-17-24-831Z-9EDpwb
+
+2026-09-28 09:17:29 +07:00 (2026-09-28T02:17:29.182Z) | PASSED | PASS 154/155 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-28T02-17-24-831Z-9EDpwb/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-17-24-831Z-9EDpwb/summary.json>).
