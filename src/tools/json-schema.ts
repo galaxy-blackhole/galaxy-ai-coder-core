@@ -284,3 +284,53 @@ export function assertAiCoderJsonSchema(schema: AiCoderJsonSchema, value: unknow
   const result = validateAiCoderJsonSchema(schema, value);
   if (!result.valid) throw new Error(`${label} không hợp lệ: ${result.errors.join(" ")}`);
 }
+
+export interface AiCoderSchemaClampResult {
+  /** Every adjustment, in schema order, for the model-visible note. */
+  readonly adjustments: readonly string[];
+  readonly value: unknown;
+}
+
+/**
+ * Host caps are not model intent. A numeric argument above the schema `maximum`
+ * is clamped to that cap and reported instead of failing the whole call: the host
+ * would bound the work anyway, so rejecting it only costs a round trip (observed
+ * with `timeoutMs` above the 600000 ms command cap). Values below `minimum`,
+ * wrong types and every other violation still fail validation.
+ */
+export function clampAiCoderJsonSchemaNumbers(schema: AiCoderJsonSchema, value: unknown): AiCoderSchemaClampResult {
+  const adjustments: string[] = [];
+  const clampNode = (node: AiCoderJsonSchema, current: unknown, path: string, root: AiCoderJsonSchema, stack: ReadonlySet<string>): unknown => {
+    if (typeof node.$ref === "string") {
+      const resolved = resolveLocalRef(root, node.$ref);
+      if (resolved === null || stack.has(node.$ref)) return current;
+      return clampNode(resolved, current, path, root, new Set([...stack, node.$ref]));
+    }
+    if (typeof current === "number" && typeof node.maximum === "number" && current > node.maximum) {
+      adjustments.push(`${path} ${current} → ${node.maximum}`);
+      return node.maximum;
+    }
+    if (Array.isArray(current) && isRecord(node.items)) {
+      const itemSchema = node.items as AiCoderJsonSchema;
+      return current.map((item, index) => clampNode(itemSchema, item, `${path}[${index}]`, root, stack));
+    }
+    if (isRecord(current) && isRecord(node.properties)) {
+      const properties = node.properties as Record<string, AiCoderJsonSchema>;
+      let changed = false;
+      const next: Record<string, unknown> = { ...current };
+      for (const [key, childSchema] of Object.entries(properties)) {
+        if (!(key in next) || !isRecord(childSchema)) continue;
+        const before = next[key];
+        const after = clampNode(childSchema, before, `${path}.${key}`, root, stack);
+        if (after !== before) {
+          next[key] = after;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    }
+    return current;
+  };
+  const clamped = clampNode(schema, value, "$", schema, new Set());
+  return Object.freeze({ value: clamped, adjustments: Object.freeze(adjustments) });
+}

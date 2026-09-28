@@ -173,7 +173,7 @@ test("a read-only host does not receive mutation capabilities", () => {
 test("workspace writer exposes one atomic patch operation", () => {
   const writer: WorkspaceWriterPort = {
     async applyPatch(input, context) {
-      assert.equal(input.precondition.kind, "matches_sha256");
+      assert.equal(input.precondition?.kind, "matches_sha256");
       assert.equal(context.toolCallId, "call-1");
       return portSuccess<WorkspaceApplyPatchResult>({
         afterContentSha256: "after",

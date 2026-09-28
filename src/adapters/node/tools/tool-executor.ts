@@ -4,6 +4,7 @@ import {
   createAiCoderCoreToolEffectMetadata,
   createAiCoderApprovalPolicy,
   createAiCoderToolRegistrySnapshot,
+  clampAiCoderJsonSchemaNumbers,
   validateAiCoderJsonSchema,
   type AiCoderApprovalProfile,
   type AiCoderRuntimeFailureEffects,
@@ -471,7 +472,11 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     if (descriptor === null) {
       return errorResult(call, call.name, "UNKNOWN_TOOL", `Tool '${call.name}' is not active in this turn.`);
     }
-    const argumentsValidation = validateAiCoderJsonSchema(descriptor.inputSchema, call.arguments);
+    // Host caps are clamped, not rejected: the work is bounded either way and a
+    // rejection costs the model a full round trip.
+    const clampedArguments = clampAiCoderJsonSchemaNumbers(descriptor.inputSchema, call.arguments);
+    const effectiveArguments = clampedArguments.value as Readonly<Record<string, unknown>>;
+    const argumentsValidation = validateAiCoderJsonSchema(descriptor.inputSchema, effectiveArguments);
     if (!argumentsValidation.valid) {
       return errorResult(
         call,
@@ -483,7 +488,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     const cached = descriptor.idempotency === "with_key" ? this.idempotencyCache.get(context.idempotencyKey) : undefined;
     if (cached !== undefined) return cached;
 
-    const policy = await this.approvalPolicy(descriptor, call.arguments, context);
+    const policy = await this.approvalPolicy(descriptor, effectiveArguments, context);
     const approvalEffect: AiCoderRuntimeToolEffects["approval"] = policy.allowed
       ? policy.decision === "approved_by_host" ? "granted" : "not_required"
       : "denied";
@@ -500,7 +505,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
 
     let dispatched: DispatchResult;
     try {
-      dispatched = await this.dispatch(descriptor, call.arguments, context);
+      dispatched = await this.dispatch(descriptor, effectiveArguments, context);
     } catch (error) {
       if (error instanceof UnknownSideEffectOutcomeError) throw error;
       if (error instanceof ToolAdapterError) {
@@ -536,7 +541,9 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
         maxTokens: descriptor.maxOutputTokens,
         tailFraction: 0.25,
       }),
-      summary: dispatched.summary,
+      summary: clampedArguments.adjustments.length === 0
+        ? dispatched.summary
+        : `${dispatched.summary} Arguments clamped to host limits: ${clampedArguments.adjustments.join(", ")}.`.trim(),
       trust: dispatched.trust,
     });
     if (descriptor.idempotency === "with_key") this.idempotencyCache.set(context.idempotencyKey, result);
