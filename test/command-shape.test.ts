@@ -26,6 +26,8 @@ test("bounded project work is not a server command", () => {
     "bunx @galaxy-stack/orbit-cli new gymflow-api --directory apps/api",
     "rm -f frontend/src/assets/vite.svg frontend/src/App.css",
     "ls frontend/src/assets/vite.svg",
+    "bun create vite@latest frontend --template react-ts",
+    "bun create vite@latest .tmp-restore --template react-ts && cp .tmp-restore/src/App.css frontend/src/App.css",
   ]) {
     assert.equal(looksLikeLongRunningServer(command), false, command);
   }

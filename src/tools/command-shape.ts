@@ -2,7 +2,7 @@
  * Long-running server and watcher commands: recognising them lets the host warn
  * the model that they are supervision cost rather than validation evidence.
  */
-const SERVER_COMMAND = /(?:^|[;&|]\s*)(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?(?:dev|serve|start|watch)\b|(?:^|[\s;&|])(?:[^\s;&|]*\/)?(?:vite|nodemon|webpack-dev-server)\b(?![\w./-])(?!\s+build)|(?:^|[\s;&|])next\s+dev\b|(?:^|\s)--watch\b/;
+const SERVER_COMMAND = /(?:^|[;&|]\s*)(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?(?:dev|serve|start|watch)\b|(?:^|[\s;&|])(?:[^\s;&|]*\/)?(?:vite|nodemon|webpack-dev-server)\b(?![\w./@-])(?!\s+build)|(?:^|[\s;&|])next\s+dev\b|(?:^|\s)--watch\b/;
 
 export function looksLikeLongRunningServer(command: string): boolean {
   return SERVER_COMMAND.test(command.trim());
