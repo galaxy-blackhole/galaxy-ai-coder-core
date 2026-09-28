@@ -3869,3 +3869,59 @@ START 2026-09-28 09:46:38 +07:00 (2026-09-28T02:46:38.234Z). [Progress](<.galaxy
 2026-09-28 09:46:42 +07:00 (2026-09-28T02:46:42.731Z) | PASSED | PASS 154/155 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-28T02-46-38-225Z-dXYAxS/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-46-38-225Z-dXYAxS/summary.json>).
+
+## Core tests 2026-09-28T02-54-22-649Z-dBxxof
+
+START 2026-09-28 09:54:22 +07:00 (2026-09-28T02:54:22.660Z). [Progress](<.galaxy/tests/2026-09-28T02-54-22-649Z-dBxxof/summary.md>). Commit: a86d45ef5715f3c71edb81b20077b1eca7908249; source SHA-256: 95adfc6222f4de755ff4a9c7eb6f10627ccee46eea3ee7b98c4b0d90078ae722.
+
+### Finished 2026-09-28T02-54-22-649Z-dBxxof
+
+2026-09-28 09:54:27 +07:00 (2026-09-28T02:54:27.714Z) | FAILED | PASS 154/161 tests; FAIL 6; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a scoped validation survives writes outside its scope
+
+Recorded: 2026-09-28 09:54:23 +07:00 (2026-09-28T02:54:23.723Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:37.
+
+[Error [ERR_TEST_FAILURE]: [{"code":"WORKSPACE_EVIDENCE_STALE","detail":"Stale validation ids: project.validate:test:backend."},{"code":"WRITE_NOT_VALIDATED","detail":"backend/src/main.ts has no later successful validation evidence."}]<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: [{"code":"WORKSPACE_EVIDENCE_STALE","detail":"Stale validation ids: project.validate:test:backend."},{"code":"WRITE_NOT_VALIDATED","detail":"backend/src/main.ts has no later successful validation evidence."}]<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:43:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### documentation writes neither invalidate evidence nor demand validation
+
+Recorded: 2026-09-28 09:54:23 +07:00 (2026-09-28T02:54:23.726Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:46.
+
+[Error [ERR_TEST_FAILURE]: [{"code":"WORKSPACE_EVIDENCE_STALE","detail":"Stale validation ids: project.validate:test:backend."},{"code":"WRITE_NOT_VALIDATED","detail":"backend/src/main.ts has no later successful validation evidence."}]<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: [{"code":"WORKSPACE_EVIDENCE_STALE","detail":"Stale validation ids: project.validate:test:backend."},{"code":"WRITE_NOT_VALIDATED","detail":"backend/src/main.ts has no later successful validation evidence."}]<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:52:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### a write inside the validated scope still voids that validation
+
+Recorded: 2026-09-28 09:54:23 +07:00 (2026-09-28T02:54:23.730Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:55.
+
+[Error [ERR_TEST_FAILURE]: [{"code":"WRITE_NOT_VALIDATED","detail":"frontend/vite.config.ts has no later successful validation evidence."}]] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: [{"code":"WRITE_NOT_VALIDATED","detail":"frontend/vite.config.ts has no later successful validation evidence."}]<br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:63:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: '==',<br>    diff: 'simple'<br>  }<br>}
+
+### a workspace-scoped validation survives any later source write
+
+Recorded: 2026-09-28 09:54:23 +07:00 (2026-09-28T02:54:23.734Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:67.
+
+[Error [ERR_TEST_FAILURE]: [{"code":"WRITE_NOT_VALIDATED","detail":"frontend/src/App.tsx has no later successful validation evidence."}]<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: [{"code":"WRITE_NOT_VALIDATED","detail":"frontend/src/App.tsx has no later successful validation evidence."}]<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:73:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### a package the run never validated still demands validation
+
+Recorded: 2026-09-28 09:54:23 +07:00 (2026-09-28T02:54:23.737Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:76.
+
+[Error [ERR_TEST_FAILURE]: the frontend validation is still current<br><br>true !== false<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: the frontend validation is still current<br>  <br>  true !== false<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/completion-gate-scope.test.ts:85:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: true,<br>    expected: false,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### completion gate rejects waived required criteria, stale evidence, and later same-sequence failures
+
+Recorded: 2026-09-28 09:54:26 +07:00 (2026-09-28T02:54:26.954Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/runtime.test.ts:595.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly deep-equal:<br>+ actual - expected<br><br>+ Set(0) {}<br>- Set(2) {<br>-   'VALIDATION_MISSING',<br>-   'WORKSPACE_EVIDENCE_STALE'<br>- }<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:<br>  + actual - expected<br>  <br>  + Set(0) {}<br>  - Set(2) {<br>  -   'VALIDATION_MISSING',<br>  -   'WORKSPACE_EVIDENCE_STALE'<br>  - }<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/runtime.test.ts:641:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: Set(0) {},<br>    expected: Set(2) { 'VALIDATION_MISSING', 'WORKSPACE_EVIDENCE_STALE' },<br>    operator: 'deepStrictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-28T02-54-22-649Z-dBxxof/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-54-22-649Z-dBxxof/summary.json>).
+
+## Core tests 2026-09-28T02-55-41-770Z-NIDTqW
+
+START 2026-09-28 09:55:41 +07:00 (2026-09-28T02:55:41.775Z). [Progress](<.galaxy/tests/2026-09-28T02-55-41-770Z-NIDTqW/summary.md>). Commit: a86d45ef5715f3c71edb81b20077b1eca7908249; source SHA-256: 8a13f5d00d339f88c3ebdf9e80edd76445de33d697c406efa935bf3e754ea2bd.
+
+### Finished 2026-09-28T02-55-41-770Z-NIDTqW
+
+2026-09-28 09:55:47 +07:00 (2026-09-28T02:55:47.206Z) | PASSED | PASS 160/161 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-28T02-55-41-770Z-NIDTqW/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T02-55-41-770Z-NIDTqW/summary.json>).

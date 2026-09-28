@@ -98,20 +98,40 @@ export type AiCoderCompletionIssue = Readonly<{
   detail: string;
 }>;
 
+/**
+ * Documentation cannot break a build, so a documentation write neither demands a
+ * project validation nor invalidates one that already passed. Validating after a
+ * README edit is pure cost: the gymflow E2E re-ran a frontend build/lint
+ * validation only because the agent wrote README.md afterwards.
+ */
+const DOCUMENTATION_DIRECTORY = /(?:^|\/)(?:docs?|documentation)\//i;
+export function isDocumentationPath(path: string): boolean {
+  const normalized = path.replaceAll("\\", "/").replace(/^\.\//, "");
+  if (DOCUMENTATION_DIRECTORY.test(normalized)) return true;
+  if (/\.(?:md|mdx|txt)$/i.test(normalized)) return true;
+  return /(?:^|\/)(?:LICENSE|CHANGELOG|NOTICE|AUTHORS)(?:\.[A-Za-z]+)?$/.test(normalized);
+}
+
+function pathCoveredByScope(scopePath: string, writePath: string): boolean {
+  const normalizedScope = scopePath.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "") || ".";
+  const normalizedWrite = writePath.replaceAll("\\", "/").replace(/^\.\//, "");
+  return normalizedScope === "."
+    || normalizedWrite === normalizedScope
+    || normalizedWrite.startsWith(`${normalizedScope}/`);
+}
+
+function validationCovers(validation: AiCoderCompletionValidation, write: AiCoderCompletionWrite): boolean {
+  return validation.scope === "workspace"
+    || (validation.paths ?? []).some((scopePath) => pathCoveredByScope(scopePath, write.path));
+}
+
 function writeIsValidated(
   write: AiCoderCompletionWrite,
   validations: readonly AiCoderCompletionValidation[],
 ): boolean {
-  const coveredBy = (scopePath: string): boolean => {
-    const normalizedScope = scopePath.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "") || ".";
-    const normalizedWrite = write.path.replaceAll("\\", "/").replace(/^\.\//, "");
-    return normalizedScope === "."
-      || normalizedWrite === normalizedScope
-      || normalizedWrite.startsWith(`${normalizedScope}/`);
-  };
   return validations.some((validation) => validation.status === "passed"
     && validation.sequence > write.sequence
-    && (validation.scope === "workspace" || validation.paths?.some(coveredBy)));
+    && validationCovers(validation, write));
 }
 
 export function evaluateAiCoderCompletion(
@@ -183,10 +203,29 @@ export function evaluateAiCoderCompletion(
     if (!previous || previous.sequence <= validation.sequence) latestById.set(validation.id, validation);
   }
   const effectiveValidations = [...latestById.values()];
-  const currentValidations = effectiveValidations.filter((validation) => (
-    snapshot.finalWorkspaceFingerprint !== null
-    && validation.workspaceFingerprint === snapshot.finalWorkspaceFingerprint
-  ));
+  // Scope-aware staleness. A validation is void when something it covers changed
+  // after it ran: a tracked write inside its scope, or an out-of-band workspace
+  // change that no tracked activity explains (fingerprint drift). The previous
+  // rule compared the whole-workspace fingerprint, so a README edit or a write in
+  // a sibling package voided a frontend build validation and every void cost a
+  // full re-validation round; a workspace-scoped validation still covers
+  // everything and therefore stays strict.
+  const trackedFingerprints = [
+    ...snapshot.writes.map((write) => ({ fingerprint: write.workspaceFingerprint, sequence: write.sequence })),
+    ...effectiveValidations.map((validation) => ({ fingerprint: validation.workspaceFingerprint, sequence: validation.sequence })),
+    ...(snapshot.finalDiffReview === null ? [] : [{ fingerprint: snapshot.finalDiffReview.workspaceFingerprint, sequence: snapshot.finalDiffReview.sequence }]),
+  ];
+  const latestTracked = trackedFingerprints.reduce<{ fingerprint: string; sequence: number } | null>(
+    (latest, item) => (latest === null || item.sequence >= latest.sequence ? item : latest),
+    null,
+  );
+  const workspaceDrifted = snapshot.finalWorkspaceFingerprint === null
+    || (latestTracked !== null && latestTracked.fingerprint !== snapshot.finalWorkspaceFingerprint);
+  const currentValidations = effectiveValidations.filter((validation) => !workspaceDrifted && !snapshot.writes.some((write) => (
+    write.sequence > validation.sequence
+    && !isDocumentationPath(write.path)
+    && validationCovers(validation, write)
+  )));
   const staleValidations = effectiveValidations.filter((validation) => !currentValidations.includes(validation));
   if (staleValidations.length) {
     add("WORKSPACE_EVIDENCE_STALE", `Stale validation ids: ${staleValidations.map((item) => item.id).join(", ")}.`);
@@ -203,7 +242,9 @@ export function evaluateAiCoderCompletion(
       || !isAiCoderWorkspaceMutationEvidence(write)) {
       add("WRITE_EVIDENCE_INVALID", `${write.path || "<blank>"} does not contain valid mutation evidence.`);
     }
-    if (!writeIsValidated(write, currentValidations)) add("WRITE_NOT_VALIDATED", `${write.path} has no later successful validation evidence.`);
+    if (!isDocumentationPath(write.path) && !writeIsValidated(write, currentValidations)) {
+      add("WRITE_NOT_VALIDATED", `${write.path} has no later successful validation evidence.`);
+    }
   }
   const lastWriteSequence = Math.max(0, ...snapshot.writes.map((item) => item.sequence));
   const finalDiffIsCurrent = snapshot.finalDiffReview !== null
