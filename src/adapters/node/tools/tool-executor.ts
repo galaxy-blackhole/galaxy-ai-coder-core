@@ -37,6 +37,7 @@ import {
 } from "../host/node-workspace-snapshot.js";
 import { detectProject, validateProject, type ProjectCheck } from "../host/project-tools.js";
 import { serverCommandAdvisory, validationCommandAdvisory } from "../../../tools/command-shape.js";
+import { validationScopeForProjectPath } from "../../../tools/validation-scope.js";
 export class ContractToolError extends Error {
   constructor(readonly code: string, message: string, readonly retryable = false, readonly suggestedAction?: string) { super(message); }
 }
@@ -1031,7 +1032,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             validations: Object.freeze(result.results.map((item) => Object.freeze({
               id: `project.validate:${item.check}:${projectPath}`,
               detail: `${item.check}: ${item.summary}`,
-              scope: "workspace" as const,
+              ...validationScopeForProjectPath(projectPath),
               status: item.status === "passed" ? "passed" : item.status === "skipped" ? "not_run" : "failed",
             }))),
           }),
