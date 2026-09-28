@@ -4011,3 +4011,13 @@ Recorded: 2026-09-28 11:07:59 +07:00 (2026-09-28T04:07:59.250Z); /Users/buitrong
 [Error [ERR_TEST_FAILURE]: npx nodemon src/main.ts<br><br>false !== true<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: npx nodemon src/main.ts<br>  <br>  false !== true<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:15:12)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: false,<br>    code: 'ERR_ASSERTION',<br>    actual: false,<br>    expected: true,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
 
 [Full trace](<.galaxy/tests/2026-09-28T04-07-58-000Z-lo8fN8/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T04-07-58-000Z-lo8fN8/summary.json>).
+
+## Core tests 2026-09-28T04-08-26-870Z-aX6hW8
+
+START 2026-09-28 11:08:26 +07:00 (2026-09-28T04:08:26.880Z). [Progress](<.galaxy/tests/2026-09-28T04-08-26-870Z-aX6hW8/summary.md>). Commit: 8e13f037896351821eac58de0144fe48e0cab1e0; source SHA-256: dd9d816710c81e7f2be3090e832f9d849549ab869f8cc4747048b6af2f3106f2.
+
+### Finished 2026-09-28T04-08-26-870Z-aX6hW8
+
+2026-09-28 11:08:32 +07:00 (2026-09-28T04:08:32.394Z) | PASSED | PASS 165/166 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-28T04-08-26-870Z-aX6hW8/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T04-08-26-870Z-aX6hW8/summary.json>).

@@ -2,10 +2,15 @@
  * Long-running server and watcher commands: recognising them lets the host warn
  * the model that they are supervision cost rather than validation evidence.
  */
-const SERVER_COMMAND = /(?:^|[;&|]\s*)(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?(?:dev|serve|start|watch)\b|(?:^|[;&|]\s*)(?:[^\s;&|]*\/)?(?:vite|nodemon|webpack-dev-server)\b(?![\w./@-])(?!\s+build)|(?:^|[\s;&|])next\s+dev\b|(?:^|\s)--watch\b/;
+const SERVER_COMMAND = /(?:^|[;&|]\s*)(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?(?:dev|serve|start|watch)\b|(?:^|[\s;&|])(?:[^\s;&|]*\/)?(?:vite|nodemon|webpack-dev-server)\b(?![\w./@-])(?!\s+build)|(?:^|[\s;&|])next\s+dev\b|(?:^|\s)--watch\b/;
+
+/** `bun create vite` scaffolds a project; the same word as a runner starts a server. */
+const PACKAGE_SCAFFOLD_INVOCATION = /(?:^|[;&|]\s*)(?:bun|bunx|npx|npm|pnpm|yarn)\s+(?:create|init|add|install|i|remove|update|link|dlx\s+create)\b/;
 
 export function looksLikeLongRunningServer(command: string): boolean {
-  return SERVER_COMMAND.test(command.trim());
+  const trimmed = command.trim();
+  if (PACKAGE_SCAFFOLD_INVOCATION.test(trimmed)) return false;
+  return SERVER_COMMAND.test(trimmed);
 }
 
 /**
