@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { looksLikeLongRunningServer, serverCommandAdvisory, validationCommandAdvisory } from "../src/tools/command-shape.js";
+import { dependencyShellReadAdvisory, looksLikeLongRunningServer, serverCommandAdvisory, validationCommandAdvisory } from "../src/tools/command-shape.js";
 
 test("recognises dev servers and watchers", () => {
   for (const command of [
@@ -56,4 +56,13 @@ test("the advisory names the bounded validation path", () => {
   assert.match(advisory, /validate_project/);
   assert.match(advisory, /not validation evidence/);
   assert.equal(serverCommandAdvisory("bun run build"), undefined);
+});
+
+test("reading library source through the shell is called out, a declaration read is not", () => {
+  const advisory = dependencyShellReadAdvisory("cd backend/node_modules/@galaxy-stack/orbit-security/dist && cat package.json index.js | head -40");
+  assert.match(advisory ?? "", /\.d\.ts/);
+  assert.match(advisory ?? "", /node_modules/);
+  // Ground-truth reads and workspace reads stay silent.
+  assert.equal(dependencyShellReadAdvisory("cat backend/src/main.ts"), undefined);
+  assert.equal(dependencyShellReadAdvisory("ls backend/node_modules/@galaxy-stack/orbit-core"), undefined);
 });

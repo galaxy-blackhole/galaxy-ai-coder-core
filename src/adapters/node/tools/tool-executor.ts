@@ -36,7 +36,7 @@ import {
   type NodeWorkspaceSnapshotOptions,
 } from "../host/node-workspace-snapshot.js";
 import { detectProject, validateProject, type ProjectCheck } from "../host/project-tools.js";
-import { serverCommandAdvisory, validationCommandAdvisory } from "../../../tools/command-shape.js";
+import { dependencyShellReadAdvisory, serverCommandAdvisory, validationCommandAdvisory } from "../../../tools/command-shape.js";
 import { validationScopeForProjectPath } from "../../../tools/validation-scope.js";
 export class ContractToolError extends Error {
   constructor(readonly code: string, message: string, readonly retryable = false, readonly suggestedAction?: string) { super(message); }
@@ -969,7 +969,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             truncated: data.stdoutTruncated || data.stderrTruncated,
             ...(derivedMutations === undefined ? {} : { derivedMutations }),
           }),
-          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command), validationCommandAdvisory(command, cwd)]
+          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command), validationCommandAdvisory(command, cwd), dependencyShellReadAdvisory(command)]
             .filter((part): part is string => part !== undefined && part.length > 0)
             .join(" "),
           trust: "external",

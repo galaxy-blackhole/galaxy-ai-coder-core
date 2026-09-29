@@ -54,6 +54,21 @@ export function validationCommandAdvisory(command: string, cwd?: string): string
   return `This is a declared project check run through the shell, so it produces no completion evidence. Run validate_project with {"path":"${path}","checks":["${check}"]} to make the result count; keep a direct command only for diagnosis.`;
 }
 
+/** A reader program, and separately a dependency path: either order appears in practice. */
+const SHELL_READER = /\b(?:cat|bat|head|tail|less|more|sed|awk|grep|rg|strings)\b/;
+const DEPENDENCY_PATH = /node_modules\//;
+
+/**
+ * The host guard refuses file-tool reads of library source, but a shell reader
+ * bypasses it silently (seen in the gymflow security step: `cd
+ * backend/node_modules/@galaxy-stack/orbit-security/dist && cat …`). Reading
+ * declarations or a manifest is allowed and cheap; reading library source is not.
+ */
+export function dependencyShellReadAdvisory(command: string): string | undefined {
+  if (!SHELL_READER.test(command) || !DEPENDENCY_PATH.test(command)) return undefined;
+  return "This reads library source inside node_modules through the shell, which the file tools refuse for good reason: it floods context with internals that are not documentation. Read a specific package.json, README.md or *.d.ts instead (allowed), or use the framework MCP knowledge and bundled skills.";
+}
+
 export function serverCommandAdvisory(command: string): string | undefined {
   if (!looksLikeLongRunningServer(command)) return undefined;
   return "This looks like a long-running server or watcher. It is not validation evidence: prove the project with validate_project (test, typecheck, lint, build) and exercise a server only when the task explicitly asks for it, through the bounded session capability, stopping it before the final validation.";
