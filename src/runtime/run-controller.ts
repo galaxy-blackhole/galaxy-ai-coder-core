@@ -1791,7 +1791,19 @@ export class AiCoderRunController {
           if (!done && iterator.return) void Promise.resolve(iterator.return()).catch(() => undefined);
         }
         if (!done) throw new CodingProviderError("MALFORMED_STREAM", "Model stream ended without a done event.");
-        if (done.stopReason === "length" || done.stopReason === "unknown") {
+        if (done.stopReason === "length") {
+          // The model spent its whole output allowance (usually on hidden thinking)
+          // before emitting a tool call or an answer. That is a capacity failure, not
+          // a task failure: retry the same verified context with thinking disabled
+          // instead of failing the run (measured: a gymflow planning turn died here).
+          throw new CodingProviderError(
+            "MALFORMED_STREAM",
+            `Model stopped at the output limit ('length') after ${calls.length} tool call(s) and ${content.length} character(s) of content; retry with hidden thinking disabled and a shorter response.`,
+            true,
+            "without_thinking",
+          );
+        }
+        if (done.stopReason === "unknown") {
           throw new AiCoderRuntimeError("INVALID_MODEL_STREAM", `Model stopped with non-final reason '${done.stopReason}'.`);
         }
         if (done.stopReason === "tool_calls" && !calls.length) {

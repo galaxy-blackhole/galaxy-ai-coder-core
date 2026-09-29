@@ -98,7 +98,7 @@ class ScriptedModel implements CodingModelAdapter {
   }
 }
 
-function done(content: string, stopReason: "completed" | "tool_calls" = "completed"): CodingRoundEvent {
+function done(content: string, stopReason: "completed" | "tool_calls" | "length" = "completed"): CodingRoundEvent {
   return Object.freeze({
     content,
     identity: IDENTITY,
@@ -271,6 +271,27 @@ test("retry feedback reaches the immediate request and thinking-only failures re
   assert.equal(model.requests[1]?.messages.length, (model.requests[0]?.messages.length ?? 0) + 1);
   assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /hidden thinking disabled/);
   assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /failure_detail_untrusted/);
+});
+
+test("an output-limit stop retries the verified context with thinking disabled", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([done("Still planning when the output allowance ran out.", "length")]),
+    Object.freeze([tool("workspace_list", "inspect-after-length"), done("", "tool_calls")]),
+    Object.freeze([done("Recovered after the output-limit retry.")]),
+  ]);
+  const limitRequest = Object.freeze({
+    ...request("run-output-limit-retry"),
+    budget: Object.freeze({ maxCompletionRejections: 3, maxModelRetries: 1, maxToolCalls: 20, maxTurns: 12 }),
+  });
+
+  const result = await new AiCoderRunController({ model, toolExecutor: new DeterministicExecutor() })
+    .start(limitRequest).result;
+
+  assert.equal(result.state, "completed", JSON.stringify(result.error));
+  assert.equal(model.requests.length, 3);
+  assert.equal(model.requests[0]?.think, true);
+  assert.equal(model.requests[1]?.think, false, "the retry must drop hidden thinking");
+  assert.match(model.requests[1]?.messages.at(-1)?.content ?? "", /output limit|hidden thinking disabled/);
 });
 
 test("model retry backoff comes from the budget schedule and reaches the caller", async () => {
