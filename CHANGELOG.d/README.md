@@ -14,3 +14,6 @@ live.
 
 CHANGELOG.md (file công khai trên npm/GitHub) viết tiếng Anh; fragment ở đây là
 ghi chú làm việc nội bộ, viết tiếng Việt cũng được.
+
+Khi mục `[0.3.0]` được gom, các fragment **được giữ lại** thay vì xoá, vì mục
+CHANGELOG trỏ link tới từng fragment; chỉ xoá khi mục tương ứng cũng bỏ link.
