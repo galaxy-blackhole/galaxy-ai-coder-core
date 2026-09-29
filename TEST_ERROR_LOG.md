@@ -4067,3 +4067,29 @@ START 2026-09-28 22:56:19 +07:00 (2026-09-28T15:56:19.635Z). [Progress](<.galaxy
 2026-09-28 22:56:23 +07:00 (2026-09-28T15:56:23.986Z) | PASSED | PASS 167/168 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-28T15-56-19-632Z-OFuPD8/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-28T15-56-19-632Z-OFuPD8/summary.json>).
+
+## Core tests 2026-09-29T02-25-10-656Z-sXGRYh
+
+START 2026-09-29 09:25:10 +07:00 (2026-09-29T02:25:10.687Z). [Progress](<.galaxy/tests/2026-09-29T02-25-10-656Z-sXGRYh/summary.md>). Commit: 8e16c77c44f9afc5cba0f2afd5b3380d752680e1; source SHA-256: 831bd36d7daa1d429cc9a9578afcc8644cbbfb415a70ddc5ffc1357b5903f465.
+
+### Finished 2026-09-29T02-25-10-656Z-sXGRYh
+
+2026-09-29 09:25:16 +07:00 (2026-09-29T02:25:16.881Z) | FAILED | PASS 167/169 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### reading library source through the shell is called out, a declaration read is not
+
+Recorded: 2026-09-29 09:25:11 +07:00 (2026-09-29T02:25:11.694Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:61.
+
+[Error [ERR_TEST_FAILURE]: The input did not match the regular expression /\.d\.ts/. Input:<br><br>''<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\.d\.ts/. Input:<br>  <br>  ''<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/command-shape.test.ts:63:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: '',<br>    expected: /\.d\.ts/,<br>    operator: 'match',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-29T02-25-10-656Z-sXGRYh/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-29T02-25-10-656Z-sXGRYh/summary.json>).
+
+## Core tests 2026-09-29T02-25-40-074Z-5uz3NH
+
+START 2026-09-29 09:25:40 +07:00 (2026-09-29T02:25:40.104Z). [Progress](<.galaxy/tests/2026-09-29T02-25-40-074Z-5uz3NH/summary.md>). Commit: 8e16c77c44f9afc5cba0f2afd5b3380d752680e1; source SHA-256: bf09e2e89bd35ccd0207e2cd1644f82421a0e4c1c12964007bec2fa16179485e.
+
+### Finished 2026-09-29T02-25-40-074Z-5uz3NH
+
+2026-09-29 09:25:46 +07:00 (2026-09-29T02:25:46.485Z) | PASSED | PASS 168/169 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-29T02-25-40-074Z-5uz3NH/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-29T02-25-40-074Z-5uz3NH/summary.json>).
