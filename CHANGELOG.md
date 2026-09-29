@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.1] - 2026-09-29 05:25 +07:00
+
+### Fixed
+
+- Advisory khi đọc source node_modules bằng shell. See [CHANGELOG.d fragment](CHANGELOG.d/2026-09-29-advisory-doc-source-node-modules-bang-shell.md).
+- Dừng vì trần output ('length') là lỗi tạm thời, không phải fail run. See [CHANGELOG.d fragment](CHANGELOG.d/2026-09-29-retry-khi-model-dung-vi-output-length.md).
+
 ## [0.3.0] - 2026-09-28 23:10 +07:00
 
 First verified stable line: the 25-prompt end-to-end flow completes with this
