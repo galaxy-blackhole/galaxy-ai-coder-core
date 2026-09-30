@@ -20,11 +20,7 @@ Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 
 ### Changed
 
-- Baseline review chỉ tính file nguồn, không chết vì install/build chạy nền.
-- Tài liệu credential dùng chung cho mọi Galaxy host.
-- Shell persistent cho run_command, giống DeepSeek Harness.
-- Agent tự quyết timeout của lệnh, host chỉ giữ backstop suy ra từ lựa chọn đó.
-- Timeout của run_command theo đúng cơ chế DeepSeek Harness.
+- Tài liệu credential dùng chung cho mọi Galaxy host ([CHANGELOG.d/2026-09-30-galaxy-credentials.md](CHANGELOG.d/2026-09-30-galaxy-credentials.md)).
 
 ## [0.3.1] - 2026-09-29 05:25 +07:00
 
