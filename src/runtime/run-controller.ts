@@ -4,7 +4,7 @@ import {
   type AiCoderToolObservation,
 } from "../context/context-manager.js";
 import { compareAiCoderText } from "../deterministic-order.js";
-import { TOOL_DISPATCH_TIMEOUT_MS } from "./tool-dispatch-limits.js";
+import { dispatchGuardMs } from "../tools/tool-timeouts.js";
 import { isGeneratedWorkspacePath } from "./workspace-generated-path.js";
 import {
   assertAiCoderRunCheckpoint,
@@ -2073,7 +2073,11 @@ export class AiCoderRunController {
     prepared: PreparedToolCall,
     roundToolSet: AiCoderRuntimeToolSet,
   ): Promise<AiCoderToolObservation> {
-    const timeoutMs = TOOL_DISPATCH_TIMEOUT_MS;
+    // The agent decides how long its command may take; the guard only has to outlive that
+    // choice so the tool returns its own timeout result instead of being killed from here.
+    const guardArguments = prepared.call.arguments as Record<string, unknown>;
+    const requestedTimeoutMs = typeof guardArguments?.timeoutMs === "number" ? guardArguments.timeoutMs : undefined;
+    const timeoutMs = dispatchGuardMs(requestedTimeoutMs);
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([

@@ -4113,3 +4113,75 @@ START 2026-09-29 18:41:56 +07:00 (2026-09-29T11:41:56.506Z). [Progress](<.galaxy
 2026-09-29 18:42:04 +07:00 (2026-09-29T11:42:04.571Z) | PASSED | PASS 178/179 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-09-29T11-41-56-501Z-f6G1J1/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-29T11-41-56-501Z-f6G1J1/summary.json>).
+
+## Core tests 2026-09-30T02-12-21-194Z-LPE39C
+
+START 2026-09-30 09:12:21 +07:00 (2026-09-30T02:12:21.212Z). [Progress](<.galaxy/tests/2026-09-30T02-12-21-194Z-LPE39C/summary.md>). Commit: ee51f1999cfe5c6fd8cfff3c4bd60e8d66b6b9ec; source SHA-256: 6bf1e1611fe9e0939f141eac0eaea0ff2b6e042e7a5461cdd37862ff530cf7d2.
+
+### Finished 2026-09-30T02-12-21-194Z-LPE39C
+
+2026-09-30 09:12:27 +07:00 (2026-09-30T02:12:27.566Z) | PASSED | PASS 178/179 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-30T02-12-21-194Z-LPE39C/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T02-12-21-194Z-LPE39C/summary.json>).
+
+## Core tests 2026-09-30T03-11-34-033Z-wAVhrv
+
+START 2026-09-30 10:11:34 +07:00 (2026-09-30T03:11:34.057Z). [Progress](<.galaxy/tests/2026-09-30T03-11-34-033Z-wAVhrv/summary.md>). Commit: ee51f1999cfe5c6fd8cfff3c4bd60e8d66b6b9ec; source SHA-256: 696cd6a75ccc9463cf65fad2c01682ef9d233ece12c1822f937863f252dec329.
+
+### Finished 2026-09-30T03-11-34-033Z-wAVhrv
+
+2026-09-30 10:11:40 +07:00 (2026-09-30T03:11:40.479Z) | FAILED | PASS 178/180 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a background write to a generated path does not invalidate the review baseline
+
+Recorded: 2026-09-30 10:11:40 +07:00 (2026-09-30T03:11:40.459Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:41.
+
+[Error [ERR_TEST_FAILURE]: Workspace file changed while taking a mutation snapshot: node_modules/pkg/index.js.] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: Error: Workspace file changed while taking a mutation snapshot: node_modules/pkg/index.js.<br>      at codedError (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:101:24)<br>      at readStableFileHash (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:251:17)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:346:36)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:327:11)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:327:11)<br>      at async NodeWorkspaceSnapshotter.capture (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:370:5)<br>      at async NodeWorkspaceReviewExecutor.create (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/tools/workspace-review.ts:47:38)<br>      at async TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:54:22)<br>      at async Test.run (node:internal/test_runner/test:1409:7)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    code: 'CONFLICT'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-30T03-11-34-033Z-wAVhrv/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T03-11-34-033Z-wAVhrv/summary.json>).
+
+## Core tests 2026-09-30T03-11-46-885Z-5ANkyL
+
+START 2026-09-30 10:11:46 +07:00 (2026-09-30T03:11:46.899Z). [Progress](<.galaxy/tests/2026-09-30T03-11-46-885Z-5ANkyL/summary.md>). Commit: 13a6afd570ee944d809037cb69374ea1b2580613; source SHA-256: 696cd6a75ccc9463cf65fad2c01682ef9d233ece12c1822f937863f252dec329.
+
+### Finished 2026-09-30T03-11-46-885Z-5ANkyL
+
+2026-09-30 10:11:53 +07:00 (2026-09-30T03:11:53.524Z) | FAILED | PASS 178/180 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a background write to a generated path does not invalidate the review baseline
+
+Recorded: 2026-09-30 10:11:53 +07:00 (2026-09-30T03:11:53.504Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:41.
+
+[Error [ERR_TEST_FAILURE]: Workspace file changed while taking a mutation snapshot: node_modules/pkg/index.js.] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: Error: Workspace file changed while taking a mutation snapshot: node_modules/pkg/index.js.<br>      at codedError (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:101:24)<br>      at readStableFileHash (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:251:17)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:346:36)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:327:11)<br>      at async visitDirectory (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:327:11)<br>      at async NodeWorkspaceSnapshotter.capture (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/host/node-workspace-snapshot.ts:370:5)<br>      at async NodeWorkspaceReviewExecutor.create (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/src/adapters/node/tools/workspace-review.ts:36:24)<br>      at async TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:54:22)<br>      at async Test.run (node:internal/test_runner/test:1409:7)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    code: 'CONFLICT'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-09-30T03-11-46-885Z-5ANkyL/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T03-11-46-885Z-5ANkyL/summary.json>).
+
+## Core tests 2026-09-30T03-12-19-104Z-3IeQFq
+
+START 2026-09-30 10:12:19 +07:00 (2026-09-30T03:12:19.110Z). [Progress](<.galaxy/tests/2026-09-30T03-12-19-104Z-3IeQFq/summary.md>). Commit: 13a6afd570ee944d809037cb69374ea1b2580613; source SHA-256: fb8acdfff201d1d36a4a84585340065d36c4cfde43dcee800b0f6964a3308328.
+
+### Finished 2026-09-30T03-12-19-104Z-3IeQFq
+
+2026-09-30 10:12:25 +07:00 (2026-09-30T03:12:25.820Z) | PASSED | PASS 179/180 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-30T03-12-19-104Z-3IeQFq/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T03-12-19-104Z-3IeQFq/summary.json>).
+
+## Core tests 2026-09-30T06-35-26-710Z-xR8BSD
+
+START 2026-09-30 13:35:26 +07:00 (2026-09-30T06:35:26.726Z). [Progress](<.galaxy/tests/2026-09-30T06-35-26-710Z-xR8BSD/summary.md>). Commit: 33fc33560c12fa6f5b1cf2ae39b06fcc2a8e62eb; source SHA-256: 360114390840808735c9e109119bcd5700c401238b2b3b83352143ba05bcbbe5.
+
+### Finished 2026-09-30T06-35-26-710Z-xR8BSD
+
+2026-09-30 13:35:33 +07:00 (2026-09-30T06:35:33.385Z) | PASSED | PASS 179/180 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-30T06-35-26-710Z-xR8BSD/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T06-35-26-710Z-xR8BSD/summary.json>).
+
+## Core tests 2026-09-30T06-38-45-929Z-rNY6XB
+
+START 2026-09-30 13:38:45 +07:00 (2026-09-30T06:38:45.949Z). [Progress](<.galaxy/tests/2026-09-30T06-38-45-929Z-rNY6XB/summary.md>). Commit: 03bd0eda9d0ea763b51ed9ff0b8f63dc02845c45; source SHA-256: 48e74619ac3c51ac28fc3e30664eddb701940d5a9397acbb5a40b65cfd4e0dc4.
+
+### Finished 2026-09-30T06-38-45-929Z-rNY6XB
+
+2026-09-30 13:38:52 +07:00 (2026-09-30T06:38:52.184Z) | PASSED | PASS 181/182 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-09-30T06-38-45-929Z-rNY6XB/events.jsonl>) | [Summary](<.galaxy/tests/2026-09-30T06-38-45-929Z-rNY6XB/summary.json>).
