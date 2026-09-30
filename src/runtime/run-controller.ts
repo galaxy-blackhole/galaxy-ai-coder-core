@@ -4,6 +4,7 @@ import {
   type AiCoderToolObservation,
 } from "../context/context-manager.js";
 import { compareAiCoderText } from "../deterministic-order.js";
+import { TOOL_DISPATCH_TIMEOUT_MS } from "./tool-dispatch-limits.js";
 import { isGeneratedWorkspacePath } from "./workspace-generated-path.js";
 import {
   assertAiCoderRunCheckpoint,
@@ -2072,7 +2073,7 @@ export class AiCoderRunController {
     prepared: PreparedToolCall,
     roundToolSet: AiCoderRuntimeToolSet,
   ): Promise<AiCoderToolObservation> {
-    const timeoutMs = 600_000;
+    const timeoutMs = TOOL_DISPATCH_TIMEOUT_MS;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([

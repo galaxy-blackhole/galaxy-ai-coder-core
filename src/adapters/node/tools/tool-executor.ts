@@ -36,6 +36,7 @@ import {
   type NodeWorkspaceSnapshotOptions,
 } from "../host/node-workspace-snapshot.js";
 import { detectProject, validateProject, type ProjectCheck } from "../host/project-tools.js";
+import { clampToolTimeoutMs } from "../../../runtime/tool-dispatch-limits.js";
 import { dependencyShellReadAdvisory, serverCommandAdvisory, validationCommandAdvisory } from "../../../tools/command-shape.js";
 import { validationScopeForProjectPath } from "../../../tools/validation-scope.js";
 export class ContractToolError extends Error {
@@ -905,7 +906,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       }
       case "command.run": {
         const cwd = optionalString(argumentsValue, "cwd") ?? ".";
-        const timeoutMs = optionalNumber(argumentsValue, "timeoutMs");
+        const timeoutMs = clampToolTimeoutMs(optionalNumber(argumentsValue, "timeoutMs"));
         const command = stringArgument(argumentsValue, "command");
         const { before, snapshotter } = await this.mutationBaseline(context);
         const execution = await (async () => {
@@ -987,7 +988,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       }
       case "project.validate": {
         const checks = stringArray(argumentsValue, "checks") as readonly ProjectCheck[];
-        const timeoutMs = optionalNumber(argumentsValue, "timeoutMs");
+        const timeoutMs = clampToolTimeoutMs(optionalNumber(argumentsValue, "timeoutMs"));
         const projectPath = normalizedProjectPath(optionalString(argumentsValue, "path") ?? ".");
         const { before, snapshotter } = await this.mutationBaseline(context);
         const execution = await (async () => {
