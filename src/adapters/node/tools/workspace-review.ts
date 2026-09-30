@@ -33,7 +33,17 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
     const snapshotter = await NodeWorkspaceSnapshotter.create(context.workspaceRoot, DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS);
     let lastFingerprint = "";
     for (let attempt = 1; attempt <= MAX_BASELINE_ATTEMPTS; attempt += 1) {
-      const baseline = await snapshotter.capture(context);
+      // A capture itself can hit CONFLICT when a background writer touches a file between
+      // the host's own lstats; retrying the attempt is the correct answer for generated
+      // churn, which the review never reports.
+      let baseline: NodeWorkspaceSnapshot;
+      try {
+        baseline = await snapshotter.capture(context);
+      } catch (error) {
+        if (attempt >= MAX_BASELINE_ATTEMPTS) throw error;
+        await new Promise((resolve) => setTimeout(resolve, BASELINE_RETRY_DELAY_MS * attempt));
+        continue;
+      }
       const contents = new Map<string, string>();
       let bytes = 0;
       for (const entry of baseline.entries) {
@@ -44,9 +54,13 @@ export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
         }
       }
       const fingerprint = durableBaselineFingerprint(baseline);
-      if (durableBaselineFingerprint(await snapshotter.capture(context)) === fingerprint) {
-        return new NodeWorkspaceReviewExecutor(workspace, snapshotter, baseline, contents);
+      let stillStable = false;
+      try {
+        stillStable = durableBaselineFingerprint(await snapshotter.capture(context)) === fingerprint;
+      } catch (error) {
+        if (attempt >= MAX_BASELINE_ATTEMPTS) throw error;
       }
+      if (stillStable) return new NodeWorkspaceReviewExecutor(workspace, snapshotter, baseline, contents);
       lastFingerprint = fingerprint;
       if (attempt < MAX_BASELINE_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, BASELINE_RETRY_DELAY_MS * attempt));
     }
