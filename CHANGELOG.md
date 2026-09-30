@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.2] - 2026-09-30 14:50 +0700
+
+### Changed
+
+- Baseline review chỉ tính file nguồn, không chết vì install/build chạy nền.
+- Shell persistent cho run_command, giống DeepSeek Harness.
+- Agent tự quyết timeout của lệnh, host chỉ giữ backstop suy ra từ lựa chọn đó.
+- Timeout của run_command theo đúng cơ chế DeepSeek Harness.
+
 ## [0.3.1] - 2026-09-29 05:25 +07:00
 
 ### Fixed
