@@ -21,7 +21,10 @@ import {
 import { nodeCommandHostEnvironment } from "./host-environment.js";
 import { WorkspaceScope } from "./path-scope.js";
 
-const DEFAULT_TIMEOUT_MS = 120_000;
+// Matches the harness default this project mirrors (@deepseek-ai/dsh-tool-bash-persistent
+// declares timeoutMs 300000): a command may run for five minutes unless the caller asks for
+// more or less, and the timeout is a maximum, not a wait.
+const DEFAULT_TIMEOUT_MS = 300_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 256 * 1024;
 const MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 

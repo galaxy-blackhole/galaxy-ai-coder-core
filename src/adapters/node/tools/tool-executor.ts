@@ -970,7 +970,15 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             truncated: data.stdoutTruncated || data.stderrTruncated,
             ...(derivedMutations === undefined ? {} : { derivedMutations }),
           }),
-          summary: [`Command ${data.status} with exit code ${String(data.exitCode)}.`, serverCommandAdvisory(command), validationCommandAdvisory(command, cwd), dependencyShellReadAdvisory(command)]
+          // Mirror the harness wording for a killed command, so the model reads the same
+          // signal it would get from @deepseek-ai/dsh-tool-bash-persistent: the command was
+          // stopped at its maximum and what follows is partial output, not a finished run.
+          summary: [
+            data.status === "timed_out"
+              ? `Command timed out after ${Math.round((data.durationMs ?? 0) / 1000)}s. Below is partial output:`
+              : `Command ${data.status} with exit code ${String(data.exitCode)}.`,
+            serverCommandAdvisory(command), validationCommandAdvisory(command, cwd), dependencyShellReadAdvisory(command),
+          ]
             .filter((part): part is string => part !== undefined && part.length > 0)
             .join(" "),
           trust: "external",
