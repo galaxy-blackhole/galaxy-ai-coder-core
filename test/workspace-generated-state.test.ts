@@ -9,6 +9,7 @@ import {
   diffNodeWorkspaceSnapshots,
 } from "../src/adapters/node/host/node-workspace-snapshot.js";
 import { NodeWorkspaceEvidenceVerifier } from "../src/adapters/node/host/node-workspace-evidence-verifier.js";
+import { NodeWorkspaceReviewExecutor } from "../src/adapters/node/tools/workspace-review.js";
 import { NodeWorkspacePort } from "../src/adapters/node/host/node-workspace-port.js";
 import type { ToolExecutionContext } from "../src/index.js";
 import {
@@ -36,6 +37,27 @@ async function fixture(): Promise<string> {
   await writeFile(join(root, "tsconfig.tsbuildinfo"), "{\"v\":1}\n");
   return root;
 }
+
+test("a background write to a generated path does not invalidate the review baseline", async () => {
+  const root = await fixture();
+  await mkdir(join(root, "node_modules", "pkg"), { recursive: true });
+  const generated = join(root, "node_modules", "pkg", "index.js");
+  await writeFile(generated, "v1\n");
+  const workspace = await NodeWorkspacePort.create(root);
+  const runContext = context(root);
+
+  // A dependency install or build keeps rewriting generated paths while the review
+  // baseline is captured. Only durable entries may invalidate that baseline; before the
+  // fix, any such write made the factory throw and killed the whole run.
+  const writer = setInterval(() => { void writeFile(generated, String(Date.now()) + "\n").catch(() => undefined); }, 5);
+  try {
+    const executor = await NodeWorkspaceReviewExecutor.create(workspace, runContext);
+    assert.ok(executor, "the review executor is created while a generated path is being rewritten");
+  } finally {
+    clearInterval(writer);
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("generated path predicate covers build output and incremental metadata", () => {
   assert.equal(isGeneratedWorkspacePath(["frontend", "dist", "index.html"]), true);

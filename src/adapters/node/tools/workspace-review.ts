@@ -3,26 +3,58 @@ import { sha256Text } from "../host/content-hash.js";
 import { DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS, diffNodeWorkspaceSnapshots, NodeWorkspaceSnapshotter, type NodeWorkspaceSnapshot } from "../host/node-workspace-snapshot.js";
 
 const MAX_BASELINE_BYTES = 8 * 1024 * 1024;
+const MAX_BASELINE_ATTEMPTS = 3;
+const BASELINE_RETRY_DELAY_MS = 250;
 const MAX_REVIEW_BYTES = 24000;
 const definition = { type: "function" as const, function: { name: "review_changes", description: "Review final workspace changes against the start of this task, without Git. Returns verified before/after file contents and hashes. Call after all writes and validation, before the final report. If truncated, no review evidence is granted.", parameters: { type: "object", properties: {}, additionalProperties: false } } };
+
+/**
+ * Fingerprint of the entries a review can actually report: durable files only.
+ *
+ * A background install or build rewrites derived paths (node_modules, dist) while the
+ * baseline is being captured. Hashing those too made the workspace look like it was
+ * being edited, and the executor then threw from its factory — outside any tool call —
+ * which killed the whole run with "Workspace changed while capturing review baseline".
+ * Measured: a full E2E run died that way while bun install finished in the background.
+ */
+export function durableBaselineFingerprint(snapshot: NodeWorkspaceSnapshot): string {
+  const parts: string[] = [];
+  for (const entry of snapshot.entries) {
+    if (entry.evidenceClass !== "durable") continue;
+    parts.push(entry.path + "\u0000" + entry.kind + "\u0000" + entry.comparisonFingerprint);
+  }
+  return sha256Text(parts.join("\n"));
+}
 
 /** Host-owned comparison for scratch projects. Never creates .git or weakens the completion gate. */
 export class NodeWorkspaceReviewExecutor implements AiCoderRuntimeToolExecutor {
   private constructor(private readonly workspace: WorkspacePort, private readonly snapshotter: NodeWorkspaceSnapshotter, private readonly baseline: NodeWorkspaceSnapshot, private readonly contents: ReadonlyMap<string, string>) {}
   static async create(workspace: WorkspacePort, context: RunExecutionContext): Promise<NodeWorkspaceReviewExecutor> {
     const snapshotter = await NodeWorkspaceSnapshotter.create(context.workspaceRoot, DEPENDENCY_AWARE_WORKSPACE_SNAPSHOT_OPTIONS);
-    const baseline = await snapshotter.capture(context);
-    const contents = new Map<string, string>();
-    let bytes = 0;
-    for (const entry of baseline.entries) {
-      if (entry.evidenceClass !== "durable" || entry.kind !== "file" || bytes >= MAX_BASELINE_BYTES) continue;
-      const read = await workspace.readText({ path: entry.path, maxBytes: 128 * 1024 }, { ...context, toolCallId: "host-baseline", idempotencyKey: "host-baseline" });
-      if (read.ok && !read.data.truncated && read.data.contentSha256 === entry.comparisonFingerprint && bytes + Buffer.byteLength(read.data.content) <= MAX_BASELINE_BYTES) {
-        bytes += Buffer.byteLength(read.data.content); contents.set(entry.path, read.data.content);
+    let lastFingerprint = "";
+    for (let attempt = 1; attempt <= MAX_BASELINE_ATTEMPTS; attempt += 1) {
+      const baseline = await snapshotter.capture(context);
+      const contents = new Map<string, string>();
+      let bytes = 0;
+      for (const entry of baseline.entries) {
+        if (entry.evidenceClass !== "durable" || entry.kind !== "file" || bytes >= MAX_BASELINE_BYTES) continue;
+        const read = await workspace.readText({ path: entry.path, maxBytes: 128 * 1024 }, { ...context, toolCallId: "host-baseline", idempotencyKey: "host-baseline" });
+        if (read.ok && !read.data.truncated && read.data.contentSha256 === entry.comparisonFingerprint && bytes + Buffer.byteLength(read.data.content) <= MAX_BASELINE_BYTES) {
+          bytes += Buffer.byteLength(read.data.content); contents.set(entry.path, read.data.content);
+        }
       }
+      const fingerprint = durableBaselineFingerprint(baseline);
+      if (durableBaselineFingerprint(await snapshotter.capture(context)) === fingerprint) {
+        return new NodeWorkspaceReviewExecutor(workspace, snapshotter, baseline, contents);
+      }
+      lastFingerprint = fingerprint;
+      if (attempt < MAX_BASELINE_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, BASELINE_RETRY_DELAY_MS * attempt));
     }
-    if ((await snapshotter.capture(context)).stateVersion !== baseline.stateVersion) throw new Error("Workspace changed while capturing review baseline. Retry when files are stable.");
-    return new NodeWorkspaceReviewExecutor(workspace, snapshotter, baseline, contents);
+    throw new Error(
+      "Workspace source files kept changing while the review baseline was captured (attempt " +
+      MAX_BASELINE_ATTEMPTS + ", last durable fingerprint " + lastFingerprint.slice(0, 12) +
+      "). Generated paths such as node_modules and dist are ignored; a background process is probably still writing source files. Stop it, then retry the step.",
+    );
   }
   async getToolSet(): Promise<AiCoderRuntimeToolSet> {
     return { definitions: [definition], canonicalToolIds: { review_changes: "workspace.review" }, effectCapabilities: { "workspace.review": ["inspect", "diff_review"] }, snapshotHash: sha256Text(JSON.stringify(definition)) };
