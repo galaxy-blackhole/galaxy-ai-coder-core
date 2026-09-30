@@ -149,9 +149,23 @@ class ToolAdapterError extends Error {
   }
 }
 
-class UnknownSideEffectOutcomeError extends Error {
+/**
+ * A mutation could not be verified: the write may have landed, but its evidence did not apply.
+ *
+ * This used to be a plain Error, which the runtime reads as an unknown outcome and turns into a
+ * fatal stop. Measured: a NestJS run lost steps 2, 5 and 11 that way (validate_project, write_file,
+ * edit_file) while a background npm install kept rewriting the workspace. It is now a retryable
+ * ToolAdapterError with an explicit instruction, so the model reads the failure, checks the file
+ * and decides whether to retry instead of the whole run dying.
+ */
+class UnknownSideEffectOutcomeError extends ToolAdapterError {
   constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
+    super(
+      "CONFLICT",
+      message + " Việc ghi có thể đã xảy ra một phần: hãy đọc lại file để kiểm tra rồi thử lại.",
+      true,
+    );
+    if (options?.cause !== undefined) (this as { cause?: unknown }).cause = options.cause;
     this.name = "UnknownSideEffectOutcomeError";
   }
 }

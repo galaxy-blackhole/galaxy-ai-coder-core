@@ -22,6 +22,16 @@ Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 
 - Tài liệu credential dùng chung cho mọi Galaxy host ([CHANGELOG.d/2026-09-30-galaxy-credentials.md](CHANGELOG.d/2026-09-30-galaxy-credentials.md)).
 
+## [0.3.4] - 2026-10-01 01:58 +0700
+
+### Changed
+
+- Baseline review chỉ tính file nguồn, không chết vì install/build chạy nền.
+- Shell persistent cho run_command, giống DeepSeek Harness.
+- Agent tự quyết timeout của lệnh, host chỉ giữ backstop suy ra từ lựa chọn đó.
+- Timeout của run_command theo đúng cơ chế DeepSeek Harness.
+- Mutation không xác minh được là lỗi tool retryable, không giết bước.
+
 ## [0.3.1] - 2026-09-29 05:25 +07:00
 
 ### Fixed
