@@ -19,6 +19,7 @@ import {
   type CommandContainmentStatus,
 } from "./command-containment.js";
 import { nodeCommandHostEnvironment } from "./host-environment.js";
+import { PersistentShell } from "./node-persistent-shell.js";
 import { WorkspaceScope } from "./path-scope.js";
 
 // Matches the harness default this project mirrors (@deepseek-ai/dsh-tool-bash-persistent
@@ -138,6 +139,14 @@ export class NodeCommandPort implements CommandRunnerPort {
     private readonly scope: WorkspaceScope,
     readonly containmentStatus: CommandContainmentStatus,
     readonly hostEnvironment: ReturnType<typeof nodeCommandHostEnvironment>,
+    /**
+     * One shell per run, like @deepseek-ai/dsh-tool-bash-persistent: commands share cwd,
+     * exports and background jobs, calls are serialized, a command that hits its maximum is
+     * killed with its partial output returned, and disposing the port at the end of a run
+     * stops whatever the step left running. Used whenever command containment is not
+     * mandatory, because a contained one-shot spawn cannot host a shared shell.
+     */
+    private readonly shell: PersistentShell,
   ) {}
 
   static async create(
@@ -152,11 +161,75 @@ export class NodeCommandPort implements CommandRunnerPort {
       WorkspaceScope.create(workspaceRoot),
       probeCommandContainment(),
     ]);
-    return new NodeCommandPort(scope, containmentStatus(mode, probe), nodeCommandHostEnvironment());
+    return new NodeCommandPort(
+      scope,
+      containmentStatus(mode, probe),
+      nodeCommandHostEnvironment(),
+      new PersistentShell({ root: workspaceRoot }),
+    );
   }
 
   static async probeContainment(): Promise<CommandContainmentProbeResult> {
     return await probeCommandContainment();
+  }
+
+  /**
+   * Run through the shared shell: cwd, exports and background jobs persist between calls,
+   * calls are serialized, and the timeout is a maximum whose expiry kills the shell and
+   * returns the partial output (the harness behaves the same way).
+   */
+  private async runInPersistentShell(
+    input: Readonly<{ command: string; cwd?: string; env?: Readonly<Record<string, string>>; maxOutputBytes?: number; timeoutMs?: number }>,
+    context: ToolExecutionContext,
+  ): Promise<PortResult<CommandRunResult>> {
+    try {
+      const cwd = await this.scope.resolveExisting(input.cwd ?? ".");
+      if (!(await lstat(cwd)).isDirectory()) {
+        return failure("INVALID_INPUT", "Command cwd must be a workspace directory.");
+      }
+      const requestedTimeout = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      if (!Number.isSafeInteger(requestedTimeout) || requestedTimeout < 1) {
+        return failure("INVALID_INPUT", "timeoutMs must be a positive integer.");
+      }
+      const remaining = context.deadline - Date.now();
+      if (remaining <= 0) return failure("DEADLINE_EXCEEDED", "The run deadline elapsed.");
+      const result = await this.shell.run(
+        input.command,
+        {
+          // Only an explicit cwd moves the shell; without one the command runs where the
+          // previous command left the shell, which is what makes the session persistent.
+          ...(input.cwd === undefined ? {} : { cwd }),
+          ...(input.env === undefined ? {} : { env: input.env }),
+          ...(input.maxOutputBytes === undefined ? {} : { maxOutputBytes: input.maxOutputBytes }),
+          timeoutMs: Math.min(requestedTimeout, remaining),
+        },
+        context.signal,
+      );
+      if (result.status === "unavailable") {
+        return failure("UNAVAILABLE", "The persistent shell could not be started.");
+      }
+      return Object.freeze({
+        ok: true as const,
+        data: Object.freeze({
+          command: input.command,
+          durationMs: result.durationMs,
+          exitCode: result.exitCode,
+          // The shared shell merges both streams, like the harness tool does.
+          stderr: "",
+          stderrTruncated: false,
+          stdout: result.output,
+          stdoutTruncated: result.truncated,
+          status: result.status,
+        }),
+      });
+    } catch (error) {
+      return exceptionFailure(error);
+    }
+  }
+
+  /** Stop the shared shell and anything it started; call this when a run ends. */
+  async dispose(): Promise<void> {
+    await this.shell.dispose();
   }
 
   async run(
@@ -173,6 +246,11 @@ export class NodeCommandPort implements CommandRunnerPort {
     if (context.deadline <= Date.now()) return failure("DEADLINE_EXCEEDED", "The run deadline elapsed.");
     if (typeof input.command !== "string" || input.command.trim().length === 0 || input.command.length > 32_768) {
       return failure("INVALID_INPUT", "Command must contain between 1 and 32768 characters.");
+    }
+    // A mandatory confinement wraps each spawn, so only the best-effort profile can host the
+    // shared shell the harness uses; everything else keeps the one-shot path below.
+    if (this.containmentStatus.mode !== "required") {
+      return await this.runInPersistentShell(input, context);
     }
 
     try {
