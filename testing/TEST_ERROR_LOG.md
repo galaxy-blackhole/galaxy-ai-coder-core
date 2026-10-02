@@ -1445,3 +1445,29 @@ DONE counts finished steps, including failures; PASS counts successful steps. Au
 | --- | --- | --- | --- | --- |
 | 1/2 core:build | PASS | 2026-09-27 22:35:15 +07:00 (2026-09-27T15:35:15.719Z) | 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.008Z) | [stdout](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/001-core-build/stderr.log>) |
 | 2/2 cli:integration | PASS | 2026-09-27 22:35:21 +07:00 (2026-09-27T15:35:21.016Z) | 2026-09-27 22:36:16 +07:00 (2026-09-27T15:36:16.002Z) | Tests: 88 passed, 0 failed, 1 skipped; total 89. Last PASS: mock live research keeps long search and multilingual fetched evidence readable after controller normalization. [stdout](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-09-27T15-35-15-596Z-wojZXS/002-cli-integration/stderr.log>) |
+
+- 2026-10-02 16:21:32 +07:00 (2026-10-02T09:21:32.830Z) | run 2026-10-02T09-21-32-665Z-fhLxeA | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-21-32-665Z-fhLxeA/summary.md>)
+
+- 2026-10-02 16:21:32 +07:00 (2026-10-02T09:21:32.872Z) | run 2026-10-02T09-21-32-665Z-fhLxeA | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-21-32-665Z-fhLxeA/summary.md>)
+
+- 2026-10-02 16:21:39 +07:00 (2026-10-02T09:21:39.366Z) | run 2026-10-02T09-21-32-665Z-fhLxeA | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-21-32-665Z-fhLxeA/summary.md>)
+
+- 2026-10-02 16:21:39 +07:00 (2026-10-02T09:21:39.380Z) | run 2026-10-02T09-21-32-665Z-fhLxeA | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-21-32-665Z-fhLxeA/summary.md>)
+
+- 2026-10-02 16:31:16 +07:00 (2026-10-02T09:31:16.048Z) | run 2026-10-02T09-31-15-862Z-14vSKb | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-31-15-862Z-14vSKb/summary.md>)
+
+- 2026-10-02 16:31:16 +07:00 (2026-10-02T09:31:16.074Z) | run 2026-10-02T09-31-15-862Z-14vSKb | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-31-15-862Z-14vSKb/summary.md>)
+
+- 2026-10-02 16:31:21 +07:00 (2026-10-02T09:31:21.029Z) | run 2026-10-02T09-31-15-862Z-14vSKb | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-31-15-862Z-14vSKb/summary.md>)
+
+- 2026-10-02 16:31:21 +07:00 (2026-10-02T09:31:21.111Z) | run 2026-10-02T09-31-15-862Z-14vSKb | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-31-15-862Z-14vSKb/summary.md>)
+
+- 2026-10-02 16:51:04 +07:00 (2026-10-02T09:51:04.158Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
+
+- 2026-10-02 16:51:04 +07:00 (2026-10-02T09:51:04.179Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
+
+- 2026-10-02 16:51:08 +07:00 (2026-10-02T09:51:08.895Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
+
+- 2026-10-02 16:51:08 +07:00 (2026-10-02T09:51:08.902Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
+
+- 2026-10-02 16:54:13 +07:00 (2026-10-02T09:54:13.474Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-failed 2/2 cli:unit | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)

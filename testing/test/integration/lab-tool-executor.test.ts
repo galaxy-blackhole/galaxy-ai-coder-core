@@ -279,7 +279,9 @@ test("LabToolExecutor throws unknown outcome after malformed or thrown workspace
         ok: true as const,
         data: Object.freeze({
           afterContentSha256: sha256Text(input.newText),
-          beforeContentSha256: input.precondition.kind === "matches_sha256"
+          // applyPatch's precondition became optional in d82a2ea while this fake port still has
+          // to report a before-hash, so it falls back to the content the fixture wrote.
+          beforeContentSha256: input.precondition?.kind === "matches_sha256"
             ? input.precondition.contentSha256
             : sha256Text("before\n"),
           path: input.path,
