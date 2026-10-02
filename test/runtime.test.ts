@@ -3394,6 +3394,107 @@ test("workspace evidence capture failure after a write blocks compaction and res
   assert.equal(store.checkpoints.length, 0);
 });
 
+test("a failed write-capable tool survives an unverifiable workspace fingerprint", async () => {
+  // 2026-10-02 gymflow s13: a detached dev server kept appending to .dev-frontend.log, the
+  // post-failure classification fingerprint could not be captured, and the resulting TOOL_EXECUTION
+  // error ended a step whose work was already on disk. The fingerprint only buckets repeated
+  // failures, so it must never be the reason a run dies: the tool error still reaches the model.
+  let captures = 0;
+  const verifier: AiCoderResumeWorkspaceVerifier = Object.freeze({
+    consistency: "serialized_workspace" as const,
+    async capture(input: Parameters<AiCoderResumeWorkspaceVerifier["capture"]>[0]) {
+      captures += 1;
+      // Only the classification capture races the churning log; every later capture (the checkpoint
+      // one) sees a settled workspace, which is what the churning-log policy guarantees.
+      if (captures === 1) {
+        return portFailure({ code: "PRECONDITION_FAILED", message: "Active file content hash changed: .dev-frontend.log.", retryable: false });
+      }
+      return portSuccess(Object.freeze({
+        activeFiles: input.activeFiles,
+        dirtyStateSummary: input.dirtyStateSummary,
+        stateFingerprint: "sha256:after-recovery",
+      }));
+    },
+    async verify(snapshot: Parameters<AiCoderResumeWorkspaceVerifier["verify"]>[0]) {
+      return portSuccess(Object.freeze({ currentFingerprint: snapshot.stateFingerprint, matches: true }));
+    },
+  });
+  // The same tool set as DeterministicExecutor, except the first write fails the way the probing
+  // `run_command` in s13 did: the model reads the failure, retries and finishes the task.
+  let writes = 0;
+  const toolNames = ["git_diff", "project_validate", "workspace_list", "workspace_write"] as const;
+  const flakyTools: AiCoderRuntimeToolExecutor = Object.freeze({
+    async getToolSet() {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({
+          git_diff: "git.diff",
+          project_validate: "project_validate",
+          workspace_list: "workspace_list",
+          workspace_write: "workspace_write",
+        }),
+        definitions: Object.freeze(toolNames.map((name) => Object.freeze({
+          function: Object.freeze({ description: "flaky deterministic tool", name, parameters: Object.freeze({ type: "object" }) }),
+          type: "function" as const,
+        }))),
+        effectCapabilities: Object.freeze({
+          "git.diff": Object.freeze(["diff_review" as const]),
+          project_validate: Object.freeze(["validate" as const]),
+          workspace_list: Object.freeze(["inspect" as const]),
+          workspace_write: Object.freeze(["write" as const]),
+        }),
+        snapshotHash: "sha256:flaky-tools",
+      });
+    },
+    async execute(call: CodingToolCall) {
+      if (call.name === "workspace_write") writes += 1;
+      if (call.name === "workspace_write" && writes === 1) {
+        return Object.freeze({
+          canonicalToolId: "workspace_write",
+          content: JSON.stringify({ error: "probe failed", ok: false }),
+          error: Object.freeze({ code: "TOOL_FAILED", message: "probe failed", retryable: true }),
+          ok: false,
+          summary: `${call.name} failed`,
+          trust: "workspace" as const,
+        });
+      }
+      const effects = call.name === "workspace_list"
+        ? Object.freeze({ inspectedPaths: Object.freeze(["src"]) })
+        : call.name === "workspace_write"
+          ? Object.freeze({ writes: Object.freeze([Object.freeze({ afterHash: "after", beforeHash: "before", path: "src/a.ts" })]) })
+          : call.name === "project_validate"
+            ? Object.freeze({ validations: Object.freeze([Object.freeze({ detail: "unit tests pass", id: "unit", scope: "workspace" as const, status: "passed" as const })]) })
+            : Object.freeze({ diffReview: Object.freeze({ diffHash: "sha256:final-diff" }) });
+      return Object.freeze({
+        canonicalToolId: call.name === "git_diff" ? "git.diff" : call.name,
+        content: JSON.stringify({ ok: true, tool: call.name }),
+        effects,
+        effectsAuthority: "host" as const,
+        ok: true,
+        summary: `${call.name} succeeded`,
+        trust: "workspace" as const,
+      });
+    },
+  });
+  const model = new ScriptedModel([
+    Object.freeze([tool("workspace_write", "churn-write"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_list", "inspect-after-failure"), done("", "tool_calls")]),
+    Object.freeze([tool("workspace_write", "retry-write"), done("", "tool_calls")]),
+    Object.freeze([tool("project_validate", "validate-after-write"), done("", "tool_calls")]),
+    Object.freeze([tool("git_diff", "review-after-write"), done("", "tool_calls")]),
+    Object.freeze([done("Retried the failed probe and completed the task.")]),
+  ], [500, 500, 1_000_000]);
+  const result = await new AiCoderRunController({
+    model,
+    resumeWorkspaceVerifier: verifier,
+    store: new MemoryStore(),
+    toolExecutor: flakyTools,
+  }).start(request("run-unverifiable-fingerprint")).result;
+
+  assert.equal(result.state, "completed", `${model.requests.length} model request(s): ${JSON.stringify(result.error)}`);
+  assert.ok(captures >= 2, "the classification capture failed and the run kept capturing evidence afterwards");
+  assert.equal(writes, 2, "the model saw the failure and retried the write");
+});
+
 test("cancel propagates to an active model stream", async () => {
   let startedResolve: (() => void) | null = null;
   const started = new Promise<void>((resolve) => { startedResolve = resolve; });

@@ -33,6 +33,16 @@ export class McpAgentClient {
     this.client = client;
     this.name = config.name;
   }
+  /**
+   * Version the server reported during initialize, or undefined when it reported none. Skills
+   * declare a range here (`requires: { orbit: ">=0.4.1" }`): the harness validates tool arguments
+   * against the schema this server declared, so an older server silently rejects the call shapes a
+   * newer skill documents.
+   */
+  get serverVersion(): string | undefined {
+    const reported = this.client.getServerVersion()?.version;
+    return typeof reported === "string" && reported.trim() !== "" ? reported.trim() : undefined;
+  }
   static async connect(config: McpConnection, signal?: AbortSignal, options?: McpConnectOptions): Promise<McpAgentClient> {
     if (!/^[a-zA-Z0-9_-]{1,48}$/.test(config.name)) throw new Error("Invalid MCP server name.");
     const timeout = Math.max(100, Math.min(120000, config.timeoutMs ?? 30000));

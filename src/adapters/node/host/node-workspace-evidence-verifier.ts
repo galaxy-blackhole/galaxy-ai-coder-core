@@ -12,7 +12,7 @@ import { lstat, open, readdir, readlink, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { WorkspaceScope } from "./path-scope.js";
-import { GENERATED_WORKSPACE_DIRECTORIES, isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
+import { GENERATED_WORKSPACE_DIRECTORIES, isChurningWorkspacePath, isGeneratedWorkspaceFileName } from "./workspace-generated-state.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".galaxy",
@@ -272,6 +272,15 @@ export class NodeWorkspaceEvidenceVerifier implements AiCoderResumeWorkspaceVeri
       checkContext(context);
       const lexicalPath = this.scope.resolveLexical(activeFile.path);
       const workspacePath = relative(this.workspaceRoot, lexicalPath).split("\\").join("/") || ".";
+      // A churning file (a server log, a probe file a detached process keeps appending to) cannot be
+      // hashed: reading it races its writer, and its recorded hash is stale the moment it is taken.
+      // Measured in the 2026-10-02 gymflow run: `.dev-frontend.log` invalidated this capture and the
+      // whole step was recorded as failed although its work was already on disk. Identity is the
+      // honest evidence here — the path exists in the active set, its content is not authored state.
+      if (isChurningWorkspacePath(workspacePath.split("/"))) {
+        hash.update(`active-churning\0${workspacePath}\0`);
+        continue;
+      }
       // Active files are always verified, even inside ignored/generated
       // directories (host conformance): the model pinned them explicitly.
       let pathInfo;

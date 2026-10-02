@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.5] - 2026-10-02 09:43 +0700
+
+### Fixed
+
+- A server log inside the workspace no longer fails the evidence capture. `.log` is generated state,
+  and a churning active file is hashed by path instead of content. See
+  [CHANGELOG.d fragment](CHANGELOG.d/2026-10-02-log-churning-va-hop-dong-version-skill-mcp.md).
+- The post-failure classification fingerprint is best effort: an unverifiable workspace no longer
+  ends a run whose work is already on disk (2026-10-02 gymflow `s13`).
+- Skills declare the companion MCP version their documented call shapes need
+  (`requires: { orbit: ">=0.4.1" }`), and `McpAgentClient.serverVersion` exposes the version the
+  server reports so a host can warn about the skew instead of shipping it.
+
 ## [0.3.2] - 2026-09-30 14:50 +0700
 
 ### Changed

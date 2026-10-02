@@ -203,7 +203,7 @@ const RESEARCH_HIT = objectSchema(
 const CATALOG: AiCoderToolDescriptor[] = [
   descriptor({
     id: "catalog.search", modelName: "search_tools", title: "Search tools",
-    description: "Find and activate optional tools in the filtered catalog. Use when the task requires a specialized capability that is not active, even if run_command could imitate it. Searchable categories can include command sessions, Git, research, preview, perception, artifacts, and user interaction. Do not use this tool for workspace content. Matching definitions become callable on the next turn, not later in the same tool-call batch.",
+    description: "Find and activate optional tools in the filtered catalog. Search it when the task needs a specialized capability that is not active and run_command is a poor fit. The available set depends on the deployment profile, not on this text: two catalog searches that both return nothing are the answer, so accept it and continue with an active tool instead of probing more categories. Do not use this tool for workspace content. Matching definitions become callable on the next turn, not later in the same tool-call batch.",
     category: "bootstrap", transport: "native", inputSchema: objectSchema({ query: STRING, category: STRING, limit: LIMIT, cursor: CURSOR }),
     outputSchema: objectSchema({ matches: arraySchema(SEARCH_MATCH, 20), activated: arraySchema(NON_EMPTY_STRING, 20), nextCursor: CURSOR, catalogHash: NON_EMPTY_STRING, activeHash: NON_EMPTY_STRING }, ["matches", "activated", "catalogHash", "activeHash"]),
     permissions: [], risk: "low", mutability: "read", maxOutputTokens: 2_000, supportsPagination: true, enabledByDefault: true, modalities: STRUCTURED_MODALITY,

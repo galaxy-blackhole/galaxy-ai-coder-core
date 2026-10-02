@@ -5,9 +5,12 @@
  * filter generated paths from authored evidence without importing an adapter.
  */
 export {
+  CHURNING_WORKSPACE_FILE_SUFFIXES,
   GENERATED_WORKSPACE_DIRECTORIES,
   GENERATED_WORKSPACE_FILE_NAMES,
   GENERATED_WORKSPACE_FILE_SUFFIXES,
+  isChurningWorkspaceFileName,
+  isChurningWorkspacePath,
   isGeneratedWorkspaceDirectoryName,
   isGeneratedWorkspaceFileName,
   isGeneratedWorkspacePath,

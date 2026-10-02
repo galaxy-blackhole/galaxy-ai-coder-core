@@ -2316,8 +2316,13 @@ export class AiCoderRunController {
       if (this.dependencies.resumeWorkspaceVerifier) {
         try {
           workspaceFailureState = await this.captureWorkspaceFingerprint(session);
-        } catch (error) {
-          throw postExecutionFailure(error);
+        } catch {
+          // Best effort by design: this fingerprint only buckets repeated failures against the same
+          // workspace state. A workspace that churns under the run (a detached dev server writing a
+          // log, a build still landing) cannot be fingerprinted, and failing the run there is how the
+          // 2026-10-02 gymflow run lost s13 after its work was already on disk. Classification falls
+          // back to the tool-call state version; the failed tool result still reaches the model.
+          workspaceFailureState = session.stateVersion;
         }
       }
       const failureFamily = `${expectedCanonicalToolId}:${toolArgumentPath(call.arguments)}:${workspaceFailureState}`;

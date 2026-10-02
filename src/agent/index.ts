@@ -3,6 +3,10 @@ import type { CodingToolCall, CodingToolDefinition } from "../tools/coding-messa
 import type { AiCoderRuntimeToolExecutor, AiCoderRuntimeToolResult, AiCoderRuntimeToolSet } from "../runtime/runtime-types.js";
 import { hashAiCoderCanonicalValue } from "../context/checkpoint.js";
 import { validateAiCoderJsonSchema } from "../tools/json-schema.js";
+import type { SkillRequirement } from "./skill-requirements.js";
+
+export { isUnboundedRequirementRange, isValidRequirementRange, parseSkillRequires, satisfiesVersion } from "./skill-requirements.js";
+export type { SkillRequirement } from "./skill-requirements.js";
 
 export type AgentProfile = "coding" | "assistant" | "research";
 export interface MemoryRecord {
@@ -46,6 +50,12 @@ export interface SkillDescriptor {
   /** Optional semver declared in frontmatter; used by the marketplace. */
   readonly version?: string;
   readonly tags?: readonly string[];
+  /**
+   * Companion MCP servers this skill's documented call shapes need, with the version range each
+   * must report. The host warns when a connected server is older, because the harness validates
+   * arguments against that server's own schema.
+   */
+  readonly requires?: readonly SkillRequirement[];
 }
 export interface AgentSkillsPort {
   list(): Promise<readonly SkillDescriptor[]>;

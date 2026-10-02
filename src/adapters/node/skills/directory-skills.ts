@@ -2,6 +2,7 @@ import { open, readdir, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { parse } from "yaml";
+import { parseSkillRequires, type SkillRequirement } from "../../../agent/skill-requirements.js";
 import type { AgentSkillsPort, SkillDescriptor } from "../../../agent/index.js";
 
 const MAX_BYTES = 65536;
@@ -27,6 +28,12 @@ function describe(id: string, source: string, content: string): SkillDescriptor 
   if (version !== undefined && (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))) throw new Error(`Invalid skill version: ${id}`);
   const rawTags = record.tags;
   if (rawTags !== undefined && (!Array.isArray(rawTags) || rawTags.some((tag) => typeof tag !== "string" || !tag.trim() || tag.length > 32))) throw new Error(`Invalid skill tags: ${id}`);
+  let requires: readonly SkillRequirement[] | undefined;
+  try {
+    requires = parseSkillRequires(record.requires);
+  } catch (error) {
+    throw new Error(`Invalid skill requires: ${id} — ${error instanceof Error ? error.message : String(error)}`);
+  }
   return {
     id,
     name: metadata.name,
@@ -35,6 +42,7 @@ function describe(id: string, source: string, content: string): SkillDescriptor 
     contentHash: createHash("sha256").update(content).digest("hex"),
     ...(version === undefined ? {} : { version: version as string }),
     ...(rawTags === undefined ? {} : { tags: Object.freeze((rawTags as string[]).map(tag => tag.trim())) }),
+    ...(requires === undefined ? {} : { requires }),
   };
 }
 export class DirectorySkills implements AgentSkillsPort {

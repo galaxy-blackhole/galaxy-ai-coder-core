@@ -13,6 +13,7 @@ import { NodeWorkspaceReviewExecutor } from "../src/adapters/node/tools/workspac
 import { NodeWorkspacePort } from "../src/adapters/node/host/node-workspace-port.js";
 import type { ToolExecutionContext } from "../src/index.js";
 import {
+  isChurningWorkspacePath,
   isGeneratedWorkspacePath,
 } from "../src/adapters/node/host/workspace-generated-state.js";
 import type { RunExecutionContext } from "../src/ports/execution-context.js";
@@ -106,6 +107,39 @@ test("workspace evidence fingerprint ignores generated output but tracks authore
   const third = await verifier.capture({ activeFiles: [], dirtyStateSummary: null }, ctx);
   assert.equal(third.ok, true);
   assert.notEqual(third.ok ? third.data.stateFingerprint : "", fingerprint);
+});
+
+test("a churning server log cannot fail the workspace evidence capture", async (t) => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const ctx = context(root);
+  const verifier = await NodeWorkspaceEvidenceVerifier.create(root);
+  const logPath = join(root, ".dev-frontend.log");
+  await writeFile(logPath, "VITE v7 ready on http://localhost:5173\n");
+  // The host recorded a content hash when run_command created the redirect target, and a detached
+  // dev server then keeps appending. Re-hashing it races the writer (2026-10-02 gymflow:
+  // "Active file content hash changed: .dev-frontend.log" killed a step whose work was on disk).
+  const activeFiles = Object.freeze([Object.freeze({ contentHash: "0".repeat(64), kind: "file" as const, path: ".dev-frontend.log" })]);
+  const first = await verifier.capture({ activeFiles, dirtyStateSummary: null }, ctx);
+  assert.equal(first.ok, true, first.ok ? "" : first.error.message);
+  await writeFile(logPath, "VITE v7 ready on http://localhost:5173\nGET / 200\n");
+  const second = await verifier.capture({ activeFiles, dirtyStateSummary: null }, ctx);
+  assert.equal(second.ok, true, second.ok ? "" : second.error.message);
+  assert.equal(second.ok ? second.data.stateFingerprint : "different", first.ok ? first.data.stateFingerprint : "");
+  // Deleting the log at the end of the step is equally unremarkable.
+  await rm(logPath);
+  const third = await verifier.capture({ activeFiles, dirtyStateSummary: null }, ctx);
+  assert.equal(third.ok, true, third.ok ? "" : third.error.message);
+});
+
+test("a log written by run_command is generated state, not authored evidence", () => {
+  assert.equal(isGeneratedWorkspacePath([".dev-frontend.log"]), true);
+  assert.equal(isGeneratedWorkspacePath(["logs", "server.log"]), true);
+  assert.equal(isChurningWorkspacePath([".dev-frontend.log"]), true);
+  // A pinned file inside a generated directory stays tracked: only churning leaves are exempt.
+  assert.equal(isGeneratedWorkspacePath(["dist", "assets", "bundle.js"]), true);
+  assert.equal(isChurningWorkspacePath(["dist", "assets", "bundle.js"]), false);
+  assert.equal(isChurningWorkspacePath(["src", "index.ts"]), false);
 });
 
 test("dependency trees allow ground-truth reads but refuse search and glob", async (t) => {

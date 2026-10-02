@@ -63,6 +63,33 @@ test("skills load lazily, retain provenance and reject changed content or escape
   await writeFile(join(skill, "SKILL.md"), "---\nname: [wrong type]\ndescription: invalid\n---\n");
   await assert.rejects(skills.list(), /Invalid skill metadata/);
 });
+test("a skill declares which companion MCP versions its call shapes need", async t => {
+  const root = await mkdtemp(join(tmpdir(), "galaxy-skill-requires-")); t.after(() => rm(root, { recursive: true, force: true }));
+  const skill = join(root, "skills", "orbit-framework"); await mkdir(skill, { recursive: true });
+  await writeFile(join(skill, "SKILL.md"), [
+    "---",
+    "name: orbit-framework",
+    "description: Orbit rules",
+    "requires:",
+    "  orbit: \">=0.4.1\"",
+    "  nebula: \">=1.1.0 <2.0.0\"",
+    "---",
+    "Rules.",
+  ].join("\n"));
+  const skills = new DirectorySkills({ workspace: join(root, "skills") });
+  const descriptor = (await skills.list())[0]!;
+  assert.deepEqual(descriptor.requires, [
+    Object.freeze({ server: "nebula", range: ">=1.1.0 <2.0.0" }),
+    Object.freeze({ server: "orbit", range: ">=0.4.1" }),
+  ]);
+  // A skill without the field declares nothing, so no host warns on its behalf.
+  const plain = join(root, "skills", "plain"); await mkdir(plain, { recursive: true });
+  await writeFile(join(plain, "SKILL.md"), "---\nname: plain\ndescription: No companion\n---\nNothing.");
+  await skills.list();
+  assert.equal((await skills.list()).find(item => item.name === "plain")?.requires, undefined);
+  await writeFile(join(skill, "SKILL.md"), "---\nname: orbit-framework\ndescription: Orbit rules\nrequires:\n  orbit: \"latest\"\n---\nRules.");
+  await assert.rejects(skills.list(), /Invalid skill requires/);
+});
 test("extension tools validate schema and permissions before side effects, reject collisions and canceled calls", async () => {
   let calls = 0;
   const tool = agentFunction("extension.write", "Write", { text: { type: "string" } }, ["text"], "write", async () => { calls++; return { effects: { validation: "passed" } }; });
