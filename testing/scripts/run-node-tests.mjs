@@ -59,3 +59,10 @@ if (passed === 0 && firstFailure === null) {
 process.stdout.write(`${JSON.stringify({ event: "audit:test-summary", timestamp: new Date().toISOString(), passed, failed, skipped, declared, total: controller.signal.aborted ? null : passed + failed + skipped, lastPassed, firstFailure })}\n`);
 if (firstFailure !== null) process.stderr.write(`${JSON.stringify(firstFailure, null, 2)}\n`);
 process.exitCode = firstFailure !== null || controller.signal.aborted ? 1 : 0;
+
+// Safety net for this runner: a test file whose process outlives its own tests (a leaked shell, a
+// child process) used to hang the whole audit, and ci died on its timeout instead of reporting the
+// failure. The concrete instance — a fixture run that never disposed its NodeCommandPort — is fixed
+// in src/lab/run-fixture.ts; this keeps the next one from looking like a hung job. Unref'd on
+// purpose, so it can never delay a healthy run: the process leaves on its own.
+setTimeout(() => process.exit(process.exitCode ?? 0), 250).unref();

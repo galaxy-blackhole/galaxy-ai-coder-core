@@ -1471,3 +1471,55 @@ DONE counts finished steps, including failures; PASS counts successful steps. Au
 - 2026-10-02 16:51:08 +07:00 (2026-10-02T09:51:08.902Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
 
 - 2026-10-02 16:54:13 +07:00 (2026-10-02T09:54:13.474Z) | run 2026-10-02T09-51-03-855Z-Sm3MJm | step-failed 2/2 cli:unit | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T09-51-03-855Z-Sm3MJm/summary.md>)
+
+- 2026-10-02 17:12:33 +07:00 (2026-10-02T10:12:33.431Z) | run 2026-10-02T10-12-33-148Z-n2E43z | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>)
+
+- 2026-10-02 17:12:33 +07:00 (2026-10-02T10:12:33.460Z) | run 2026-10-02T10-12-33-148Z-n2E43z | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>)
+
+- 2026-10-02 17:12:39 +07:00 (2026-10-02T10:12:39.848Z) | run 2026-10-02T10-12-33-148Z-n2E43z | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>)
+
+- 2026-10-02 17:12:39 +07:00 (2026-10-02T10:12:39.854Z) | run 2026-10-02T10-12-33-148Z-n2E43z | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>)
+
+- 2026-10-02 17:12:53 +07:00 (2026-10-02T10:12:53.067Z) | run 2026-10-02T10-12-52-861Z-GupLG1 | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.md>)
+
+- 2026-10-02 17:12:53 +07:00 (2026-10-02T10:12:53.094Z) | run 2026-10-02T10-12-52-861Z-GupLG1 | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.md>)
+
+- 2026-10-02 17:12:58 +07:00 (2026-10-02T10:12:58.756Z) | run 2026-10-02T10-12-52-861Z-GupLG1 | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.md>)
+
+- 2026-10-02 17:12:58 +07:00 (2026-10-02T10:12:58.759Z) | run 2026-10-02T10-12-52-861Z-GupLG1 | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.md>)
+
+- 2026-10-02 17:24:16 +07:00 (2026-10-02T10:24:16.655Z) | run 2026-10-02T10-24-16-445Z-tx84Mq | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.md>)
+
+- 2026-10-02 17:24:16 +07:00 (2026-10-02T10:24:16.679Z) | run 2026-10-02T10-24-16-445Z-tx84Mq | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.md>)
+
+- 2026-10-02 17:24:21 +07:00 (2026-10-02T10:24:21.950Z) | run 2026-10-02T10-24-16-445Z-tx84Mq | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.md>)
+
+- 2026-10-02 17:24:21 +07:00 (2026-10-02T10:24:21.955Z) | run 2026-10-02T10-24-16-445Z-tx84Mq | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.md>)
+
+- 2026-10-02 17:24:33 +07:00 (2026-10-02T10:24:33.633Z) | run 2026-10-02T10-24-16-445Z-tx84Mq | step-passed 2/2 cli:unit | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.md>)
+
+<!-- audit-finished:2026-10-02T10-24-16-445Z-tx84Mq -->
+## Run 2026-10-02T10-24-16-445Z-tx84Mq
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-10-02 17:24:16 +07:00 (2026-10-02T10:24:16.655Z). Finished: 2026-10-02 17:24:33 +07:00 (2026-10-02T10:24:33.725Z).
+- Last PASS: cli:unit. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/summary.json>).
+- Source SHA-256: 5cd7d182be939a8fcd7f8a0d5f7c60a0dafcc02ae9be1694d64049ecdce70f67. Source unchanged: true.
+- Repositories: {"cli":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"2.0.0-alpha.8"},"core":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"0.3.5"}}.
+- Environment: {"node":"v24.4.1","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:unit"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-10-02 17:24:16 +07:00 (2026-10-02T10:24:16.679Z) | 2026-10-02 17:24:21 +07:00 (2026-10-02T10:24:21.950Z) | [stdout](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/001-core-build/stderr.log>) |
+| 2/2 cli:unit | PASS | 2026-10-02 17:24:21 +07:00 (2026-10-02T10:24:21.955Z) | 2026-10-02 17:24:33 +07:00 (2026-10-02T10:24:33.633Z) | Tests: 123 passed, 0 failed, 0 skipped; total 123. Last PASS: baseline verifies retained bytes and rejects modified source, summary and invalid paths. [stdout](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/002-cli-unit/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-24-16-445Z-tx84Mq/002-cli-unit/stderr.log>) |
+
+- 2026-10-02 17:24:44 +07:00 (2026-10-02T10:24:44.967Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
+
+- 2026-10-02 17:24:44 +07:00 (2026-10-02T10:24:44.990Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
+
+- 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.754Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
+
+- 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.772Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)

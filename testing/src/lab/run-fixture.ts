@@ -559,24 +559,32 @@ export async function runDeterministicFixture(options: DeterministicRunOptions):
       activeHandle = null;
     }
   };
-  results.push(await awaitHandle(controller.start(request)));
-  const resume = fixture.runtime?.resume;
-  while (resume !== undefined && results.length < resume.maxExecutions) {
-    const previous = results.at(-1);
-    if (previous === undefined || runtimeStatus(previous.state) !== resume.on || previous.checkpoint === null) break;
-    await arrangeFiles(resume.mutateBeforeResume ?? [], workspace, setup);
-    const checkpoint = resume.tamperCheckpoint === true ? tamperCheckpoint(previous.checkpoint) : previous.checkpoint;
-    if (resume.recreateHost === true) {
-      executor = createExecutor(checkpoint);
-      controller = createController(executor);
+  try {
+    results.push(await awaitHandle(controller.start(request)));
+    const resume = fixture.runtime?.resume;
+    while (resume !== undefined && results.length < resume.maxExecutions) {
+      const previous = results.at(-1);
+      if (previous === undefined || runtimeStatus(previous.state) !== resume.on || previous.checkpoint === null) break;
+      await arrangeFiles(resume.mutateBeforeResume ?? [], workspace, setup);
+      const checkpoint = resume.tamperCheckpoint === true ? tamperCheckpoint(previous.checkpoint) : previous.checkpoint;
+      if (resume.recreateHost === true) {
+        executor = createExecutor(checkpoint);
+        controller = createController(executor);
+      }
+      const { runId: _runId, ...resumeRequest } = request;
+      results.push(await awaitHandle(controller.resume(Object.freeze({
+        ...resumeRequest,
+        checkpoint,
+        checkpointTrust: "trusted_host" as const,
+        runId,
+      }))));
     }
-    const { runId: _runId, ...resumeRequest } = request;
-    results.push(await awaitHandle(controller.resume(Object.freeze({
-      ...resumeRequest,
-      checkpoint,
-      checkpointTrust: "trusted_host" as const,
-      runId,
-    }))));
+  } finally {
+    // NodeCommandPort owns one /bin/bash for the whole run and documents that disposing it "stops
+    // whatever the step left running". A fixture that never handed it back left the shell alive, so
+    // the lab's test process could not exit — the ci job then died on its timeout (see the watchdog
+    // in scripts/run-node-tests.mjs for the same symptom on the runner side).
+    await command.dispose();
   }
   const result = results.at(-1);
   if (result === undefined) throw new Error("Fixture produced no run result.");
