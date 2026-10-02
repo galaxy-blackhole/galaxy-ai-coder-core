@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import type { CommandRunnerPort, ToolExecutionContext, WorkspacePort } from "@galaxy-stack/ai-coder-core";
 
@@ -17,6 +17,20 @@ import {
 import { createFixtureApprovalPort } from "../../src/lab/fixture-approval.js";
 import { SCRIPTED_MODEL_CAPABILITIES } from "../../src/lab/scripted-model.js";
 import { LabToolExecutor } from "../../src/lab/tool-executor.js";
+
+/**
+ * One /bin/bash per port (see NodeCommandPort): a port a test opens and never disposes keeps its
+ * shell — and its three stdio pipes — alive, so the file's process outlives its own tests and the
+ * audit hangs instead of reporting. Every port this file opens is handed back below.
+ */
+const openCommandPorts: NodeCommandPort[] = [];
+function trackCommandPort(port: NodeCommandPort): NodeCommandPort {
+  openCommandPorts.push(port);
+  return port;
+}
+after(async () => {
+  await Promise.all(openCommandPorts.map((port) => port.dispose()));
+});
 
 function context(
   workspaceRoot: string,
@@ -41,7 +55,7 @@ async function fixtureExecutor(
   approvalDecisions: Readonly<Record<string, "allow" | "deny">> = Object.freeze({}),
 ) {
   const workspace = await NodeWorkspacePort.create(workspaceRoot);
-  const command = await NodeCommandPort.create(workspaceRoot);
+  const command = trackCommandPort(await NodeCommandPort.create(workspaceRoot));
   const executor = new LabToolExecutor({
     approval: createFixtureApprovalPort(approvalDecisions),
     capabilities: SCRIPTED_MODEL_CAPABILITIES,
@@ -126,7 +140,7 @@ test("mutation tools share a dependency-aware snapshot policy across edit, write
   })}\n`, "utf8");
 
   const workspace = await NodeWorkspacePort.create(workspaceRoot);
-  const command = await NodeCommandPort.create(workspaceRoot);
+  const command = trackCommandPort(await NodeCommandPort.create(workspaceRoot));
   const executor = new LabToolExecutor({
     approval: createFixtureApprovalPort({ "command.run": "allow", "project.validate": "allow" }),
     capabilities: SCRIPTED_MODEL_CAPABILITIES,
@@ -200,7 +214,7 @@ test("a failed pre-mutation snapshot returns a structured error without calling 
   }) as WorkspacePort;
   const executor = new LabToolExecutor({
     capabilities: SCRIPTED_MODEL_CAPABILITIES,
-    command: await NodeCommandPort.create(workspaceRoot),
+    command: trackCommandPort(await NodeCommandPort.create(workspaceRoot)),
     workspace,
     workspaceSnapshot: { maxHashedBytes: 1 },
   });
@@ -242,7 +256,7 @@ test("read-only adapter coded failures remain structured and recoverable", async
   }) as WorkspacePort;
   const executor = new LabToolExecutor({
     capabilities: SCRIPTED_MODEL_CAPABILITIES,
-    command: await NodeCommandPort.create(workspaceRoot),
+    command: trackCommandPort(await NodeCommandPort.create(workspaceRoot)),
     workspace,
   });
   await executor.getToolSet(context(workspaceRoot));
@@ -319,7 +333,7 @@ test("LabToolExecutor throws unknown outcome after malformed or thrown workspace
   } satisfies WorkspacePort);
   const executor = new LabToolExecutor({
     capabilities: SCRIPTED_MODEL_CAPABILITIES,
-    command: await NodeCommandPort.create(workspaceRoot),
+    command: trackCommandPort(await NodeCommandPort.create(workspaceRoot)),
     workspace,
   });
   await executor.getToolSet(context(workspaceRoot));
@@ -729,7 +743,7 @@ test("validate_project preserves validation evidence and proves files created by
 test("git diff combines working-tree, staged, and safely quoted untracked changes without mutating the index", async (testContext) => {
   const workspaceRoot = await mkdtemp(join(tmpdir(), "galaxy-tool-git-diff-"));
   testContext.after(() => rm(workspaceRoot, { recursive: true, force: true }));
-  const command = await NodeCommandPort.create(workspaceRoot);
+  const command = trackCommandPort(await NodeCommandPort.create(workspaceRoot));
   await writeFile(join(workspaceRoot, "tracked.txt"), "tracked baseline\n", "utf8");
   await writeFile(join(workspaceRoot, "staged.txt"), "staged baseline\n", "utf8");
   await runSetupCommand(command, workspaceRoot, "git init --quiet");

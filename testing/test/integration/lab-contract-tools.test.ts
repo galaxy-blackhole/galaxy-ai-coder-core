@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import {
   AI_CODER_CORE_TOOL_CATALOG,
@@ -22,6 +22,20 @@ import {
   LAB_OPTIONAL_CONTRACT_TOOL_IDS,
   LabToolExecutor,
 } from "../../src/lab/tool-executor.js";
+
+/**
+ * One /bin/bash per port (see NodeCommandPort): a port a test opens and never disposes keeps its
+ * shell — and its three stdio pipes — alive, so the file's process outlives its own tests and the
+ * audit hangs instead of reporting. Every port this file opens is handed back below.
+ */
+const openCommandPorts: NodeCommandPort[] = [];
+function trackCommandPort(port: NodeCommandPort): NodeCommandPort {
+  openCommandPorts.push(port);
+  return port;
+}
+after(async () => {
+  await Promise.all(openCommandPorts.map((port) => port.dispose()));
+});
 
 function context(workspaceRoot: string, id: string): ToolExecutionContext {
   return Object.freeze({
@@ -44,7 +58,7 @@ async function executor(
   }> = {},
 ): Promise<LabToolExecutor> {
   const workspace = await NodeWorkspacePort.create(workspaceRoot);
-  const command = await NodeCommandPort.create(workspaceRoot);
+  const command = trackCommandPort(await NodeCommandPort.create(workspaceRoot));
   const profile = options.profile ?? "flag";
   const result = new LabToolExecutor({
     approval: createFixtureApprovalPort(options.approvals),

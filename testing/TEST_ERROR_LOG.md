@@ -1523,3 +1523,133 @@ DONE counts finished steps, including failures; PASS counts successful steps. Au
 - 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.754Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
 
 - 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.772Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
+
+- 2026-10-02 17:52:43 +07:00 (2026-10-02T10:52:43.176Z) | run 2026-10-02T10-52-43-003Z-qnIoe7 | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-52-43-003Z-qnIoe7/summary.md>)
+
+- 2026-10-02 17:52:43 +07:00 (2026-10-02T10:52:43.201Z) | run 2026-10-02T10-52-43-003Z-qnIoe7 | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-52-43-003Z-qnIoe7/summary.md>)
+
+- 2026-10-02 17:52:48 +07:00 (2026-10-02T10:52:48.436Z) | run 2026-10-02T10-52-43-003Z-qnIoe7 | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-52-43-003Z-qnIoe7/summary.md>)
+
+- 2026-10-02 17:52:48 +07:00 (2026-10-02T10:52:48.444Z) | run 2026-10-02T10-52-43-003Z-qnIoe7 | step-started 2/2 cli:integration | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-02T10-52-43-003Z-qnIoe7/summary.md>)
+
+- 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.124Z) | run 2026-10-02T10-52-43-003Z-qnIoe7 | step-failed 2/2 cli:integration | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T10-52-43-003Z-qnIoe7/summary.md>)
+
+- 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.314Z) | run 2026-10-02T10-24-44-873Z-CZk4nx | step-failed 2/2 cli:integration | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.md>)
+
+- 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.354Z) | run 2026-10-02T10-12-52-861Z-GupLG1 | step-failed 2/2 cli:unit | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.md>)
+
+- 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.354Z) | run 2026-10-02T10-12-33-148Z-n2E43z | step-failed 2/2 cli:integration | DONE 2/2; PASS 1/2; FAIL 1 | [run trace](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>)
+
+<!-- audit-finished:2026-10-02T10-24-44-873Z-CZk4nx -->
+## Run 2026-10-02T10-24-44-873Z-CZk4nx
+
+- Status: **failed**. DONE 2/2; PASS 1/2; FAIL 1; NOT RUN 0; RUNNING 0.
+- Started: 2026-10-02 17:24:44 +07:00 (2026-10-02T10:24:44.967Z). Finished: 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.626Z).
+- Last PASS: core:build. First failure: cli:integration. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/summary.json>).
+- Source SHA-256: 5cd7d182be939a8fcd7f8a0d5f7c60a0dafcc02ae9be1694d64049ecdce70f67. Source unchanged: false.
+- Repositories: {"cli":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"2.0.0-alpha.8"},"core":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"0.3.5"}}.
+- Environment: {"node":"v24.4.1","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:integration"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-10-02 17:24:44 +07:00 (2026-10-02T10:24:44.990Z) | 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.754Z) | [stdout](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/001-core-build/stderr.log>) |
+| 2/2 cli:integration | INTERRUPTED | 2026-10-02 17:24:49 +07:00 (2026-10-02T10:24:49.772Z) | 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.314Z) | Tests: 26 passed, 11 failed, 0 skipped; total not recorded. Last PASS: write_file attests a write into generated state without a durable snapshot entry. [stdout](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-24-44-873Z-CZk4nx/002-cli-integration/stderr.log>) |
+
+### Failure: cli:integration
+
+Symptom signature: d4e87bc2e04f49a7. Automated category: product; candidate incidents: none; diagnosed cause: not yet diagnosed.
+
+Earlier matching runs: [2026-10-02T10-12-33-148Z-n2E43z](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.md>). A match alone does not establish a regression.
+
+```text
+{
+  "name": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts",
+  "file": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts",
+  "line": 1,
+  "error": "Error: Audit interrupted.\n    at process.cancel (file:///Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/scripts/run-node-tests.mjs:9:39)\n    at Object.onceWrapper (node:events:622:26)\n    at process.emit (node:events:507:28) {\n  failureType: 'testAborted'\n}",
+  "timestamp": "2026-10-02T11:15:29.189Z"
+}
+```
+
+Resolution and regression requirements: [incident register and upstream references](<docs/TEST_FAILURE_ANALYSIS.md>).
+
+**SOURCE DRIFT:** source changed during this run; passing steps do not certify a single source revision.
+
+<!-- audit-finished:2026-10-02T10-12-33-148Z-n2E43z -->
+## Run 2026-10-02T10-12-33-148Z-n2E43z
+
+- Status: **failed**. DONE 2/2; PASS 1/2; FAIL 1; NOT RUN 0; RUNNING 0.
+- Started: 2026-10-02 17:12:33 +07:00 (2026-10-02T10:12:33.431Z). Finished: 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.626Z).
+- Last PASS: core:build. First failure: cli:integration. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/summary.json>).
+- Source SHA-256: 7df1ccc6477e3db5f1f8c498269298e4d0fdcdc3b2be6956c8efae6336060628. Source unchanged: false.
+- Repositories: {"cli":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"2.0.0-alpha.8"},"core":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"0.3.5"}}.
+- Environment: {"node":"v24.4.1","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:integration"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-10-02 17:12:33 +07:00 (2026-10-02T10:12:33.460Z) | 2026-10-02 17:12:39 +07:00 (2026-10-02T10:12:39.848Z) | [stdout](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/001-core-build/stderr.log>) |
+| 2/2 cli:integration | INTERRUPTED | 2026-10-02 17:12:39 +07:00 (2026-10-02T10:12:39.854Z) | 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.354Z) | Tests: 26 passed, 11 failed, 0 skipped; total not recorded. Last PASS: write_file attests a write into generated state without a durable snapshot entry. [stdout](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/002-cli-integration/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-12-33-148Z-n2E43z/002-cli-integration/stderr.log>) |
+
+### Failure: cli:integration
+
+Symptom signature: d4e87bc2e04f49a7. Automated category: product; candidate incidents: none; diagnosed cause: not yet diagnosed.
+
+Earlier matching runs: none among retained logs. A match alone does not establish a regression.
+
+```text
+{
+  "name": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts",
+  "file": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/integration/lab-tool-executor.test.ts",
+  "line": 1,
+  "error": "Error: Audit interrupted.\n    at process.cancel (file:///Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/scripts/run-node-tests.mjs:9:39)\n    at Object.onceWrapper (node:events:622:26)\n    at process.emit (node:events:507:28) {\n  failureType: 'testAborted'\n}",
+  "timestamp": "2026-10-02T11:15:29.204Z"
+}
+```
+
+Resolution and regression requirements: [incident register and upstream references](<docs/TEST_FAILURE_ANALYSIS.md>).
+
+**SOURCE DRIFT:** source changed during this run; passing steps do not certify a single source revision.
+
+<!-- audit-finished:2026-10-02T10-12-52-861Z-GupLG1 -->
+## Run 2026-10-02T10-12-52-861Z-GupLG1
+
+- Status: **failed**. DONE 2/2; PASS 1/2; FAIL 1; NOT RUN 0; RUNNING 0.
+- Started: 2026-10-02 17:12:53 +07:00 (2026-10-02T10:12:53.067Z). Finished: 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.626Z).
+- Last PASS: core:build. First failure: cli:unit. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/summary.json>).
+- Source SHA-256: 6bbfd2b4ecc1ae81e129ecf82984a31e72fd0d1ee69f3c56b5350d9a0c8b0f21. Source unchanged: false.
+- Repositories: {"cli":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"2.0.0-alpha.8"},"core":{"head":"aa6b1021c2f53b761e553b697224a2c316c2b164","packageVersion":"0.3.5"}}.
+- Environment: {"node":"v24.4.1","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:unit"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-10-02 17:12:53 +07:00 (2026-10-02T10:12:53.094Z) | 2026-10-02 17:12:58 +07:00 (2026-10-02T10:12:58.756Z) | [stdout](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/001-core-build/stderr.log>) |
+| 2/2 cli:unit | INTERRUPTED | 2026-10-02 17:12:58 +07:00 (2026-10-02T10:12:58.759Z) | 2026-10-02 18:15:29 +07:00 (2026-10-02T11:15:29.354Z) | Tests: 4 passed, 22 failed, 0 skipped; total not recorded. Last PASS: run rejects an explicitly retained workspace that is not empty. [stdout](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/002-cli-unit/stdout.log>) / [stderr](<.galaxy/audit/2026-10-02T10-12-52-861Z-GupLG1/002-cli-unit/stderr.log>) |
+
+### Failure: cli:unit
+
+Symptom signature: ff9a655c6b21673b. Automated category: product; candidate incidents: none; diagnosed cause: not yet diagnosed.
+
+Earlier matching runs: none among retained logs. A match alone does not establish a regression.
+
+```text
+{
+  "name": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/unit/application.test.ts",
+  "file": "/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/test/unit/application.test.ts",
+  "line": 1,
+  "error": "Error: Audit interrupted.\n    at process.cancel (file:///Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/testing/scripts/run-node-tests.mjs:9:39)\n    at Object.onceWrapper (node:events:622:26)\n    at process.emit (node:events:507:28) {\n  failureType: 'testAborted'\n}",
+  "timestamp": "2026-10-02T11:15:29.215Z"
+}
+```
+
+Resolution and regression requirements: [incident register and upstream references](<docs/TEST_FAILURE_ANALYSIS.md>).
+
+**SOURCE DRIFT:** source changed during this run; passing steps do not certify a single source revision.

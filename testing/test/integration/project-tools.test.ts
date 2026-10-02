@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import { NodeCommandPort } from "../../src/host/node-command-port.js";
 import { NodeWorkspacePort } from "../../src/host/node-workspace-port.js";
@@ -13,6 +13,20 @@ import {
   PROJECT_DETECTION_LIMITS,
   validateProject,
 } from "../../src/host/project-tools.js";
+
+/**
+ * One /bin/bash per port (see NodeCommandPort): a port a test opens and never disposes keeps its
+ * shell — and its three stdio pipes — alive, so the file's process outlives its own tests and the
+ * audit hangs instead of reporting. Every port this file opens is handed back below.
+ */
+const openCommandPorts: NodeCommandPort[] = [];
+function trackCommandPort(port: NodeCommandPort): NodeCommandPort {
+  openCommandPorts.push(port);
+  return port;
+}
+after(async () => {
+  await Promise.all(openCommandPorts.map((port) => port.dispose()));
+});
 
 function executionContext(workspaceRoot: string): ToolExecutionContext {
   return Object.freeze({
@@ -31,7 +45,7 @@ test("project tools detect and run only declared scripts", async (context) => {
   const root = await mkdtemp(join(tmpdir(), "galaxy-code-project-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   const workspace = await NodeWorkspacePort.create(root);
-  const command = await NodeCommandPort.create(root);
+  const command = trackCommandPort(await NodeCommandPort.create(root));
   const callContext = executionContext(root);
   const written = await workspace.writeText({
     path: "package.json",
@@ -148,7 +162,7 @@ test("real Python project validation leaves no __pycache__ mutation", {
     const written = await workspace.writeText({ path, content, precondition: { kind: "must_not_exist" } }, callContext);
     assert.equal(written.ok, true);
   }
-  const command = await NodeCommandPort.create(root);
+  const command = trackCommandPort(await NodeCommandPort.create(root));
 
   const validation = await validateProject(workspace, command, { checks: ["test"], path: "." }, callContext);
 

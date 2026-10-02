@@ -3,10 +3,24 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import { nodeCommandHostEnvironment } from "../../src/host/host-environment.js";
 import { NodeCommandPort } from "../../src/host/node-command-port.js";
+
+/**
+ * One /bin/bash per port (see NodeCommandPort): a port a test opens and never disposes keeps its
+ * shell — and its three stdio pipes — alive, so the file's process outlives its own tests and the
+ * audit hangs instead of reporting. Every port this file opens is handed back below.
+ */
+const openCommandPorts: NodeCommandPort[] = [];
+function trackCommandPort(port: NodeCommandPort): NodeCommandPort {
+  openCommandPorts.push(port);
+  return port;
+}
+after(async () => {
+  await Promise.all(openCommandPorts.map((port) => port.dispose()));
+});
 
 function executionContext(
   workspaceRoot: string,
@@ -28,7 +42,7 @@ function executionContext(
 test("NodeCommandPort captures deterministic output and exit status", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-command-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
   assert.deepEqual(port.hostEnvironment, nodeCommandHostEnvironment());
 
   const result = await port.run({ command: "node -e \"process.stdout.write('ok')\"" }, executionContext(workspace));
@@ -42,7 +56,7 @@ test("NodeCommandPort captures deterministic output and exit status", async (con
 test("NodeCommandPort supports a complete local Git commit, push, clone, and pull lifecycle", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-local-git-lifecycle-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
   const run = async (command: string, cwd = ".") => {
     const result = await port.run({ command, cwd, timeoutMs: 30_000 }, executionContext(workspace));
     if (!result.ok) assert.fail(result.error.message);
@@ -72,7 +86,7 @@ test("NodeCommandPort supports a complete local Git commit, push, clone, and pul
 test("NodeCommandPort executes the exact advertised shell dialect without a TTY", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-shell-contract-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
   const windows = process.platform === "win32";
   const dialectCommand = windows
     ? 'set "GALAXY_LOCAL_VALUE=cmd value" && if "%GALAXY_LOCAL_VALUE%"=="cmd value" (echo cmd-ok) else (exit /b 9)'
@@ -116,7 +130,7 @@ test("NodeCommandPort executes the exact advertised shell dialect without a TTY"
 test("NodeCommandPort propagates cancellation to the child", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-command-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
   const controller = new AbortController();
   const resultPromise = port.run(
     {
@@ -137,7 +151,7 @@ test("NodeCommandPort propagates cancellation to the child", async (context) => 
 test("NodeCommandPort enforces UTF-8 output caps independently per stream", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-command-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
   const result = await port.run({
     command: "node -e \"process.stdout.write('é'.repeat(100)); process.stderr.write('x'.repeat(100))\"",
     maxOutputBytes: 7,
@@ -154,7 +168,7 @@ test("NodeCommandPort enforces UTF-8 output caps independently per stream", asyn
 test("NodeCommandPort rejects invalid input and paths with canonical errors", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "galaxy-code-command-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
-  const port = await NodeCommandPort.create(workspace);
+  const port = trackCommandPort(await NodeCommandPort.create(workspace));
 
   const invalidEnvironment = await port.run({
     command: "node --version",
@@ -185,7 +199,7 @@ test("NodeCommandPort required containment is enforced or fails closed before sp
     rm(workspace, { recursive: true, force: true }),
     rm(outside, { recursive: true, force: true }),
   ]));
-  const port = await NodeCommandPort.create(workspace, { containment: "required" });
+  const port = trackCommandPort(await NodeCommandPort.create(workspace, { containment: "required" }));
   const result = await port.run({
     command: "node -e \"require('node:fs').writeFileSync(process.env.OUTSIDE_SENTINEL, 'changed')\"",
     env: { OUTSIDE_SENTINEL: sentinelPath },
@@ -249,7 +263,7 @@ test("an available verified containment backend enforces workspace-only writes a
   await mkdir(workspace);
   await writeFile(outside, "sentinel", "utf8");
   context.after(async () => rm(root, { force: true, recursive: true }));
-  const port = await NodeCommandPort.create(workspace, { containment: "required" });
+  const port = trackCommandPort(await NodeCommandPort.create(workspace, { containment: "required" }));
   assert.equal(port.containmentStatus.active, true);
   assert.equal(port.containmentStatus.network, "denied");
   const result = await port.run({
