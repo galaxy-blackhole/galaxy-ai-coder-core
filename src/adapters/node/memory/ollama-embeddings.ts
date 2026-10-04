@@ -29,7 +29,7 @@ async function boundedText(response: Response): Promise<string> {
     const part = await reader.read();
     if (part.done) break;
     bytes += part.value.byteLength;
-    if (bytes > MAX_RESPONSE_BYTES) { await reader.cancel().catch(() => undefined); throw new Error("Ollama embedding response exceeded 4 MiB."); }
+    if (bytes > MAX_RESPONSE_BYTES) { await reader.cancel().catch(() => undefined); throw new Error("embedding response exceeded 4 MiB."); }
     text += decoder.decode(part.value, { stream: true });
   }
   return text + decoder.decode();
@@ -46,10 +46,10 @@ export class OllamaEmbeddings implements AgentEmbeddingPort {
   private readonly maxBatch: number;
   private readonly requestTimeoutMs: number;
   constructor(private readonly options: OllamaEmbeddingsOptions) {
-    if (!options.model.trim()) throw new Error("An Ollama embedding model id is required.");
+    if (!options.model.trim()) throw new Error("An embedding model id is required.");
     const url = new URL(options.baseUrl);
-    if (!["http:", "https:"].includes(url.protocol)) throw new Error("Ollama embedding base URL must use HTTP or HTTPS.");
-    if (url.username || url.password) throw new Error("Ollama embedding base URL must not embed credentials.");
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error("embedding base URL must use HTTP or HTTPS.");
+    if (url.username || url.password) throw new Error("embedding base URL must not embed credentials.");
     this.model = options.model.trim();
     this.fetchImpl = options.fetch ?? globalThis.fetch;
     this.maxBatch = Math.max(1, Math.min(64, options.maxBatch ?? DEFAULT_MAX_BATCH));
@@ -65,7 +65,7 @@ export class OllamaEmbeddings implements AgentEmbeddingPort {
   private async embedBatch(texts: readonly string[]): Promise<readonly (readonly number[])[]> {
     if (texts.length === 0) return [];
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(new Error("Ollama embedding request timed out.")), this.requestTimeoutMs);
+    const timer = setTimeout(() => controller.abort(new Error("embedding request timed out.")), this.requestTimeoutMs);
     try {
       const endpoint = new URL("/api/embed", this.options.baseUrl).href;
       const response = await this.fetchImpl(endpoint, {
@@ -78,12 +78,12 @@ export class OllamaEmbeddings implements AgentEmbeddingPort {
         signal: controller.signal,
       });
       const raw = await boundedText(response);
-      if (!response.ok) throw new Error(`Ollama embedding failed (${response.status}): ${raw.slice(0, 300) || "no body"}`);
+      if (!response.ok) throw new Error(`embedding failed (${response.status}): ${raw.slice(0, 300) || "no body"}`);
       const parsed = JSON.parse(raw) as { embeddings?: unknown };
-      if (!Array.isArray(parsed.embeddings) || parsed.embeddings.length !== texts.length) throw new Error("Ollama embedding response did not match the input batch.");
+      if (!Array.isArray(parsed.embeddings) || parsed.embeddings.length !== texts.length) throw new Error("embedding response did not match the input batch.");
       return parsed.embeddings.map((vector) => {
         if (!Array.isArray(vector) || vector.length === 0 || vector.some(value => typeof value !== "number" || !Number.isFinite(value))) {
-          throw new Error("Ollama embedding response contained an invalid vector.");
+          throw new Error("embedding response contained an invalid vector.");
         }
         return vector as number[];
       });

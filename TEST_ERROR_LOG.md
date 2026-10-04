@@ -4289,3 +4289,13 @@ START 2026-10-02 10:00:07 +07:00 (2026-10-02T03:00:07.160Z). [Progress](<.galaxy
 2026-10-02 10:00:15 +07:00 (2026-10-02T03:00:15.837Z) | PASSED | PASS 191/192 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-10-02T03-00-07-146Z-0oLyO0/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-02T03-00-07-146Z-0oLyO0/summary.json>).
+
+## Core tests 2026-10-04T09-39-36-538Z-SBxGyn
+
+START 2026-10-04 16:39:36 +07:00 (2026-10-04T09:39:36.542Z). [Progress](<.galaxy/tests/2026-10-04T09-39-36-538Z-SBxGyn/summary.md>). Commit: ae447eb7b17085ae3c0e26d9c02c69d41bd1ef23; source SHA-256: bf53143cf46208766c63b2c269ab7f99d66ce24887d3f4104e2622a1367468d4.
+
+### Finished 2026-10-04T09-39-36-538Z-SBxGyn
+
+2026-10-04 16:39:44 +07:00 (2026-10-04T09:39:44.725Z) | PASSED | PASS 191/192 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-04T09-39-36-538Z-SBxGyn/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-04T09-39-36-538Z-SBxGyn/summary.json>).

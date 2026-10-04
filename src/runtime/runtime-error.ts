@@ -11,6 +11,8 @@ export type AiCoderRuntimeErrorCode =
   | "PAUSED"
   | "PERSISTENCE_ERROR"
   | "PROVIDER_ERROR"
+  /** The provider rejected the credential (401/403): the host should point at its key setup. */
+  | "PROVIDER_AUTHENTICATION"
   | "TOOL_EXECUTION"
   | "TOOL_TIMEOUT";
 

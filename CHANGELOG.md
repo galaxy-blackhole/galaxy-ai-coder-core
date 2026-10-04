@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.6] - 2026-10-04 16:45 +0700
+
+### Fixed
+
+- Provider failure messages name the protocol, not the vendor: `chat failed (401)` instead of
+  `Ollama chat failed (401)`, and the same for the stream, embedding and manual-config messages.
+  The core is host-agnostic, so the host brands the text — the CLI's first-run journey must never
+  show the runtime's name (see [CHANGELOG.d fragment](CHANGELOG.d/2026-10-04-trung-tinh-hoa-thong-bao-va-ma-loi-xac-thuc.md)).
+- An authentication failure keeps its own code: a provider 401/403 now surfaces as
+  `PROVIDER_AUTHENTICATION` instead of being flattened into `PROVIDER_ERROR`, so a host can point at
+  its key setup rather than reporting a generic provider fault.
+
 ## [0.3.5] - 2026-10-02 09:43 +0700
 
 ### Fixed

@@ -38,13 +38,13 @@ function safeProviderBaseUrl(value: string): string {
   try {
     parsed = new URL(value);
   } catch {
-    throw new Error("Ollama base URL must be an absolute HTTP(S) URL.");
+    throw new Error("Base URL must be an absolute HTTP(S) URL.");
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Ollama base URL must use HTTP or HTTPS.");
+    throw new Error("Base URL must use HTTP or HTTPS.");
   }
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error("Ollama base URL must not contain credentials, query parameters, or a fragment.");
+    throw new Error("Base URL must not contain credentials, query parameters, or a fragment.");
   }
   return parsed.href.replace(/\/+$/, "");
 }
@@ -94,7 +94,7 @@ export async function resolveOllamaConnection(
   const model = options.model
     ?? optionalNonEmpty(manual?.model)
     ?? DEFAULT_AI_CODER_CORE_SETTINGS.singleAgent.model;
-  if (model.trim().length === 0) throw new Error("Ollama model must be non-empty.");
+  if (model.trim().length === 0) throw new Error("Provider model id must be non-empty.");
   const embeddingModel = optionalNonEmpty(manual?.embeddingModel);
   const embeddingBaseUrl = optionalNonEmpty(manual?.embeddingBaseUrl);
   return Object.freeze({

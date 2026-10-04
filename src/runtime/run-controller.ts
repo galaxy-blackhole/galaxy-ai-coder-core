@@ -1854,7 +1854,11 @@ export class AiCoderRunController {
         const providerError = error instanceof CodingProviderError ? error : null;
         if (!providerError?.retryable || attempt >= session.budget.maxModelRetries) {
           if (error instanceof AiCoderRuntimeError) throw error;
-          throw new AiCoderRuntimeError("PROVIDER_ERROR", error instanceof Error ? error.message : String(error), providerError?.retryable ?? false);
+          throw new AiCoderRuntimeError(
+            providerError?.code === "AUTHENTICATION" ? "PROVIDER_AUTHENTICATION" : "PROVIDER_ERROR",
+            error instanceof Error ? error.message : String(error),
+            providerError?.retryable ?? false,
+          );
         }
         const attemptElapsedMs = Math.max(0, this.clock.now() - attemptStartedAtMs);
         const delayMs = retryDelays[Math.min(attempt, retryDelays.length - 1)] ?? retryDelays[retryDelays.length - 1]!;

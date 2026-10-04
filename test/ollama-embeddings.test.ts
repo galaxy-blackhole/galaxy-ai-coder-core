@@ -38,5 +38,5 @@ test("OllamaEmbeddings rejects mismatched, invalid or failed responses", async (
   const invalid = new OllamaEmbeddings({ baseUrl: "http://127.0.0.1:11434", model: "m", fetch: async () => response({ embeddings: [[1, "x"]] }) });
   await assert.rejects(() => invalid.embed(["a"]), /invalid vector/);
   const failure = new OllamaEmbeddings({ baseUrl: "http://127.0.0.1:11434", model: "m", fetch: async () => response({ error: "model not found" }, { ok: false, status: 404 }) });
-  await assert.rejects(() => failure.embed(["a"]), /Ollama embedding failed \(404\)/);
+  await assert.rejects(() => failure.embed(["a"]), /embedding failed \(404\)/);
 });

@@ -181,7 +181,7 @@ export function createOllamaChatNormalizer(options: NormalizeOllamaChatOptions) 
     finish(): readonly CodingRoundEvent[] {
       if (failed || terminalSeen) return [];
       failed = true;
-      return [malformed("Ollama chat stream ended without a done=true chunk.", true)];
+      return [malformed("chat stream ended without a done=true chunk.", true)];
     },
   };
 }

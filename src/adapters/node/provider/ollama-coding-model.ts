@@ -465,7 +465,7 @@ export class OllamaCodingModel implements CodingModelAdapter {
           type: "error",
           error: new CodingProviderError(
             code,
-            `Ollama chat failed (${response.status}): ${safeErrorText(raw, this.options.apiKey)}`,
+            `chat failed (${response.status}): ${safeErrorText(raw, this.options.apiKey)}`,
             response.status === 408 || response.status === 429 || response.status >= 500,
           ),
         });
@@ -477,7 +477,7 @@ export class OllamaCodingModel implements CodingModelAdapter {
             ? error
             : new CodingProviderError(
                 "MALFORMED_STREAM",
-                `Unable to read Ollama error response: ${error instanceof Error ? error.message : String(error)}`,
+                `Unable to read the provider error response: ${error instanceof Error ? error.message : String(error)}`,
               ),
         });
       }
