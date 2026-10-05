@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.8] - 2026-10-05 12:05 +0700
+
+### Added
+
+- Rich plan steps (`plan.steps`), the `plan` runtime event, and plan mode: read-only guidance in the
+  system prompt, `PLAN_MODE_READ_ONLY` for mutating tools, `setPlanMode`/`planSnapshot` for hosts.
+  See [CHANGELOG.d fragment](CHANGELOG.d/2026-10-05-plan-mode-va-checklist.md).
+
 ## [0.3.7] - 2026-10-05 10:35 +0700
 
 ### Added

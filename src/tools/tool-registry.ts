@@ -218,6 +218,7 @@ const CATALOG: AiCoderToolDescriptor[] = [
       progress: { type: "string", description: "Concise verified progress when action is 'update'." },
       decisions: immutable({ ...arraySchema(STRING, 32), description: "Bounded durable decisions when action is 'update'." }),
       nextStep: { type: "string", description: "The next concrete action when action is 'update'." },
+      steps: immutable({ ...arraySchema(STRING, 20), description: "Ordered plan steps when action is 'update', each as '<status>: <title>' with status done | doing | todo | skip. Prefer this over progress/nextStep for multi-step work: it is what the human sees as a checklist." }),
     }, ["action"]),
     outputSchema: objectSchema({ action: { type: "string", enum: ["read", "update"] }, checkpointId: NON_EMPTY_STRING, updated: BOOLEAN, checkpoint: TASK_CHECKPOINT }, ["action", "checkpointId", "updated", "checkpoint"]),
     permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 4_000, enabledByDefault: true, source: { owner: "core" },

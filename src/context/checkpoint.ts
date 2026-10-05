@@ -4,6 +4,7 @@
  */
 
 import { compareAiCoderText } from "../deterministic-order.js";
+import type { AiCoderPlanStep } from "../runtime/runtime-types.js";
 
 export const AI_CODER_CHECKPOINT_SCHEMA_VERSION = 1 as const;
 
@@ -218,7 +219,11 @@ export type AiCoderRunCheckpointPayload = Readonly<{
     completed: readonly string[];
     inProgress: string | null;
     pending: readonly string[];
+    /** Rich checklist form; optional so checkpoints written before it stay readable. */
+    steps?: readonly AiCoderPlanStep[];
   }>;
+  /** True while the run is in plan mode; optional for the same reason. */
+  planMode?: boolean;
   researchSources?: readonly AiCoderCheckpointResearchSource[];
   runId: string;
   schemaVersion: typeof AI_CODER_CHECKPOINT_SCHEMA_VERSION;
@@ -465,7 +470,11 @@ export function sanitizeAiCoderCheckpointPayload(
       completed: redactList(payload.plan.completed),
       inProgress: payload.plan.inProgress === null ? null : redactAiCoderCheckpointText(payload.plan.inProgress),
       pending: redactList(payload.plan.pending),
+      ...(payload.plan.steps?.length
+        ? { steps: Object.freeze(payload.plan.steps.map((step) => Object.freeze({ id: step.id, status: step.status, title: redactAiCoderCheckpointText(step.title) }))) }
+        : {}),
     }),
+    ...(payload.planMode === true ? { planMode: true } : {}),
     ...(payload.researchSources === undefined ? {} : {
       researchSources: Object.freeze(payload.researchSources.map((item) => Object.freeze({
         contentHash: item.contentHash,
@@ -560,7 +569,7 @@ async function validateCheckpointSnapshot(
   rejectUnknown(checkpoint, "", [
     "acceptanceCriteria", "approvals", "compatibility", "completionEvidence", "constraints", "contentHash",
     "createdAt", "decisions", "delivery", "edits", "editsTotal", "executionBudget", "goal", "lastToolCalls", "nextAction", "noProgress", "openProblems",
-    "pendingApprovals", "phase", "plan", "reason", "researchSources", "runId", "schemaVersion", "seenToolCallIds", "taskId",
+    "pendingApprovals", "phase", "plan", "planMode", "reason", "researchSources", "runId", "schemaVersion", "seenToolCallIds", "taskId",
     "tokenLedgerRef", "totals", "validation", "workspace",
   ]);
   const forbiddenPaths: string[] = [];
@@ -773,7 +782,15 @@ async function validateCheckpointSnapshot(
   if (!checkpoint.plan || typeof checkpoint.plan !== "object") {
     issue("plan", "plan is required.");
   } else {
-    rejectUnknown(checkpoint.plan, "plan", ["completed", "inProgress", "pending"]);
+    rejectUnknown(checkpoint.plan, "plan", ["completed", "inProgress", "pending", "steps"]);
+    for (const [index, step] of ((checkpoint.plan as { steps?: unknown }).steps as readonly unknown[] | undefined ?? []).entries()) {
+      if (!step || typeof step !== "object") { issue(`plan.steps[${index}]`, "plan step must be an object."); continue; }
+      const record = step as Record<string, unknown>;
+      if (typeof record.id !== "string" || !record.id) issue(`plan.steps[${index}].id`, "plan step id is required.");
+      if (typeof record.title !== "string" || !record.title) issue(`plan.steps[${index}].title`, "plan step title is required.");
+      if (!["completed", "in_progress", "pending", "skipped"].includes(String(record.status))) issue(`plan.steps[${index}].status`, "plan step status is unknown.");
+      rejectUnknown(record, `plan.steps[${index}]`, ["id", "status", "title"]);
+    }
     if (!stringArray(checkpoint.plan.completed)) issue("plan.completed", "plan.completed must be a string array.");
     if (!stringArray(checkpoint.plan.pending)) issue("plan.pending", "plan.pending must be a string array.");
     if (checkpoint.plan.inProgress !== null && typeof checkpoint.plan.inProgress !== "string") {

@@ -53,6 +53,8 @@ export type AiCoderRuntimeToolEffects = Readonly<{
     decisions?: readonly string[];
     inProgress: string | null;
     pending: readonly string[];
+    /** Rich checklist form; hosts render this when present. */
+    steps?: readonly AiCoderPlanStep[];
   }>;
   researchSources?: readonly AiCoderRuntimeResearchSource[];
   stateVersion?: string;
@@ -74,6 +76,21 @@ export type AiCoderRuntimeToolEffects = Readonly<{
 
 /** @deprecated Prefer AiCoderToolEffectCapability from the tools contract. */
 export type AiCoderRuntimeEffectCapability = AiCoderToolEffectCapability;
+
+/** One step of the run plan, as maintained through the task checkpoint. */
+export type AiCoderPlanStep = Readonly<{
+  id: string;
+  status: "completed" | "in_progress" | "pending" | "skipped";
+  title: string;
+}>;
+
+/** The plan view hosts render: rich steps plus the legacy three buckets. */
+export type AiCoderPlanSnapshot = Readonly<{
+  completed: readonly string[];
+  inProgress: string | null;
+  pending: readonly string[];
+  steps: readonly AiCoderPlanStep[];
+}>;
 
 type AiCoderRuntimeToolResultBase = Readonly<{
   artifactRef?: string;
@@ -228,6 +245,11 @@ export type AiCoderRunRequest = Readonly<{
    * already pays the smaller prompt.
    */
   compactOnStart?: boolean;
+  /**
+   * Start the run in plan mode: the model gets read-only guidance, mutating tools are
+   * refused, and the human leaves the mode (host API) once the plan is good enough.
+   */
+  planMode?: boolean;
   completion?: AiCoderCompletionRequirements;
   constraints?: readonly string[];
   goal: string;
@@ -252,6 +274,7 @@ export type AiCoderRuntimeEventPayload =
   | Readonly<{ attempt: number; delayMs: number; message: string; type: "model_retry" }>
   | Readonly<{ checkpoint: AiCoderRunCheckpoint; reason: AiCoderCheckpointReason; type: "checkpoint" }>
   | Readonly<{ itemsShadowed: number; reason: AiCoderCheckpointReason; tokensAfter: number; tokensBefore: number; type: "compaction" }>
+  | Readonly<{ plan: AiCoderPlanSnapshot; planMode: boolean; toolCallId?: string; turn: number; type: "plan" }>
   | Readonly<{
       candidate: string;
       issues: readonly string[];
@@ -349,7 +372,9 @@ export type AiCoderMutableRunEvidence = {
     completed: string[];
     inProgress: string | null;
     pending: string[];
+    steps?: AiCoderPlanStep[];
   };
+  planMode?: boolean;
   researchSources: Array<AiCoderRuntimeResearchSource & Readonly<{
     sequence: number;
     toolCallId: string;

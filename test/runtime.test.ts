@@ -3572,3 +3572,127 @@ test("cancel propagates to an active model stream", async () => {
   assert.equal(result.state, "cancelled");
   assert.equal(result.error?.code, "CANCELED");
 });
+test("a plan update emits the plan event and is persisted with plan mode", async () => {
+  /* One tool that both inspects and publishes the plan, so the completion gate is satisfied. */
+  const toolSet = Object.freeze({
+    canonicalToolIds: Object.freeze({ plan_note: "plan.note" }),
+    definitions: Object.freeze([Object.freeze({
+      function: Object.freeze({ description: "plan test tool", name: "plan_note", parameters: Object.freeze({ type: "object" }) }),
+      type: "function" as const,
+    })]),
+    effectCapabilities: Object.freeze({ "plan.note": Object.freeze(["inspect" as const, "plan" as const]) }),
+    snapshotHash: "sha256:plan-tool-set",
+  });
+  const executor: AiCoderRuntimeToolExecutor = {
+    async getToolSet() { return toolSet; },
+    async execute() {
+      return Object.freeze({
+        canonicalToolId: "plan.note",
+        content: JSON.stringify({ ok: true }),
+        effects: Object.freeze({
+          inspectedPaths: Object.freeze(["src"]),
+          plan: Object.freeze({
+            completed: Object.freeze(["Đọc mã"]),
+            inProgress: "Viết test",
+            pending: Object.freeze(["Chạy suite"]),
+            steps: Object.freeze([
+              Object.freeze({ id: "doc-ma", status: "completed" as const, title: "Đọc mã" }),
+              Object.freeze({ id: "viet-test", status: "in_progress" as const, title: "Viết test" }),
+              Object.freeze({ id: "chay-suite", status: "pending" as const, title: "Chạy suite" }),
+            ]),
+          }),
+        }),
+        effectsAuthority: "host",
+        ok: true,
+        summary: "plan updated",
+        trust: "workspace",
+      });
+    },
+  };
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("plan_note", "plan-1", {}), done("", "tool_calls")]),
+    Object.freeze([done("Planned.")]),
+  ]);
+  const store = new MemoryStore();
+  const plans: Array<Readonly<{ mode: boolean; steps: number }>> = [];
+  const controller = new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: executor,
+    onEvent(event) {
+      if (event.type === "plan") {
+        plans.push(Object.freeze({ mode: event.planMode, steps: event.plan.steps.length }));
+        /* A compaction persists the durable checkpoint this test reads back. */
+        void controller.compact("run-plan-mode");
+      }
+    },
+  });
+  const handle = controller.start({ ...request("run-plan-mode"), planMode: true });
+  const result = await handle.result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error ?? null));
+  assert.deepEqual(plans, [{ mode: true, steps: 3 }], "one plan event carries the rich steps and the mode");
+  const checkpoint = store.checkpoints.at(-1);
+
+  assert.equal(checkpoint?.planMode, true, "plan mode is durable");
+  assert.equal(checkpoint?.plan.steps?.length, 3, "the plan steps are durable");
+  const systemMessage = model.requests[0]?.messages.find((message) => message.role === "system");
+  assert.ok(String(systemMessage?.content).includes("PLAN MODE"), "plan mode guidance reaches the system prompt");
+});
+
+test("plan mode refuses mutating tools and leaves the catalog alone", async () => {
+  const toolSet = Object.freeze({
+    canonicalToolIds: Object.freeze({ plan_read: "plan.read", plan_write: "plan.write" }),
+    definitions: Object.freeze(["plan_read", "plan_write"].map((name) => Object.freeze({
+      function: Object.freeze({ description: "plan test tool", name, parameters: Object.freeze({ type: "object" }) }),
+      type: "function" as const,
+    }))),
+    effectCapabilities: Object.freeze({ "plan.read": Object.freeze(["inspect" as const]), "plan.write": Object.freeze(["write" as const]) }),
+    snapshotHash: "sha256:plan-write-set",
+  });
+  let writes = 0;
+  const executor: AiCoderRuntimeToolExecutor = {
+    async getToolSet() { return toolSet; },
+    async execute(call) {
+      if (call.name === "plan_write") writes += 1;
+      return Object.freeze({
+        canonicalToolId: call.name === "plan_write" ? "plan.write" : "plan.read",
+        content: JSON.stringify({ ok: true }),
+        ...(call.name === "plan_write" ? {} : { effects: Object.freeze({ inspectedPaths: Object.freeze(["src"]) }), effectsAuthority: "host" as const }),
+        ok: true,
+        summary: "done",
+        trust: "workspace" as const,
+      });
+    },
+  };
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("plan_write", "write-1", {}), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("plan_read", "read-1", {}), done("", "tool_calls")]),
+    Object.freeze([done("Reported the plan.")]),
+  ]);
+  const codes: string[] = [];
+  const modes: boolean[] = [];
+  let left = false;
+  const controller = new AiCoderRunController({
+    model,
+    toolExecutor: executor,
+    onEvent(event) {
+      if (event.type === "tool_result" && !event.result.ok) codes.push(event.result.error?.code ?? "?");
+      if (event.type === "plan") modes.push(event.planMode);
+      if (event.type === "tool_result" && !left) {
+        left = true;
+        void controller.setPlanMode("run-plan-gate", false);
+      }
+    },
+  });
+  const handle = controller.start({ ...request("run-plan-gate"), planMode: true });
+  const result = await handle.result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error ?? null));
+  assert.deepEqual(codes, ["PLAN_MODE_READ_ONLY"], "the write tool is refused while planning");
+  assert.equal(writes, 0, "the executor never sees a mutating call in plan mode");
+  assert.deepEqual(modes, [false], "leaving plan mode reports itself");
+  const firstSystem = model.requests[0]?.messages.find((message) => message.role === "system");
+  const lastSystem = model.requests.at(-1)?.messages.find((message) => message.role === "system");
+  assert.ok(String(firstSystem?.content).includes("PLAN MODE"));
+  assert.ok(!String(lastSystem?.content).includes("PLAN MODE"), "the guidance disappears once the human approves");
+  assert.equal(model.requests[0]?.tools?.length, model.requests.at(-1)?.tools?.length, "the tool catalog stays stable across the mode change");
+});

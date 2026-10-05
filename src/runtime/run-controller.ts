@@ -4,6 +4,8 @@ import {
   type AiCoderToolObservation,
 } from "../context/context-manager.js";
 import { compareAiCoderText } from "../deterministic-order.js";
+import type { AiCoderPlanSnapshot, AiCoderPlanStep } from "../runtime/runtime-types.js";
+import { mergePlanSnapshot } from "./plan.js";
 import { dispatchGuardMs } from "../tools/tool-timeouts.js";
 import { isGeneratedWorkspacePath } from "./workspace-generated-path.js";
 import {
@@ -444,7 +446,7 @@ function assertRunRequest(request: AiCoderRunRequest | AiCoderResumeRequest, run
   }
   const knownRequestFields = new Set([
     "acceptanceCriteria", "attachments", "budget", "checkpoint", "checkpointTrust",
-    "compactOnStart", "completion", "constraints", "goal", "mode", "prompt", "runId", "taskId",
+    "compactOnStart", "completion", "constraints", "goal", "mode", "planMode", "prompt", "runId", "taskId",
     "tokenProfile", "workspaceRoot", "contextData",
   ]);
   const unknownRequestField = Object.keys(requestRecord).find((key) => !knownRequestFields.has(key));
@@ -934,6 +936,73 @@ export class AiCoderRunController {
    * @param runId - run whose session owns the context manager.
    * @returns the pass result, or null when no run with that id is active.
    */
+  /** Plan mode per run: mirrored from the request, folded into every checkpoint. */
+  private readonly planModes = new Map<string, boolean>();
+  /** Latest plan snapshot per run, so hosts and checkpoints agree. */
+  private readonly planSnapshots = new Map<string, AiCoderPlanSnapshot>();
+  private readonly planModeGuidance = [
+    "",
+    "PLAN MODE (host-enforced, read-only):",
+    "- Do not change the workspace: mutating tools are refused with PLAN_MODE_READ_ONLY.",
+    "- Inspect freely, then maintain the plan through update_checkpoint steps in the compact form",
+    '  "doing: <current step>", "todo: <next step>", "done: <finished step>".',
+    "- When the plan is good enough, say so: the human leaves plan mode (approves) before anything is written.",
+  ].join("\n");
+
+  private planModeOf(session: RunSession): boolean {
+    return this.planModes.get(session.context.runId) === true;
+  }
+
+  /** Plan mode changes only the prompt; the tool catalog stays stable for the cache. */
+  private systemPromptFor(session: RunSession, base: string): string {
+    return this.planModeOf(session) ? `${base}\n${this.planModeGuidance}` : base;
+  }
+
+  private async emitPlan(
+    session: RunSession,
+    update: Readonly<{ completed: readonly string[]; inProgress: string | null; pending: readonly string[]; steps?: readonly AiCoderPlanStep[] }> | undefined,
+    toolCallId?: string,
+  ): Promise<void> {
+    const previous = this.planSnapshots.get(session.context.runId);
+    const snapshot = update === undefined
+      ? (previous ?? mergePlanSnapshot(undefined, { completed: Object.freeze([]), inProgress: null, pending: Object.freeze([]) }))
+      : mergePlanSnapshot(previous, update);
+    this.planSnapshots.set(session.context.runId, snapshot);
+    await this.notify(session, {
+      plan: snapshot,
+      planMode: this.planModeOf(session),
+      ...(toolCallId === undefined ? {} : { toolCallId }),
+      turn: session.modelTurns + 1,
+      type: "plan",
+    });
+  }
+
+  /**
+   * Enter or leave plan mode because the human asked (CLI `/plan`, the VSCode strip).
+   *
+   * @returns the mode actually set, or null when the run is not active.
+   */
+  async setPlanMode(runId: string, on: boolean): Promise<boolean | null> {
+    const session = this.active.get(runId);
+    if (session === undefined) return null;
+    this.planModes.set(runId, on);
+    const prompt = session.promptSnapshot;
+    if (prompt !== null && prompt !== undefined) {
+      session.contextManager?.replaceSystemPrompt(
+        this.systemPromptFor(session, prompt.systemPrompt),
+        session.modelTurns,
+        session.capabilities?.systemPromptUpdate === "in-history" ? "in-history" : "in-place",
+      );
+    }
+    await this.emitPlan(session, undefined);
+    return on;
+  }
+
+  /** The plan a host should render right now, or null when no run is active. */
+  planSnapshot(runId: string): AiCoderPlanSnapshot | null {
+    return this.active.get(runId) === undefined ? null : (this.planSnapshots.get(runId) ?? null);
+  }
+
   async compact(runId: string): Promise<Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }> | null> {
     const session = this.active.get(runId);
     const manager = session?.contextManager ?? null;
@@ -990,6 +1059,8 @@ export class AiCoderRunController {
       taskId: requestSnapshot.taskId,
       workspaceRoot: requestSnapshot.workspaceRoot,
     } satisfies RunExecutionContext);
+    /* Seeded before the context manager is created: the first prompt must already carry the guidance. */
+    this.planModes.set(context.runId, request.planMode === true);
     const session: RunSession = {
       abortController,
       approvalGate: null,
@@ -1261,7 +1332,7 @@ export class AiCoderRunController {
       systemPromptHash,
     });
     session.contextManager?.replaceSystemPrompt(
-      promptSnapshot.systemPrompt,
+      this.systemPromptFor(session, promptSnapshot.systemPrompt),
       session.modelTurns,
       session.capabilities?.systemPromptUpdate === "in-history" ? "in-history" : "in-place",
     );
@@ -1389,7 +1460,7 @@ export class AiCoderRunController {
       profile: session.request.tokenProfile ?? "balanced",
       ...(checkpoint ? { resumeCheckpoint: checkpoint } : {}),
       runId: session.context.runId,
-      systemPrompt: promptSnapshot.systemPrompt,
+      systemPrompt: this.systemPromptFor(session, promptSnapshot.systemPrompt),
       taskId: session.context.taskId,
       timestamp: this.clock.timestamp,
     });
@@ -2291,7 +2362,27 @@ export class AiCoderRunController {
     session.activeToolCalls += 1;
     let result: AiCoderRuntimeToolResult;
     try {
-      result = await this.awaitInterruptible(session, this.dependencies.toolExecutor.execute(call, toolContext));
+      const canonicalId = session.toolSet.canonicalToolIds[call.name] ?? call.name;
+      const capabilities = session.toolSet.effectCapabilities[canonicalId] ?? [];
+      if (this.planModeOf(session) && capabilities.includes("write")) {
+        result = Object.freeze({
+          canonicalToolId: canonicalId,
+          content: stableJson({
+            error: {
+              code: "PLAN_MODE_READ_ONLY",
+              message: "Plan mode is read-only. Record the step with update_checkpoint steps and let the human approve before changing the workspace.",
+              retryable: false,
+            },
+            ok: false,
+          }),
+          error: Object.freeze({ code: "PLAN_MODE_READ_ONLY", message: "Blocked by plan mode.", retryable: false }),
+          ok: false,
+          summary: "Blocked: plan mode is read-only.",
+          trust: "trusted" as const,
+        });
+      } else {
+        result = await this.awaitInterruptible(session, this.dependencies.toolExecutor.execute(call, toolContext));
+      }
     } catch (error) {
       session.evidence.lastToolCalls[session.evidence.lastToolCalls.length - 1] = { ...callRecord, outcome: "unknown" };
       session.evidence.openProblems.push(`Tool ${call.name} failed before returning a structured result; its side-effect outcome is unknown.`);
@@ -2965,7 +3056,10 @@ export class AiCoderRunController {
     if (effects.writes?.length) await this.transition(session, "executing", `${call.name} changed workspace state.`);
     else if (effects.validations?.length) await this.transition(session, "validating", `${call.name} produced validation evidence.`);
     else if (effects.diffReview) await this.transition(session, "reviewing", `${call.name} reviewed the final diff.`);
-    else if (effects.plan) await this.transition(session, "planning", `${call.name} updated the run plan.`);
+    else if (effects.plan) {
+      await this.transition(session, "planning", `${call.name} updated the run plan.`);
+      await this.emitPlan(session, effects.plan, call.toolCallId);
+    }
   }
 
   private completionSnapshot(
@@ -3327,7 +3421,9 @@ export class AiCoderRunController {
         completed: Object.freeze([...session.evidence.plan.completed]),
         inProgress: session.evidence.plan.inProgress,
         pending: Object.freeze([...session.evidence.plan.pending]),
+        steps: Object.freeze([...(this.planSnapshots.get(session.context.runId)?.steps ?? [])]),
       }),
+      ...(this.planModeOf(session) ? { planMode: true } : {}),
       researchSources: Object.freeze(session.evidence.researchSources.map((item) => Object.freeze({ ...item }))),
       runId: session.context.runId,
       schemaVersion: 1,

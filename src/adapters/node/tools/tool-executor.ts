@@ -25,6 +25,8 @@ import {
   type WorkspacePort,
 } from "../../../index.js";
 import { posix } from "node:path";
+import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
+import { parsePlanSteps } from "../../../runtime/plan.js";
 
 import { sha256Text } from "../host/content-hash.js";
 import {
@@ -120,6 +122,7 @@ export interface LabTaskCheckpointState {
   readonly decisions: readonly string[];
   readonly goal: string;
   readonly nextStep: string;
+  readonly steps: readonly AiCoderPlanStep[];
   readonly progress: string;
   readonly updatedAt: string;
 }
@@ -708,6 +711,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             progress: stringArgument(argumentsValue, "progress", checkpoint?.progress ?? ""),
             decisions: Object.freeze(stringArray(argumentsValue, "decisions")),
             nextStep: stringArgument(argumentsValue, "nextStep", checkpoint?.nextStep ?? ""),
+            steps: parsePlanSteps(stringArray(argumentsValue, "steps")),
             updatedAt: "1970-01-01T00:00:00.000Z",
           });
           this.taskCheckpointStore.set(context.runId, checkpoint);
@@ -718,6 +722,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             progress: "",
             decisions: Object.freeze([]),
             nextStep: "Inspect the workspace.",
+            steps: Object.freeze([]),
             updatedAt: "1970-01-01T00:00:00.000Z",
           });
           this.taskCheckpointStore.set(context.runId, checkpoint);
@@ -733,6 +738,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
               decisions: Object.freeze([...checkpoint.decisions]),
               inProgress: checkpoint.nextStep.trim() || null,
               pending: Object.freeze([]),
+              ...(checkpoint.steps.length ? { steps: checkpoint.steps } : {}),
             }),
             stateVersion: sha256Text(JSON.stringify(checkpoint)),
           }),
