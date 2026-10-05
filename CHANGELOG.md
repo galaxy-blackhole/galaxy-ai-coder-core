@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.9] - 2026-10-05 15:55 +0700
+
+### Fixed
+
+- `steps` on the task checkpoint state is optional again. Making it required broke every caller that
+  mirrors the state type — the lab package (`testing/`) failed to type check, which is what turned CI
+  red on 0.3.8.
+
 ## [0.3.8] - 2026-10-05 12:05 +0700
 
 ### Added

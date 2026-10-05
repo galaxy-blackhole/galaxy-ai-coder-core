@@ -20,6 +20,11 @@
 - Không có hệ "user questions" mới: cổng duyệt dùng chính affordance sẵn có của từng bề mặt (CLI `/plan off`,
   VSCode nút trên dải) ⇒ nhất quán giữa hai host.
 
+### Fixed
+
+- `steps` trong trạng thái task checkpoint là **optional** (bản 0.3.8 khai bắt buộc nên package lab
+  `testing/` — nơi sao chép type này — không typecheck được ⇒ CI đỏ; 0.3.9 sửa lại).
+
 ### Tests
 
 - `test/plan.test.ts`: parse/merge/suy diễn bucket, id tiếng Việt (`đ → d`), chống trùng id.

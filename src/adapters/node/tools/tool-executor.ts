@@ -122,7 +122,7 @@ export interface LabTaskCheckpointState {
   readonly decisions: readonly string[];
   readonly goal: string;
   readonly nextStep: string;
-  readonly steps: readonly AiCoderPlanStep[];
+  readonly steps?: readonly AiCoderPlanStep[];
   readonly progress: string;
   readonly updatedAt: string;
 }
@@ -738,7 +738,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
               decisions: Object.freeze([...checkpoint.decisions]),
               inProgress: checkpoint.nextStep.trim() || null,
               pending: Object.freeze([]),
-              ...(checkpoint.steps.length ? { steps: checkpoint.steps } : {}),
+              ...(checkpoint.steps?.length ? { steps: checkpoint.steps } : {}),
             }),
             stateVersion: sha256Text(JSON.stringify(checkpoint)),
           }),
