@@ -924,6 +924,31 @@ export class AiCoderRunController {
     return true;
   }
 
+  /**
+   * Compact one live run's context because a human asked (`/compact`).
+   *
+   * Unlike {@link cancel} and {@link pause}, which flip a control the loop reads
+   * later, this runs to completion inside the caller's await: the host reports the
+   * saving the moment the human asks for it.
+   *
+   * @param runId - run whose session owns the context manager.
+   * @returns the pass result, or null when no run with that id is active.
+   */
+  async compact(runId: string): Promise<Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }> | null> {
+    const session = this.active.get(runId);
+    const manager = session?.contextManager ?? null;
+    if (session === undefined || manager === null) return null;
+    const result = await manager.compactNow(session.modelTurns + 1);
+    await this.notify(session, {
+      itemsShadowed: result.itemsShadowed,
+      reason: "manual",
+      tokensAfter: result.tokensAfter,
+      tokensBefore: result.tokensBefore,
+      type: "compaction",
+    });
+    return result;
+  }
+
   async resolveApproval(runId: string, requestId: string, decision: "denied" | "granted"): Promise<boolean> {
     const session = this.active.get(runId);
     if (!session) return false;

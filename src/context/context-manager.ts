@@ -277,6 +277,26 @@ export class AiCoderContextManager {
     return this.compactionCount;
   }
 
+  /**
+   * Compact now because a human asked (`/compact`), not because the window filled.
+   *
+   * The pass is the one the threshold trigger runs — durable checkpoint, bounded
+   * high-signal retain set, one P1 summary — so a manual compaction lands in the
+   * shape an automatic one produces; only the checkpoint reason (`manual`) differs.
+   *
+   * @param turn - model turn the summary is attributed to (it names the item).
+   * @returns how many recent items the summary shadowed, plus the prompt tokens
+   *   before and after, so a host can report the saving the way `/compact` does.
+   */
+  async compactNow(turn: number): Promise<Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }>> {
+    return this.compact("manual", turn);
+  }
+
+  /** Prompt tokens the current item set costs, from the manager's own estimate. */
+  private promptTokens(): number {
+    return this.items.reduce((total, item) => total + item.tokenCount, 0);
+  }
+
   private estimateMessages(messages: readonly CodingMessage[]): number {
     return messages.reduce((sum, message) => sum
       + 6
@@ -632,13 +652,14 @@ export class AiCoderContextManager {
     });
   }
 
-  private async compact(reason: AiCoderCheckpointReason, turn: number): Promise<void> {
+  private async compact(reason: AiCoderCheckpointReason, turn: number): Promise<Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }>> {
     if (!this.options.checkpointProvider) {
       throw new AiCoderContextBudgetError(
         "CHECKPOINT_UNAVAILABLE",
         "Context compaction requires a durable checkpoint provider.",
       );
     }
+    const tokensBefore = this.promptTokens();
     const result = await this.options.checkpointProvider({ reason, turn });
     const issues = await validateAiCoderRunCheckpoint(result.checkpoint);
     if (issues.length) throw new Error(`Checkpoint provider returned invalid state: ${issues.map((item) => item.message).join(" ")}`);
@@ -697,6 +718,11 @@ export class AiCoderContextManager {
     this.compactionCount += 1;
     this.toolRoundsSinceCheckpoint = 0;
     this.latestCheckpoint = result.checkpoint;
+    return Object.freeze({
+      itemsShadowed: recent.length - retained.length,
+      tokensAfter: this.promptTokens(),
+      tokensBefore,
+    });
   }
 
   async prepareRound(input: Readonly<{

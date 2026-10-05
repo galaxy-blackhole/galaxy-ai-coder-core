@@ -243,6 +243,7 @@ export type AiCoderRuntimeEventPayload =
   | Readonly<{ call: CodingToolCall; result: AiCoderRuntimeToolResult; type: "tool_result" }>
   | Readonly<{ attempt: number; delayMs: number; message: string; type: "model_retry" }>
   | Readonly<{ checkpoint: AiCoderRunCheckpoint; reason: AiCoderCheckpointReason; type: "checkpoint" }>
+  | Readonly<{ itemsShadowed: number; reason: AiCoderCheckpointReason; tokensAfter: number; tokensBefore: number; type: "compaction" }>
   | Readonly<{
       candidate: string;
       issues: readonly string[];

@@ -1235,6 +1235,42 @@ test("runtime correlates but does not execute later batch calls while approval i
   assert.deepEqual(firstBatchResults.map((message) => message.toolCallId), ["approval-call", "blocked-call"]);
 });
 
+test("a manual compaction shrinks the live context and reports what it shadowed", async () => {
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("workspace_list", "list-1", { path: "src" }), done("", "tool_calls")]),
+    Object.freeze([toolWithArguments("workspace_list", "list-2", { path: "src" }), done("", "tool_calls")]),
+    Object.freeze([done("Inspected twice.")]),
+  ]);
+  const store = new MemoryStore();
+  const events: Array<Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }>> = [];
+  let asked: Promise<unknown> | undefined;
+  const controller = new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+    onEvent(event) {
+      if (event.type === "compaction") events.push(Object.freeze({ itemsShadowed: event.itemsShadowed, tokensAfter: event.tokensAfter, tokensBefore: event.tokensBefore }));
+      if (event.type !== "tool_result" || event.call.toolCallId !== "list-1" || asked !== undefined) return;
+      asked = controller.compact("run-manual-compaction");
+    },
+  });
+  const handle = controller.start(request("run-manual-compaction"));
+  const result = await handle.result;
+  const pass = (await asked) as Readonly<{ itemsShadowed: number; tokensAfter: number; tokensBefore: number }> | null;
+  assert.equal(result.state, "completed");
+  assert.ok(pass !== null, "the caller gets the pass result back");
+  assert.equal(events.length, 1, "the controller publishes one compaction event for the host to report");
+  assert.deepEqual(events[0], pass, "the event reports exactly what the pass returned");
+  assert.ok(Number.isInteger(pass!.itemsShadowed) && pass!.itemsShadowed >= 0);
+  assert.ok(pass!.tokensBefore > 0);
+  assert.ok(pass!.tokensAfter > 0);
+  /* Few small observations may leave nothing worth shadowing, and the checkpoint
+     item can then cost more than it saves; the threshold path is what shrinks a
+     real window, so the numbers are asserted as reported, not as a strict drop. */
+  assert.ok(store.checkpoints.some((checkpoint) => checkpoint.reason === "manual"), "the pass persists a checkpoint the manual reason owns");
+  assert.equal(await controller.compact("run-not-active"), null, "an inactive run has nothing to compact");
+});
+
 test("empty completed responses without tools fail immediately instead of entering a completion loop", async () => {
   for (const [index, content] of ["", " \n\t"].entries()) {
     const model = new ScriptedModel([Object.freeze([done(content)])]);
