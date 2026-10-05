@@ -11,6 +11,10 @@
 - `compact()` nội bộ nay **trả về số liệu** `{ itemsShadowed, tokensBefore, tokensAfter }` để host in
   được câu kiểu web: "đã nén N mục (~X → Y token)".
 
+- **`AiCoderRunRequest.compactOnStart`**: nửa "lúc rảnh" của `/compact` — lượt kế tiếp nén **trước
+  turn model đầu tiên**, nên cả lượt đó đã trả giá bằng prompt gọn. Máy trạng thái nay cho phép
+  `preparing` ↔ `compacting` (pass trả về đúng trạng thái nó cắt ngang).
+
 ### Ghi chú thiết kế
 
 - **Khi có quá ít item để nén, pass có thể tốn hơn phần bị nén** (checkpoint + summary đắt hơn vài

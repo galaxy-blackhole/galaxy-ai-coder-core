@@ -1271,6 +1271,29 @@ test("a manual compaction shrinks the live context and reports what it shadowed"
   assert.equal(await controller.compact("run-not-active"), null, "an inactive run has nothing to compact");
 });
 
+test("compactOnStart compacts before the first model turn of the next run", async () => {
+  /* Same shape as the passing approval test: inspect once, then report. */
+  const model = new ScriptedModel([
+    Object.freeze([toolWithArguments("workspace_list", "list-1", { path: "src" }), done("", "tool_calls")]),
+    Object.freeze([done("Inspected src; nothing to change.")]),
+  ]);
+  const store = new MemoryStore();
+  const events: string[] = [];
+  const controller = new AiCoderRunController({
+    model,
+    store,
+    toolExecutor: new DeterministicExecutor(),
+    onEvent(event) {
+      if (event.type === "compaction") events.push(event.reason);
+    },
+  });
+  const handle = controller.start({ ...request("run-compact-on-start"), compactOnStart: true });
+  const result = await handle.result;
+  assert.equal(result.state, "completed", JSON.stringify(result.error ?? null));
+  assert.deepEqual(events, ["manual"], "the deferred compaction reports itself like a live one");
+  assert.ok(store.checkpoints.some((checkpoint) => checkpoint.reason === "manual"), "the deferred pass persists its checkpoint");
+});
+
 test("empty completed responses without tools fail immediately instead of entering a completion loop", async () => {
   for (const [index, content] of ["", " \n\t"].entries()) {
     const model = new ScriptedModel([Object.freeze([done(content)])]);

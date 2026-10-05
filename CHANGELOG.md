@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.7] - 2026-10-05 10:35 +0700
+
+### Added
+
+- Context compaction on request: `AiCoderContextManager.compactNow`, `AiCoderRunController.compact(runId)`
+  and the `compaction` runtime event, so a host `/compact` runs the same pass the threshold trigger runs.
+  See [CHANGELOG.d fragment](CHANGELOG.d/2026-10-05-nen-context-thu-cong.md).
+- `AiCoderRunRequest.compactOnStart`: the idle half of `/compact` — the next run compacts before its
+  first model turn (the state machine now allows `preparing` ↔ `compacting`).
+
 ## [0.3.6] - 2026-10-04 16:45 +0700
 
 ### Fixed

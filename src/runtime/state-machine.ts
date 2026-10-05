@@ -23,14 +23,16 @@ const INTERRUPTIBLE = Object.freeze(["waiting_approval", "compacting", "paused",
 const TRANSITIONS: Readonly<Record<AiCoderRunState, readonly AiCoderRunState[]>> = Object.freeze({
   cancelled: Object.freeze([]),
   completed: Object.freeze([]),
-  compacting: states(...OPERATIONAL, "waiting_approval", "failed", "cancelled", "paused"),
+  /* `preparing` joins the pair: a host may ask for a compaction before the first model
+     turn (`compactOnStart`), and the pass returns to the state it interrupted. */
+  compacting: states(...OPERATIONAL, "waiting_approval", "failed", "cancelled", "paused", "preparing"),
   created: states("preparing", "cancelled"),
   executing: states(...OPERATIONAL, ...INTERRUPTIBLE),
   failed: Object.freeze([]),
   inspecting: states(...OPERATIONAL, ...INTERRUPTIBLE),
   paused: Object.freeze([]),
   planning: states(...OPERATIONAL, ...INTERRUPTIBLE),
-  preparing: states("inspecting", "planning", "executing", "reviewing", "resuming", "paused", "failed", "cancelled"),
+  preparing: states("inspecting", "planning", "executing", "reviewing", "resuming", "compacting", "paused", "failed", "cancelled"),
   resuming: states("inspecting", "planning", "executing", "validating", "reviewing", "paused", "failed", "cancelled"),
   reviewing: states(...OPERATIONAL, "completed", ...INTERRUPTIBLE),
   validating: states(...OPERATIONAL, ...INTERRUPTIBLE),

@@ -444,7 +444,7 @@ function assertRunRequest(request: AiCoderRunRequest | AiCoderResumeRequest, run
   }
   const knownRequestFields = new Set([
     "acceptanceCriteria", "attachments", "budget", "checkpoint", "checkpointTrust",
-    "completion", "constraints", "goal", "mode", "prompt", "runId", "taskId",
+    "compactOnStart", "completion", "constraints", "goal", "mode", "prompt", "runId", "taskId",
     "tokenProfile", "workspaceRoot", "contextData",
   ]);
   const unknownRequestField = Object.keys(requestRecord).find((key) => !knownRequestFields.has(key));
@@ -1394,6 +1394,19 @@ export class AiCoderRunController {
       timestamp: this.clock.timestamp,
     });
     session.contextManager = manager;
+    if (session.request.compactOnStart === true) {
+      /* A host asked for a compaction while nothing was running; do it before the first
+         model turn so the whole turn pays the smaller prompt, and report it the way a
+         live manual pass reports. */
+      const pass = await manager.compactNow(1);
+      await this.notify(session, {
+        itemsShadowed: pass.itemsShadowed,
+        reason: "manual",
+        tokensAfter: pass.tokensAfter,
+        tokensBefore: pass.tokensBefore,
+        type: "compaction",
+      });
+    }
     await this.emitPromptSnapshot(session);
   }
 

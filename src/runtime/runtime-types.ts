@@ -220,6 +220,14 @@ export type AiCoderRunRequest = Readonly<{
   }>[];
   attachments?: readonly AiCoderAttachment[];
   budget?: Partial<AiCoderRunBudget>;
+  /**
+   * Compact the incoming context before the first model turn.
+   *
+   * The idle half of a host's `/compact`: with no run in flight there is nothing live to
+   * shrink, so the request carries the intent into the next run and the first turn
+   * already pays the smaller prompt.
+   */
+  compactOnStart?: boolean;
   completion?: AiCoderCompletionRequirements;
   constraints?: readonly string[];
   goal: string;
