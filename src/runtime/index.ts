@@ -4,4 +4,5 @@ export * from "./runtime-error.js";
 export * from "./runtime-types.js";
 export * from "./research-citations.js";
 export * from "./state-machine.js";
+export * from "./thinking-policy.js";
 export * from "./trace-emitter.js";

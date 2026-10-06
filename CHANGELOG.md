@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.13] - 2026-10-06 18:40 +0700
+
+### Added
+
+- **`thinking-policy` chuyển từ CLI vào core**: một từ vựng chung cho mức suy luận (default/off/on +
+  minimal…max), nhãn tiếng Việt, `resolveThinkingPolicy` theo model, `cycleThinking` và`toOllamaThinking`.
+  CLI, web GUI và extension VSCode giờ đọc cùng một policy thay vì mỗi nơi một bản.
 ## [0.3.12] - 2026-10-06 14:30 +0700
 
 ### Fixed
