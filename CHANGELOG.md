@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.11] - 2026-10-06 10:45 +0700
+
+### Added
+
+- **`adapters/node/config/workspace-mcp`**: one reader for a project's MCP servers, the way the editor
+  already writes them (`.vscode/mcp.json`, stdio entries only), plus the merge rule hosts share:
+  an explicit agent config wins, then the workspace file, then whatever the host calls its defaults.
+  Both the CLI and the VS Code extension now read the same file through it.
+
 ## [0.3.10] - 2026-10-05 20:35 +0700
 
 ### Fixed
