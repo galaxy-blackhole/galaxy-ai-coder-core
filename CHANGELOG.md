@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
+## [0.3.10] - 2026-10-05 20:35 +0700
+
+### Fixed
+
+- `update_checkpoint` no longer fails every real run: 0.3.8 taught the tool to write plan `steps`
+  but never declared them in its **output** schema, so the runtime rejected the result as untrusted
+  after dispatch. Found by the extension's new host E2E test, not by the unit suites.
+
 ## [0.3.9] - 2026-10-05 15:55 +0700
 
 ### Fixed

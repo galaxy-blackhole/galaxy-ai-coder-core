@@ -175,12 +175,23 @@ const DERIVED_MUTATION_OBSERVATION = objectSchema(
   },
   ["count", "paths", "truncated"],
 );
+/** One plan step the checkpoint tool persists; the plan checklist is rendered from these. */
+const TASK_CHECKPOINT_STEP = objectSchema(
+  {
+    id: NON_EMPTY_STRING,
+    status: { type: "string", enum: ["completed", "in_progress", "pending", "skipped"] },
+    title: NON_EMPTY_STRING,
+  },
+  ["id", "status", "title"],
+);
 const TASK_CHECKPOINT = objectSchema(
   {
     goal: NON_EMPTY_STRING,
     progress: STRING,
     decisions: arraySchema(STRING, 32),
     nextStep: STRING,
+    /* The rich plan steps the tool writes; the reader tolerates a record without them. */
+    steps: arraySchema(TASK_CHECKPOINT_STEP, 20),
     updatedAt: STRING,
   },
   ["goal", "progress", "decisions", "nextStep", "updatedAt"],

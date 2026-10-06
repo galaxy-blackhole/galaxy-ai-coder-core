@@ -25,6 +25,13 @@
 - `steps` trong trạng thái task checkpoint là **optional** (bản 0.3.8 khai bắt buộc nên package lab
   `testing/` — nơi sao chép type này — không typecheck được ⇒ CI đỏ; 0.3.9 sửa lại).
 
+### Fixed
+
+- `steps` **thiếu trong output schema** của `task.checkpoint`: tool ghi ra `steps` nhưng schema không
+  khai báo, nên runtime coi kết quả là bằng chứng không đáng tin và **mọi run thật dùng
+  `update_checkpoint` đều fail** (0.3.8 → 0.3.10). Lỗi này lọt qua các unit test vì chúng dùng
+  executor giả; test host E2E mới của extension bắt được.
+
 ### Tests
 
 - `test/plan.test.ts`: parse/merge/suy diễn bucket, id tiếng Việt (`đ → d`), chống trùng id.
