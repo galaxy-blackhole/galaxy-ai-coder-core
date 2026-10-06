@@ -27,6 +27,7 @@ import {
 import { posix } from "node:path";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
+import type { PlanStepInput } from "../../../runtime/plan.js";
 
 import { sha256Text } from "../host/content-hash.js";
 import {
@@ -293,6 +294,13 @@ function optionalNumber(argumentsValue: JsonObject, name: string): number | unde
 function optionalBoolean(argumentsValue: JsonObject, name: string): boolean | undefined {
   const value = argumentsValue[name];
   return typeof value === "boolean" ? value : undefined;
+}
+
+/** Plan steps may arrive as shorthand strings or as objects; the parser accepts both. */
+function planStepInputs(argumentsValue: JsonObject, name: string): readonly PlanStepInput[] {
+  const value = argumentsValue[name];
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is PlanStepInput => typeof item === "string" || (item !== null && typeof item === "object" && !Array.isArray(item)));
 }
 
 function stringArray(argumentsValue: JsonObject, name: string): readonly string[] {
@@ -711,7 +719,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             progress: stringArgument(argumentsValue, "progress", checkpoint?.progress ?? ""),
             decisions: Object.freeze(stringArray(argumentsValue, "decisions")),
             nextStep: stringArgument(argumentsValue, "nextStep", checkpoint?.nextStep ?? ""),
-            steps: parsePlanSteps(stringArray(argumentsValue, "steps")),
+            steps: parsePlanSteps(planStepInputs(argumentsValue, "steps")),
             updatedAt: "1970-01-01T00:00:00.000Z",
           });
           this.taskCheckpointStore.set(context.runId, checkpoint);

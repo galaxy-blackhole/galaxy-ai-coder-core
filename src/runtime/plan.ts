@@ -20,7 +20,22 @@ const STATUS_ALIASES: Readonly<Record<string, AiCoderPlanStep["status"]>> = Obje
 });
 
 /** Parse the compact `"<status>: <title>"` form; a bare title is a pending step. */
-export function parsePlanStep(input: string): AiCoderPlanStep | null {
+/**
+ * A plan step as the model hands it over: the shorthand string (status: title), or the object form the
+ * checklist itself uses. The tool schema used to describe only the string while the checkpoint record used
+ * only the object, which is how a real run failed step 1 with steps[0] must be a string.
+ */
+export type PlanStepInput = string | Readonly<{ id?: unknown; status?: unknown; title?: unknown }>;
+
+export function parsePlanStep(input: PlanStepInput): AiCoderPlanStep | null {
+  if (typeof input !== "string") {
+    if (input === null || typeof input !== "object" || Array.isArray(input)) return null;
+    const title = typeof input.title === "string" ? input.title.trim() : "";
+    if (!title) return null;
+    const rawStatus = typeof input.status === "string" ? input.status.trim().toLowerCase() : "";
+    const id = typeof input.id === "string" && input.id.trim().length > 0 ? input.id.trim() : planStepId(title);
+    return Object.freeze({ id, status: STATUS_ALIASES[rawStatus] ?? "pending", title });
+  }
   const trimmed = input.trim();
   if (!trimmed) return null;
   const separator = trimmed.indexOf(":");
@@ -48,7 +63,7 @@ export function planStepId(title: string): string {
 }
 
 /** Parse a list of compact strings, dropping blanks and de-duplicating identical ids. */
-export function parsePlanSteps(inputs: readonly string[]): readonly AiCoderPlanStep[] {
+export function parsePlanSteps(inputs: readonly PlanStepInput[]): readonly AiCoderPlanStep[] {
   const seen = new Set<string>();
   const steps: AiCoderPlanStep[] = [];
   for (const input of inputs) {

@@ -176,6 +176,15 @@ const DERIVED_MUTATION_OBSERVATION = objectSchema(
   ["count", "paths", "truncated"],
 );
 /** One plan step the checkpoint tool persists; the plan checklist is rendered from these. */
+/** The step form the model sends in practice; the shorthand string stays accepted for compatibility. */
+const TASK_CHECKPOINT_INPUT_STEP = objectSchema(
+  {
+    id: { type: "string", description: "Stable step id; derived from the title when omitted." },
+    status: { type: "string", enum: ["completed", "in_progress", "pending", "skipped", "done", "doing", "todo", "skip"] },
+    title: NON_EMPTY_STRING,
+  },
+  ["status", "title"],
+);
 const TASK_CHECKPOINT_STEP = objectSchema(
   {
     id: NON_EMPTY_STRING,
@@ -229,7 +238,7 @@ const CATALOG: AiCoderToolDescriptor[] = [
       progress: { type: "string", description: "Concise verified progress when action is 'update'." },
       decisions: immutable({ ...arraySchema(STRING, 32), description: "Bounded durable decisions when action is 'update'." }),
       nextStep: { type: "string", description: "The next concrete action when action is 'update'." },
-      steps: immutable({ ...arraySchema(STRING, 20), description: "Ordered plan steps when action is 'update', each as '<status>: <title>' with status done | doing | todo | skip. Prefer this over progress/nextStep for multi-step work: it is what the human sees as a checklist." }),
+      steps: immutable({ ...arraySchema({ oneOf: [STRING, TASK_CHECKPOINT_INPUT_STEP] }, 20), description: "Ordered plan steps when action is update. Each step is either an object with status and title (id optional) or the shorthand status: title. Status is one of completed, in_progress, pending, skipped; done, doing, todo and skip also work. Prefer this over progress/nextStep for multi-step work: it is what the human sees as a checklist." }),
     }, ["action"]),
     outputSchema: objectSchema({ action: { type: "string", enum: ["read", "update"] }, checkpointId: NON_EMPTY_STRING, updated: BOOLEAN, checkpoint: TASK_CHECKPOINT }, ["action", "checkpointId", "updated", "checkpoint"]),
     permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 4_000, enabledByDefault: true, source: { owner: "core" },
