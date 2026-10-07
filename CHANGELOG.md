@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.15] - 2026-10-07 14:50 +0700
+## [0.3.16] - 2026-10-07 15:40 +0700
+
+### Added
+
+- **`TOOL_LABELS`, `labelForModelName`, `toolLabel`** (xuất qua `@galaxy-stack/ai-coder-core/tools`): bảng tên
+  người đọc được cho từng công cụ, ví dụ `list_files` → *"Liệt kê thư mục"*, `detect_project` → *"Nhận diện dự
+  án"*, kèm phần chi tiết gọn (`Chạy lệnh (npm test)`, `Đọc tệp (src/app.ts)`) và xử lý tên MCP
+  (`mcp_<server>_<tool>_<hash>` → bỏ hash và tiền tố server).
+
+### Changed
+
+- CLI (`galaxy-code/src/timeline.tsx`) và webview của extension nay **dùng chung một bảng** thay vì mỗi nơi giữ
+  một bản — thêm công cụ mới chỉ cần đặt tên một lần.## [0.3.15] - 2026-10-07 14:50 +0700
 
 ### Fixed
 

@@ -16,4 +16,5 @@ export * from "./tools/json-schema.js";
 export * from "./tools/settings-types.js";
 export * from "./tools/tool-effect-profile.js";
 export * from "./tools/tool-registry-types.js";
+export * from "./tools/tool-labels.js";
 export * from "./tools/tool-registry.js";

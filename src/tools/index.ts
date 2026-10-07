@@ -4,3 +4,4 @@ export * from "./settings-types.js";
 export * from "./tool-effect-profile.js";
 export * from "./tool-registry-types.js";
 export * from "./tool-registry.js";
+export * from "./tool-labels.js";
