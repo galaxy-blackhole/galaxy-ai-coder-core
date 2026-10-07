@@ -199,6 +199,30 @@ function sanitizedStreamChunks(chunks: readonly unknown[], apiKey: string | unde
   }));
 }
 
+/** How long the stream may stay silent before the run fails instead of hanging forever. */
+export const OLLAMA_STREAM_IDLE_MS = 180_000;
+
+/**
+ * Read one chunk, failing loudly when the server goes quiet. The byte cap catches runaway volume; a stream
+ * that simply stops mid-answer used to hang the run indefinitely — a CLI flow once sat silent for nearly two
+ * hours with the UI showing the last tool call. The abort path still cancels the reader from the caller.
+ */
+function readWithIdle(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  idleMs: number = OLLAMA_STREAM_IDLE_MS,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      void reader.cancel().catch(() => undefined);
+      reject(new Error("Ollama stream im lặng " + Math.round(idleMs / 1000).toString() + "s — lượt chạy đã dừng."));
+    }, idleMs);
+    reader.read().then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error instanceof Error ? error : new Error(String(error))); },
+    );
+  });
+}
+
 async function* readResponseBody(response: Response, signal: AbortSignal): AsyncGenerator<Uint8Array> {
   if (response.body === null) throw new Error("Ollama response has no body.");
   const reader = response.body.getReader();
@@ -209,7 +233,7 @@ async function* readResponseBody(response: Response, signal: AbortSignal): Async
   if (signal.aborted) abort();
   try {
     while (true) {
-      const part = await reader.read();
+      const part = await readWithIdle(reader);
       signal.throwIfAborted();
       if (part.done) { ended = true; break; }
       bytes += part.value.byteLength;

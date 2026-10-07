@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.14] - 2026-10-07 03:20 +0700
+## [0.3.15] - 2026-10-07 14:50 +0700
+
+### Fixed
+
+- **Stream model im lặng không còn treo lượt chạy vô hạn**: `readResponseBody` trong `ollama-coding-model` đã
+  có trần dung lượng (8 MiB) nhưng **không có giới hạn thời gian im lặng**, nên chỉ cần đường truyền khựng một
+  nhịp là lượt chạy đứng mãi (một flow của CLI từng im lặng gần hai tiếng, UI vẫn hiện tool cuối cùng). Nay
+  stream im lặng **180 giây** (`OLLAMA_STREAM_IDLE_MS`) là huỷ và báo rõ: *"Ollama stream im lặng 180s — lượt
+  chạy đã dừng."*. Đường huỷ theo `AbortSignal` vẫn giữ nguyên.## [0.3.14] - 2026-10-07 03:20 +0700
 
 ### Fixed
 
