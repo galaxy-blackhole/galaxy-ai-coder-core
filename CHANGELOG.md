@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.13] - 2026-10-06 18:40 +0700
+## [0.3.14] - 2026-10-07 03:20 +0700
+
+### Fixed
+
+- **Snapshot workspace không còn giết cả lượt chạy**: trước đây chỉ cần workspace vượt **512 MiB** tệp không-derived
+  (hoặc 100 000 entry) là `capture()` ném `LIMIT_EXCEEDED` → extension báo `SESSION_ERROR` và lượt chạy chết ngay
+  trước khi gọi model. Nay:
+  - **giới hạn theo từng tệp** (`maxFileBytes`, mặc định 8 MiB): tệp lớn hơn được băm bằng **metadata** thay vì
+    cộng cả trăm MB vào ngân sách — một file ISO/video/PDF/bản editor tải về không thể làm hỏng snapshot;
+  - **vượt ngân sách thì hạ cấp, không ném lỗi**: phần vượt được băm bằng metadata và snapshot được đánh dấu
+    `degraded: true` kèm `metadataOnly` (số tệp phải bỏ qua content hash) — công cụ review vẫn chạy, chỉ yếu hơn;
+  - nhờ vậy **không cần chạy đua thêm tên thư mục derived**: thư mục lạ nào cũng chỉ khiến snapshot bị đánh dấu,
+    không cần phát hành bản mới để thêm vào danh sách.## [0.3.13] - 2026-10-06 18:40 +0700
 
 ### Added
 

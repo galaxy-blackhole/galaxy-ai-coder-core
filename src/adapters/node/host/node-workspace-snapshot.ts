@@ -9,6 +9,12 @@ import { isGeneratedWorkspacePath } from "./workspace-generated-state.js";
 
 const MAX_ENTRIES = 100_000;
 const MAX_BYTES = 512 * 1024 * 1024;
+/**
+ * No single durable file spends more than this of the budget; bigger ones are fingerprinted by stable
+ * metadata instead. A stray archive, video or downloaded editor build must not cost a run its snapshot,
+ * and the list of derived directories can never be complete.
+ */
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_DURABLE_MUTATIONS = 10_000;
 const READ_BUFFER_BYTES = 64 * 1024;
 const DIRECTORY_HASH = createHash("sha256").update("directory\0", "utf8").digest("hex");
@@ -25,6 +31,10 @@ export type NodeWorkspaceSnapshotEntry = Readonly<{
 export type NodeWorkspaceSnapshot = Readonly<{
   entries: readonly NodeWorkspaceSnapshotEntry[];
   stateVersion: string;
+  /** True when a limit was hit, so oversized files and the tail of the walk carry metadata fingerprints. */
+  degraded?: boolean;
+  /** How many durable files could not afford a content hash this time. */
+  metadataOnly?: number;
 }>;
 
 export type NodeWorkspaceSnapshotOptions = Readonly<{
@@ -36,6 +46,8 @@ export type NodeWorkspaceSnapshotOptions = Readonly<{
   derivedDirectories?: readonly string[];
   /** Defaults to the production 512 MiB content-hash budget. */
   maxHashedBytes?: number;
+  /** Files larger than this are fingerprinted by metadata, never by content. Defaults to 8 MiB. */
+  maxFileBytes?: number;
 }>;
 
 /**
@@ -193,10 +205,16 @@ function readWorkspaceManifest(workspaceRoot: string): readonly string[] {
 export class NodeWorkspaceSnapshotter {
   private readonly derivedDirectories: ReadonlySet<string>;
   private readonly maxHashedBytes: number;
+  private readonly maxFileBytes: number;
+  /** Set when a limit was hit: the snapshot is flagged, never fatal. */
+  private limitReached = false;
+  private bytesDegraded = false;
+  private metadataOnly = 0;
 
   private constructor(private readonly scope: WorkspaceScope, options: NodeWorkspaceSnapshotOptions) {
     this.derivedDirectories = new Set(options.derivedDirectories ?? []);
     this.maxHashedBytes = options.maxHashedBytes ?? MAX_BYTES;
+    this.maxFileBytes = options.maxFileBytes ?? MAX_FILE_BYTES;
   }
 
   static async create(
@@ -227,7 +245,7 @@ export class NodeWorkspaceSnapshotter {
     const accountEntry = (): void => {
       entryCount += 1;
       if (entryCount > MAX_ENTRIES) {
-        throw codedError("LIMIT_EXCEEDED", "Workspace mutation snapshot exceeded its entry limit.");
+        this.limitReached = true;
       }
     };
 
@@ -252,10 +270,12 @@ export class NodeWorkspaceSnapshotter {
         }
         return metadataHash(after);
       }
-      byteCount += before.size;
-      if (byteCount > this.maxHashedBytes) {
-        throw codedError("LIMIT_EXCEEDED", "Workspace mutation snapshot exceeded its byte limit.");
+      if (before.size > this.maxFileBytes || byteCount + before.size > this.maxHashedBytes) {
+        this.bytesDegraded = true;
+        this.metadataOnly += 1;
+        return metadataHash(before);
       }
+      byteCount += before.size;
 
       const noFollow = process.platform === "win32" ? 0 : fileConstants.O_NOFOLLOW;
       const handle = await open(absolutePath, fileConstants.O_RDONLY | noFollow);
@@ -310,6 +330,7 @@ export class NodeWorkspaceSnapshotter {
         checkContext(context);
         if (isExcludedName(name)) continue;
         accountEntry();
+        if (this.limitReached) return;
         const childSegments = Object.freeze([...segments, name]);
         const relativePath = workspacePath(childSegments);
         const derived = inheritedDerived
@@ -371,7 +392,9 @@ export class NodeWorkspaceSnapshotter {
     entries.sort((left, right) => compareCodeUnits(left.path, right.path));
     const frozenEntries = Object.freeze(entries);
     return Object.freeze({
+      degraded: this.bytesDegraded || this.limitReached,
       entries: frozenEntries,
+      metadataOnly: this.metadataOnly,
       stateVersion: snapshotVersion(frozenEntries),
     });
   }
