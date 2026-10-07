@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.16] - 2026-10-07 15:40 +0700
+## [0.3.17] - 2026-10-07 16:05 +0700
+
+### Fixed
+
+- **`toolLabel` không còn in cặp ngoặc rỗng**: một chi tiết chỉ có khoảng trắng (ví dụ `query: " "`) trước đây
+  cho ra *"Liệt kê thư mục ( )"*; nay chi tiết được `trim` và bỏ hẳn nếu rỗng, nên nhãn chỉ còn *"Liệt kê thư
+  mục"*.## [0.3.16] - 2026-10-07 15:40 +0700
 
 ### Added
 

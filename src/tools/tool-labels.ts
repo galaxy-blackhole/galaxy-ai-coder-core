@@ -51,6 +51,10 @@ export function toolLabel(name: string, args: Readonly<Record<string, unknown>> 
   const detail = (described ?? args.command) ?? (Array.isArray(args.checks) ? `${String(args.path ?? ".")}: ${args.checks.join(", ")}` : undefined) ?? args.path ?? (Array.isArray(args.paths) ? args.paths.join(", ") : undefined) ?? args.query ?? args.id ?? args.key ?? args.name ?? "";
   const label = labelForModelName(name);
   const action = (name === "git_operation" || name === "git.exec") ? `git ${String(args.action ?? "status")}` : "";
-  const suffix = [action, detail].filter(value => typeof value === "string" && value.length > 0).join(" ");
+  /* A blank or whitespace-only detail would render as an empty pair of brackets — drop it instead. */
+  const suffix = [action, detail]
+    .map(value => (typeof value === "string" ? value.trim() : ""))
+    .filter(value => value.length > 0)
+    .join(" ");
   return oneLine(`${label ?? name}${suffix.length > 0 ? ` (${suffix})` : ""}`);
 }
