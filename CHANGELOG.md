@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.18] - 2026-10-07 19:00 +0700
+## [0.3.19] - 2026-10-09 13:00 +0700
+
+### Docs
+
+- **Bản thiết kế chi tiết cho tool modes** (`docs/design/tool-modes.md`, 421 dòng): `native | ptc | both` với SDK
+  sinh tự động, sandbox worker-thread, duyệt/resume trong chương trình, event bridge cho call con, ảnh hưởng lên
+  completion gate, mô hình đe doạ, kế hoạch test (17 mục) và lộ trình P0-P5.
+- Kèm phần **mang giao diện hội thoại của blackhole web sang CLI và VS Code**: từ vựng chung (thẻ tool, nhóm tool,
+  khối suy luận, checklist kế hoạch, composer) + các việc cụ thể cho từng host.## [0.3.18] - 2026-10-07 19:00 +0700
 
 ### Changed
 
