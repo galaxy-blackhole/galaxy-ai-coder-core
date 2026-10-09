@@ -214,7 +214,7 @@ function readWithIdle(
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       void reader.cancel().catch(() => undefined);
-      reject(new Error("Ollama stream im lặng " + Math.round(idleMs / 1000).toString() + "s — lượt chạy đã dừng."));
+      reject(new Error("Không nhận được dữ liệu trong " + Math.round(idleMs / 1000).toString() + "s — lượt chạy đã dừng."));
     }, idleMs);
     reader.read().then(
       value => { clearTimeout(timer); resolve(value); },

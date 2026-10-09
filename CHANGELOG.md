@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.17] - 2026-10-07 16:05 +0700
+## [0.3.18] - 2026-10-07 19:00 +0700
+
+### Changed
+
+- **Câu báo lỗi trung tính với nhà cung cấp**: *"Ollama stream im lặng 180s — lượt chạy đã dừng."* → *"Không
+  nhận được dữ liệu trong 180s — lượt chạy đã dừng."* Người dùng chỉ thấy provider **`auto`** (Galaxy
+  Blackhole tự chọn `deepseek-v4.1-flash`); tên hệ thống bên dưới không cần lộ ra.## [0.3.17] - 2026-10-07 16:05 +0700
 
 ### Fixed
 
