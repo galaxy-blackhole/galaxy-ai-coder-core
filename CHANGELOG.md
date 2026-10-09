@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.20] - 2026-10-09 14:20 +0700
+## [0.3.21] - 2026-10-09 15:40 +0700
+
+### Added (P2 của `docs/design/tool-modes.md`)
+
+- **`CodeRuntimePort`** (`src/ports/code-runtime-port.ts`): `renderSdk`, `run`, giới hạn (`CodeRunLimits`), sự kiện
+  (`code/log`, `code/tool-start`, `code/tool-result`) và kết quả có kiểu (`CodeRunResult`).
+- **`WorkerCodeRuntime`** (`src/adapters/node/code-runtime/`): mỗi chương trình một worker thread, heap cap,
+  deadline, huỷ, và mọi kiểu chết đều là lỗi có kiểu (`RUN_CODE_TIMEOUT`, `RUN_CODE_CANCELLED`,
+  `RUN_CODE_CRASHED`, `RUN_CODE_FAILED`) — không bao giờ treo.
+- **`renderCodeSdk`** (`src/tools/code-sdk.ts`): sinh façade TypeScript từ `inputSchema`, sắp xếp theo tên, kèm
+  luật chương trình (batch, `console` được thu lại, call bị từ chối thì `throw`).
+- `code.run` **chạy thật**: executor bắc cầu sang runtime, các call con đi qua đúng `execute()` nên vẫn có duyệt,
+  effect profile, cap, spill và trace. Tên được phép gọi = các tool đang hoạt động trong round, trừ chính
+  `run_code` (không đệ quy).
+- SDK được **gắn vào mô tả của `run_code`** khi có runtime: hướng dẫn đi cùng công cụ, prompt không phải rẽ nhánh
+  theo mode (đúng như D3).
+
+### Fixed
+
+- **Sandbox hở hai đường** — test bắt được: bản `new Function` đầu tiên vẫn thấy `process` và `import("node:fs")`
+  chạy được. Nay chương trình chạy trong **`node:vm` context rỗng**: không `process`, không `require`, `import()`
+  bị từ chối vì script trong vm không có module callback. Đóng bằng **cấu trúc**, không phải bằng quy ước.
+
+### Test
+
+- `test/code-runtime.test.ts` (5): gọi tool + log + trả giá trị; không có quyền môi trường; vòng lặp vô hạn bị
+  giết đúng deadline; call bị từ chối thì `throw` và chương trình bắt được; chương trình lỗi trả về lý do kèm log.
+- `test/code-sdk-renderer.test.ts` (3): mỗi tool một chữ ký, required/optional, enum/mảng/unknown.## [0.3.20] - 2026-10-09 14:20 +0700
 
 ### Added (P1 của `docs/design/tool-modes.md`)
 

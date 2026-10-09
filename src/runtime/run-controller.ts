@@ -12,7 +12,24 @@ import {
   projectToolDefinitions,
   type ToolPresentationMode,
 } from "../tools/tool-presentation.js";
+import { renderCodeSdk } from "../tools/code-sdk.js";
 import { AI_CODER_CORE_TOOL_CATALOG, descriptorToModelDefinition } from "../tools/tool-registry.js";
+
+/**
+ * The SDK travels with the tool definition, not with the prompt: the model reads callable signatures exactly
+ * when it is handed the entry point, and the prompt stays true in every mode.
+ */
+function withCodeSdk(definition: import("../tools/coding-messages.js").CodingToolDefinition, sdk: string): import("../tools/coding-messages.js").CodingToolDefinition {
+  return Object.freeze({
+    function: Object.freeze({ ...definition.function, description: definition.function.description + "\n\n" + sdk }),
+    type: "function" as const,
+  });
+}
+
+function sdkForDefinitions(definitions: readonly import("../tools/coding-messages.js").CodingToolDefinition[]): string {
+  const names = new Set(definitions.map(definition => definition.function.name));
+  return renderCodeSdk(AI_CODER_CORE_TOOL_CATALOG.filter(tool => tool.id !== "code.run" && names.has(tool.modelName)));
+}
 
 /**
  * The one tool a `ptc` round sends in place of the registry. Built once from the catalogue entry so the model
@@ -1082,7 +1099,7 @@ export class AiCoderRunController {
     const toolPresentation: ToolPresentationMode = request.toolPresentation ?? "native";
     /* A `ptc` round needs a composed code runtime; failing when the session opens beats failing after the
        model has already written a program. P2 composes the runtime and passes true here. */
-    assertPresentationAvailable(toolPresentation, false);
+    assertPresentationAvailable(toolPresentation, this.dependencies.codeRuntime !== undefined);
     const session: RunSession = {
       abortController,
       approvalGate: null,
@@ -1709,12 +1726,20 @@ export class AiCoderRunController {
       if (promptChanged) await this.emitPromptSnapshot(session);
       const contextManager = session.contextManager;
       const roundToolSet = session.toolSet;
+      /* Only a composed runtime can describe itself, so the SDK is built exactly when the mode may use it. */
+      const codeSdk = this.dependencies.codeRuntime === undefined || session.toolPresentation === "native"
+        ? null
+        : sdkForDefinitions(roundToolSet.definitions);
       // The finalization turn must be tool-free (host conformance). The prompt
       // cache still benefits from the stable message prefix and appended
       // feedback; only the tool list is dropped.
       const roundDefinitions = session.finalizationMode
         ? Object.freeze([])
-        : projectToolDefinitions(session.toolPresentation, roundToolSet.definitions, RUN_CODE_DEFINITION);
+        : projectToolDefinitions(
+            session.toolPresentation,
+            roundToolSet.definitions,
+            codeSdk === null ? RUN_CODE_DEFINITION : withCodeSdk(RUN_CODE_DEFINITION, codeSdk),
+          );
       contextManager.replaceMandatoryState(mandatoryState(session), session.modelTurns);
       const prepareContext = async (forceCheckpointReason?: AiCoderCheckpointReason) => {
         try {

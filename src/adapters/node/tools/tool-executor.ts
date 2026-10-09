@@ -1,3 +1,4 @@
+import { DEFAULT_CODE_RUN_LIMITS, type CodeRunLimits, type CodeRuntimePort } from "../../../ports/code-runtime-port.js";
 import {
   AiCoderTokenEstimator,
   AiCoderToolRegistry,
@@ -258,6 +259,9 @@ export interface NodeToolExecutorOptions {
   readonly approvalProfile?: AiCoderApprovalProfile;
   readonly approvalTimeoutMs?: number;
   readonly capabilities: ModelCapabilities;
+  /** Composed by the host when a session may run in tools mode ptc; absent means run_code is unavailable. */
+  readonly codeRuntime?: CodeRuntimePort;
+  readonly codeLimits?: Partial<CodeRunLimits>;
   readonly command: CommandRunnerPort;
   /** Enables deterministic contract doubles; this is not a production integration profile. */
   readonly enableContractTools?: boolean;
@@ -419,6 +423,8 @@ function researchCacheUrl(value: string): string {
 
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
+  private readonly codeRuntime: CodeRuntimePort | null;
+  private readonly codeLimits: CodeRunLimits;
   private readonly contractTools: ContractToolPort | null;
   private readonly contractToolsEnabled: boolean;
   private readonly grantedPermissions: ReadonlySet<string>;
@@ -458,6 +464,8 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       ...(options.research === undefined ? [] : ["network.outbound"]),
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
+    this.codeRuntime = options.codeRuntime ?? null;
+    this.codeLimits = Object.freeze({ ...DEFAULT_CODE_RUN_LIMITS, ...options.codeLimits });
     this.approvalPolicy = createAiCoderApprovalPolicy({
       approvalProfile: options.approvalProfile ?? "balanced",
       grantedPermissions: this.grantedPermissions,
@@ -1077,6 +1085,42 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       }
       case "research.fetch":
       case "research.search":
+      case "code.run": {
+        if (this.codeRuntime === null) {
+          throw new ToolAdapterError("UNAVAILABLE", "run_code needs a composed code runtime: start the session with tools mode ptc in a host that provides one.");
+        }
+        const program = stringArgument(argumentsValue, "program");
+        const goal = stringArgument(argumentsValue, "goal");
+        /* The program may call exactly the tools this round activated, minus the entry point itself. */
+        const toolNames = this.ensureRegistry(context).activeDescriptors
+          .map(tool => tool.modelName)
+          .filter(name => name !== "run_code");
+        let callIndex = 0;
+        const outcome = await this.codeRuntime.run({
+          callTool: async (name, args) => {
+            callIndex += 1;
+            const nested = await this.execute(
+              { arguments: args, name, toolCallId: `code-${callIndex.toString()}` },
+              context,
+            );
+            return nested.ok
+              ? { ok: true as const, value: nested.content }
+              : { code: nested.error.code, error: nested.error.message, ok: false as const };
+          },
+          goal,
+          limits: this.codeLimits,
+          program,
+          toolNames,
+        }, context.signal);
+        /* A failed program is a failed tool call, so the ordinary error path owns retries and reporting. */
+        if (!outcome.ok) throw new ToolAdapterError(outcome.code, outcome.error, false);
+        return Object.freeze({
+          effects: Object.freeze({}),
+          output: Object.freeze({ logs: Object.freeze(outcome.logs), ok: true as const, value: outcome.value }),
+          summary: outcome.value.slice(0, 400),
+          trust: "workspace",
+        });
+      }
       case "command.session":
       case "preview.manage":
       case "perception.analyze":

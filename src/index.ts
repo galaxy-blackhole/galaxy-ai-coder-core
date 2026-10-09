@@ -18,4 +18,7 @@ export * from "./tools/tool-effect-profile.js";
 export * from "./tools/tool-registry-types.js";
 export * from "./tools/tool-labels.js";
 export * from "./tools/tool-registry.js";
+export * from "./tools/code-sdk.js";
+export * from "./ports/code-runtime-port.js";
+export * from "./adapters/node/code-runtime/worker-code-runtime.js";
 export * from "./tools/tool-presentation.js";

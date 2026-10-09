@@ -115,7 +115,21 @@ program may and may not do, and how to batch independent calls into one program.
 *Rejected*: a second `tool-policy` variant selected by mode. It duplicates the same rules twice, drifts, and forces
 `replaceSystemPrompt` on every mode switch.
 
-### D4 — The sandbox is a worker thread with no ambient authority
+### D4 — The sandbox is a worker thread running the program in an empty `vm` context
+
+Two layers, because the first one alone is not enough:
+
+1. **A worker thread per program.** No pooling, no state between runs, `resourceLimits` for the heap, a wall-clock
+   deadline, and a message channel as the only exit.
+2. **An empty `node:vm` context inside it.** `new Script(source).runInNewContext(sandbox)` where `sandbox` contains
+   exactly the tool bindings and a `console` shim. Nothing else is in scope: no `process`, no `require`, and
+   `import()` is refused because a vm script has no module callback.
+
+The second layer was added *because of a test*: with a bare `new Function` the probe `typeof process` answered
+`"object"` and a dynamic `import("node:fs")` succeeded, so the first version of this sandbox leaked in exactly
+the two ways that matter. Both are now closed by construction rather than by policy.
+
+### D4b — Why the first attempt was not enough
 
 `CodeRuntimePort.run()` executes the program in a worker thread (one worker per `run_code` call, no pooling) whose
 only imports are: the generated bindings, a `console` shim that forwards to the run event stream, and a `result()`

@@ -1,4 +1,5 @@
 import type { AiCoderAttachment } from "../context/attachment-types.js";
+import type { CodeRuntimePort } from "../ports/code-runtime-port.js";
 import type { ToolPresentationMode } from "../tools/tool-presentation.js";
 import type {
   AiCoderCheckpointFile,
@@ -319,6 +320,8 @@ export type AiCoderRuntimeEvent = AiCoderRuntimeEventPayload & Readonly<{
 }>;
 
 export type AiCoderRunDependencies = Readonly<{
+  /** Composed by the host when sessions may run in tools mode ptc; absent means run_code is unavailable. */
+  codeRuntime?: CodeRuntimePort;
   clock?: AiCoderRuntimeClock;
   executionIdFactory?: () => string;
   idFactory?: () => string;

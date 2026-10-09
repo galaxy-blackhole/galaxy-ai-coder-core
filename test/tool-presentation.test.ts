@@ -8,8 +8,8 @@ import {
   parseToolPresentationMode,
   projectToolDefinitions,
   RUN_CODE_TOOL_NAME,
-} from "../src/tools/tool-presentation.ts";
-import { AI_CODER_CORE_TOOL_CATALOG, descriptorToModelDefinition } from "../src/tools/tool-registry.ts";
+} from "../src/tools/tool-presentation.js";
+import { AI_CODER_CORE_TOOL_CATALOG, descriptorToModelDefinition } from "../src/tools/tool-registry.js";
 
 const RUN_CODE = descriptorToModelDefinition(AI_CODER_CORE_TOOL_CATALOG.find(tool => tool.id === "code.run")!);
 const OTHERS = AI_CODER_CORE_TOOL_CATALOG.slice(0, 3).map(descriptorToModelDefinition);
