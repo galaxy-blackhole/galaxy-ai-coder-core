@@ -9,7 +9,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     # A hung suite used to burn hours: bound the job so a red run reports instead of stalling.
-    timeout-minutes: 20
+    timeout-minutes: 60
     strategy:
       matrix:
         node: [22, 24]

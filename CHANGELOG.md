@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.22] - 2026-10-09 17:10 +0700
+## [0.3.23] - 2026-10-10 13:10 +0700
+
+### Fixed
+
+- **Pipeline phát hành bị hết giờ.** Job `publish` chạy `npm run verify` (typecheck + toàn bộ test + build +
+  test:dist) dưới `timeout-minutes: 15`, trong khi suite đã dài hơn 30 phút — nên **0.3.20, 0.3.21 và 0.3.22 chưa
+  từng lên npm** dù đã push `main`. Nay `publish.yml` và `ci.yml` đều để 60 phút.
+
+### Notes
+
+- Bản này không đổi mã nguồn nào ngoài workflow: nó tồn tại để đưa những gì đã có trên `main` lên registry.## [0.3.22] - 2026-10-09 17:10 +0700
 
 ### Added (P3 của `docs/design/tool-modes.md`)
 
