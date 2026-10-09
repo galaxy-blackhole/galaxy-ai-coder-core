@@ -1,4 +1,5 @@
 import type { AiCoderAttachment } from "../context/attachment-types.js";
+import type { ToolPresentationMode } from "../tools/tool-presentation.js";
 import type {
   AiCoderCheckpointFile,
   AiCoderCheckpointReason,
@@ -236,6 +237,11 @@ export type AiCoderRunRequest = Readonly<{
     text: string;
   }>[];
   attachments?: readonly AiCoderAttachment[];
+  /**
+   * How a round presents its tools: `native` (default), `ptc` (`run_code` plus a generated SDK), or `both`.
+   * Chosen when the session opens and never changed inside one — the tool array is part of the request prefix.
+   */
+  toolPresentation?: ToolPresentationMode;
   budget?: Partial<AiCoderRunBudget>;
   /**
    * Compact the incoming context before the first model turn.

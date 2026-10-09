@@ -50,6 +50,12 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "artifact.list": effectCapabilities("approval"),
   "artifact.read": effectCapabilities("approval"),
   "catalog.search": effectCapabilities("approval", "state_version"),
+  /*
+   * A program has no authority of its own: it reaches the workspace only through inner calls, and each of those
+   * is attested individually. So this entry claims inspection and nothing more — a mutation is evidence of the
+   * call that made it, never of the program that asked for it.
+   */
+  "code.run": effectCapabilities("approval", "inspect"),
   "command.run": effectCapabilities("approval", "state_version", "write"),
   "command.session": effectCapabilities("approval", "state_version", "write"),
   "git.exec": effectCapabilities("approval", "diff_review", "inspect"),

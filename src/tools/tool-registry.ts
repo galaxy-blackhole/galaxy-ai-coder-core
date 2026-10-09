@@ -390,6 +390,13 @@ const CATALOG: AiCoderToolDescriptor[] = [
     outputSchema: objectSchema({ answers: arraySchema(objectSchema({ id: NON_EMPTY_STRING, answer: STRING }, ["id", "answer"]), 3), cancelled: BOOLEAN }, ["answers", "cancelled"]),
     permissions: ["user.interaction"], risk: "low", mutability: "read", timeoutMs: 600_000, supportsCancellation: true, modalities: STRUCTURED_MODALITY,
   }),
+  descriptor({
+    id: "code.run", modelName: "run_code", title: "Run a program that calls tools",
+    description: "Run a short program that calls the active tools and returns a value. In tools mode ptc this is the only tool offered, so every action goes through it: the program reaches the workspace only through the calls it makes, and each of those is approved exactly as a direct call would be. Prefer batching independent calls into one program over many small runs.",
+    category: "command", transport: "native", inputSchema: objectSchema({ goal: STRING, program: STRING }, ["goal", "program"]),
+    outputSchema: objectSchema({ ok: BOOLEAN, summary: STRING, value: STRING }, ["ok", "summary"]),
+    permissions: ["workspace.read", "workspace.write"], risk: "medium", mutability: "write", timeoutMs: 600_000, supportsCancellation: true, modalities: STRUCTURED_MODALITY,
+  }),
 ];
 
 export const AI_CODER_CORE_TOOL_CATALOG: readonly AiCoderToolDescriptor[] = Object.freeze(

@@ -143,7 +143,7 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
   }),
   Object.freeze({
     id: "tool-policy",
-    version: "2.3.0",
+    version: "2.4.0",
     priority: 50,
     kind: "static" as const,
     content: `TOOL USE
@@ -154,7 +154,8 @@ Follow UNDERSTAND -> INSPECT -> PLAN -> ACT -> OBSERVE -> VERIFY -> REVIEW -> RE
 - Use search_tools when a required specialized capability is not active. A generic command that imitates a specialized tool does not produce that tool's trusted completion evidence.
 - When a task names a first-party framework or product (for example Orbit, Galaxy UI/Nebula), call skill_list once, load the matching skill with skill_load, and follow its CLI/scaffolding workflow before writing code or installing dependencies. Do not hand-wire modules, copy library sources, or add framework packages manually when the framework CLI already scaffolds, registers, and installs them.
 - Framework documentation served by MCP tools (for example Orbit or Galaxy UI) is the authoritative reference for that framework's APIs and scaffolding. Trust it and prefer its generation tools over hand-writing library boilerplate; do not spend commands (npm view, npm info) or node_modules reads verifying package existence, versions, or exports unless the documentation lacks the API you need.
-- Do not probe runtime or library APIs with ad-hoc scripts (bun -e, node -e, one-off imports): a probe costs a model turn, produces no completion evidence, and the framework MCP documentation is the reference. When a module is part of the framework, scaffold it with the framework tool instead of writing its files by hand.
+- Prefer the documented interface to guesswork: read the framework documentation served by MCP and the registry snapshot instead of inferring signatures. A throwaway probe costs a model turn and produces no completion evidence, so keep it scoped and rare. Under tools mode ptc the equivalent probe is a short program, which is the expected shape there — this rule is about guessing what a signature is, not about which tool shape you use.
+- When a module is part of the framework, scaffold it with the framework tool instead of writing its files by hand.
 - Keep arguments scoped. Prefer specialized file and project tools over generic commands.
 - After workspace mutation, review final changes with git_operation action 'diff' when it is active, or review_changes when the host provides a workspace without Git. Do not use run_command for Git status, diff, log, or declared project validation.
 - To change an existing file, prefer edit_file with oldText/newText (make oldText unique). The edit precondition hash is optional: omit it and rely on the oldText match; never reuse a hash from an earlier turn or from compacted context. Use write_file only for whole-file creation or replacement.

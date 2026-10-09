@@ -7,6 +7,22 @@ import { compareAiCoderText } from "../deterministic-order.js";
 import type { AiCoderPlanSnapshot, AiCoderPlanStep } from "../runtime/runtime-types.js";
 import { mergePlanSnapshot } from "./plan.js";
 import { dispatchGuardMs } from "../tools/tool-timeouts.js";
+import {
+  assertPresentationAvailable,
+  projectToolDefinitions,
+  type ToolPresentationMode,
+} from "../tools/tool-presentation.js";
+import { AI_CODER_CORE_TOOL_CATALOG, descriptorToModelDefinition } from "../tools/tool-registry.js";
+
+/**
+ * The one tool a `ptc` round sends in place of the registry. Built once from the catalogue entry so the model
+ * sees exactly what the registry declares — no hand-kept second copy of the description.
+ */
+const RUN_CODE_DEFINITION = ((): import("../tools/coding-messages.js").CodingToolDefinition => {
+  const entry = AI_CODER_CORE_TOOL_CATALOG.find(tool => tool.id === "code.run");
+  if (entry === undefined) throw new Error("code.run is missing from the tool catalogue");
+  return descriptorToModelDefinition(entry);
+})();
 import { isGeneratedWorkspacePath } from "./workspace-generated-path.js";
 import {
   assertAiCoderRunCheckpoint,
@@ -176,6 +192,8 @@ type RunSession = {
   taskContract: AiCoderTaskContract | null;
   toolCalls: number;
   toolCycleHistory: ToolCycleEntry[];
+  /** Fixed when the session opens: a projection change would invalidate the request prefix and the history. */
+  toolPresentation: ToolPresentationMode;
   toolSet: AiCoderRuntimeToolSet | null;
   trace: AiCoderTraceEmitter;
   userTaskMessage: string | null;
@@ -447,7 +465,7 @@ function assertRunRequest(request: AiCoderRunRequest | AiCoderResumeRequest, run
   const knownRequestFields = new Set([
     "acceptanceCriteria", "attachments", "budget", "checkpoint", "checkpointTrust",
     "compactOnStart", "completion", "constraints", "goal", "mode", "planMode", "prompt", "runId", "taskId",
-    "tokenProfile", "workspaceRoot", "contextData",
+    "tokenProfile", "toolPresentation", "workspaceRoot", "contextData",
   ]);
   const unknownRequestField = Object.keys(requestRecord).find((key) => !knownRequestFields.has(key));
   if (unknownRequestField) throw new TypeError(`Run request contains unknown field ${unknownRequestField}.`);
@@ -1061,6 +1079,10 @@ export class AiCoderRunController {
     } satisfies RunExecutionContext);
     /* Seeded before the context manager is created: the first prompt must already carry the guidance. */
     this.planModes.set(context.runId, request.planMode === true);
+    const toolPresentation: ToolPresentationMode = request.toolPresentation ?? "native";
+    /* A `ptc` round needs a composed code runtime; failing when the session opens beats failing after the
+       model has already written a program. P2 composes the runtime and passes true here. */
+    assertPresentationAvailable(toolPresentation, false);
     const session: RunSession = {
       abortController,
       approvalGate: null,
@@ -1081,6 +1103,7 @@ export class AiCoderRunController {
       generatedChurnEvents: 0,
       hostStateVersions: new Map(),
       integrity: null,
+      toolPresentation,
       latestCheckpoint: null,
       modelTurns: 0,
       noProgressEpisodes: 0,
@@ -1691,7 +1714,7 @@ export class AiCoderRunController {
       // feedback; only the tool list is dropped.
       const roundDefinitions = session.finalizationMode
         ? Object.freeze([])
-        : roundToolSet.definitions;
+        : projectToolDefinitions(session.toolPresentation, roundToolSet.definitions, RUN_CODE_DEFINITION);
       contextManager.replaceMandatoryState(mandatoryState(session), session.modelTurns);
       const prepareContext = async (forceCheckpointReason?: AiCoderCheckpointReason) => {
         try {

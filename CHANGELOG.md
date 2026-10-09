@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.19] - 2026-10-09 13:00 +0700
+## [0.3.20] - 2026-10-09 14:20 +0700
+
+### Added (P1 của `docs/design/tool-modes.md`)
+
+- **`ToolPresentationMode`** (`native | ptc | both`) cùng `projectToolDefinitions`, `parseToolPresentationMode` và
+  `assertPresentationAvailable` trong `src/tools/tool-presentation.ts`, xuất ra từ gốc gói. Phép chiếu là **hàm
+  thuần** nên test được mà không cần provider, worker hay session.
+- **Descriptor `code.run` / `run_code`** (category `command`, profile `approval,inspect`): chương trình **không có
+  quyền riêng** — nó chỉ chạm workspace qua từng call con, và mỗi call con tự có attestation của nó.
+- **`AiCoderRunRequest.toolPresentation`** (mặc định `native`) + field tương ứng trên session. Bộ tool mỗi round
+  nay đi qua phép chiếu; `ptc`/`both` **dừng ngay khi mở phiên** với `CODE_RUNTIME_MISSING` cho tới khi sandbox của
+  P2 được compose — thà báo lúc mở phiên còn hơn sau khi model đã viết xong một chương trình.
+
+### Changed
+
+- Mục `tool-policy` của prompt: 2.3.0 → 2.4.0, **trung lập với mode**. Câu cấm viết script ad-hoc trước đây mâu
+  thuẫn trực tiếp với PTC, nay đổi thành *"ưu tiên giao diện đã được tài liệu hoá hơn là đoán"* và ghi rõ ở mode
+  `ptc` thì một chương trình ngắn chính là hình dạng mong đợi.
+
+### Test
+
+- 4 test mới: chiếu theo từng mode (mode `native` **không bao giờ** thấy `run_code`), định nghĩa lấy từ catalogue
+  chứ không chép tay, chốt chặn thiếu runtime, và bộ parse mode.
+- Số lượng catalogue và effect profile cập nhật 21 → 22 (có luật "no drift" nên thiếu profile là lỗi ngay).## [0.3.19] - 2026-10-09 13:00 +0700
 
 ### Docs
 

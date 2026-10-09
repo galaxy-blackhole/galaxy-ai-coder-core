@@ -69,13 +69,13 @@ function catalogTool(id: string) {
 }
 
 test("catalog is compact, canonical, deeply immutable, and has concrete schemas", () => {
-  assert.equal(AI_CODER_CORE_TOOL_CATALOG.length, 21);
+  assert.equal(AI_CODER_CORE_TOOL_CATALOG.length, 22);
   assert.equal(AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault).length, 13);
   assert.deepEqual(
     AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.id),
     [...AI_CODER_CORE_TOOL_CATALOG].map((tool) => tool.id).sort(),
   );
-  assert.equal(new Set(AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.modelName)).size, 21);
+  assert.equal(new Set(AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.modelName)).size, 22);
   for (const tool of AI_CODER_CORE_TOOL_CATALOG) {
     assert.equal(validateAiCoderJsonSchemaDefinition(tool.inputSchema).valid, true, tool.id);
     assert.equal(validateAiCoderJsonSchemaDefinition(tool.outputSchema).valid, true, tool.id);

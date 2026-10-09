@@ -11,7 +11,7 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = Object.freeze({
   search_tools: "Tìm công cụ", detect_project: "Nhận diện dự án", validate_project: "Kiểm thử dự án", "project.validate": "Kiểm thử dự án",
   review_changes: "Kiểm tra thay đổi", task_checkpoint: "Cập nhật kế hoạch", update_checkpoint: "Cập nhật kế hoạch", list_files: "Liệt kê thư mục", glob_files: "Tìm tệp", memory_search: "Tìm bộ nhớ",
   memory_remember: "Lưu bộ nhớ", memory_forget: "Xóa bộ nhớ", skill_list: "Liệt kê skills", skill_load: "Đọc skill", skill_read: "Đọc tài liệu skill",
-  tool_output_read: "Đọc kết quả đầy đủ", "tool_output.read": "Đọc kết quả đầy đủ",
+  tool_output_read: "Đọc kết quả đầy đủ", "tool_output.read": "Đọc kết quả đầy đủ", "code.run": "Chạy chương trình", run_code: "Chạy chương trình",
   /* First-party MCP tools (orbit / nebula) — friendly names hide call mechanics. */
   orbit_knowledge_topics: "Danh mục tri thức Orbit", orbit_knowledge_read: "Tra cứu tri thức Orbit",
   orbit_scaffold_module: "Tạo module Orbit", orbit_scaffold_graphql: "Tạo GraphQL Orbit",

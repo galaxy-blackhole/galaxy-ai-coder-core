@@ -20,7 +20,7 @@ test("canonical effect profile covers the complete core catalog without drift", 
     Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE),
     AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.id),
   );
-  assert.equal(Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE).length, 21);
+  assert.equal(Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE).length, 22);
   assert.equal(Object.isFrozen(AI_CODER_CORE_TOOL_EFFECT_PROFILE), true);
   assert.equal(Object.isFrozen(AI_CODER_TOOL_EFFECT_CAPABILITIES), true);
 
@@ -70,7 +70,7 @@ test("active metadata derives canonical ids and retains the stable full profile"
   const active = AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault);
   const metadata = createAiCoderCoreToolEffectMetadata([...active].reverse());
   assert.equal(Object.keys(metadata.canonicalToolIds).length, 13);
-  assert.equal(Object.keys(metadata.effectCapabilities).length, 21);
+  assert.equal(Object.keys(metadata.effectCapabilities).length, 22);
   assert.equal(metadata.canonicalToolIds.read_file, "workspace.read");
   assert.deepEqual(metadata.effectCapabilities["workspace.read"], ["approval", "inspect"]);
   assert.equal(Object.isFrozen(metadata), true);
