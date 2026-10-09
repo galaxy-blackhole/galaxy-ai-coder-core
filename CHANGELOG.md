@@ -11,13 +11,16 @@ Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 
 ### Fixed
 
-- **Pipeline phát hành bị hết giờ.** Job `publish` chạy `npm run verify` (typecheck + toàn bộ test + build +
-  test:dist) dưới `timeout-minutes: 15`, trong khi suite đã dài hơn 30 phút — nên **0.3.20, 0.3.21 và 0.3.22 chưa
-  từng lên npm** dù đã push `main`. Nay `publish.yml` và `ci.yml` đều để 60 phút.
+- **Test smoke của `dist` đếm thiếu một tool.** `test/dist-smoke.mjs` khẳng định effect profile có 21 mục, trong
+  khi `code.run` đã thành mục thứ 22 từ 0.3.20. Vì cổng đó chỉ chạy ở bước `npm run test:dist` — bước **không** nằm
+  trong suite thường — nên **0.3.20, 0.3.21, 0.3.22 và 0.3.23 chưa từng lên npm** dù đã push `main`: CI đỏ sau ~37
+  giây, ngay tại dòng 9 của file đó.
+- `publish.yml` và `ci.yml` nay để `timeout-minutes: 60` thay cho 15/20. Đó **không** phải nguyên nhân của các lần
+  đỏ trên (chúng hỏng sau ~40 giây), chỉ là khoảng dự phòng cho một suite chạy hơn 30 phút trên máy chậm.
 
 ### Notes
 
-- Bản này không đổi mã nguồn nào ngoài workflow: nó tồn tại để đưa những gì đã có trên `main` lên registry.## [0.3.22] - 2026-10-09 17:10 +0700
+- Bài học được ghi lại: một cổng chỉ chạy trong `test:dist` thì phải chạy `test:dist` trước khi nói là đã xanh.## [0.3.22] - 2026-10-09 17:10 +0700
 
 ### Added (P3 của `docs/design/tool-modes.md`)
 
