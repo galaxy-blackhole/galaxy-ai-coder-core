@@ -60,9 +60,19 @@ export class WorkerCodeRuntime implements CodeRuntimePort {
       const fail = (code: string, error: string): void => {
         finish({ code, durationMs: Date.now() - started, error, logs, ok: false });
       };
-      const deadline = setTimeout(() => {
+      /*
+       * The clock measures the program, not the human. A deadline that kept counting while a call waits for an
+       * approval would kill a program for the crime of asking permission, so it is re-armed whenever a call
+       * settles. Tool time is bounded by the approval timeout and the per-tool timeouts instead.
+       */
+      let deadline = setTimeout(() => onDeadline(), limits.wallClockMs);
+      function onDeadline(): void {
         fail("RUN_CODE_TIMEOUT", "the program exceeded " + Math.round(limits.wallClockMs / 1000).toString() + "s");
-      }, limits.wallClockMs);
+      }
+      function rearmDeadline(): void {
+        clearTimeout(deadline);
+        deadline = setTimeout(() => onDeadline(), limits.wallClockMs);
+      }
       const onAbort = (): void => { fail("RUN_CODE_CANCELLED", "the run was cancelled"); };
       if (signal?.aborted === true) onAbort();
       signal?.addEventListener("abort", onAbort, { once: true });
@@ -79,6 +89,8 @@ export class WorkerCodeRuntime implements CodeRuntimePort {
           const name = String(message.name ?? "");
           const callId = `${name}#${id.toString()}`;
           calls += 1;
+          /* The clock is the program's, so it stops while the program is waiting on the world. */
+          clearTimeout(deadline);
           if (calls > limits.maxToolCalls) {
             worker.postMessage({ code: "CODE_TOOL_LIMIT", error: "the program asked for more than " + limits.maxToolCalls.toString() + " tool calls", id, ok: false, type: "tool-result" });
             return;
@@ -86,10 +98,12 @@ export class WorkerCodeRuntime implements CodeRuntimePort {
           input.onEvent?.({ callId, name, type: "code/tool-start" });
           void input.callTool(name, message.args ?? {}).then(
             (outcome) => {
+              rearmDeadline();
               input.onEvent?.({ callId, ok: outcome.ok, summary: outcome.ok ? "ok" : outcome.code, type: "code/tool-result" });
               worker.postMessage({ id, ok: outcome.ok, type: "tool-result", value: outcome.ok ? outcome.value : undefined, ...(outcome.ok ? {} : { code: outcome.code, error: outcome.error }) });
             },
             (error: unknown) => {
+              rearmDeadline();
               const text = error instanceof Error ? error.message : String(error);
               input.onEvent?.({ callId, ok: false, summary: "failed", type: "code/tool-result" });
               worker.postMessage({ code: "TOOL_FAILED", error: text, id, ok: false, type: "tool-result" });

@@ -1,3 +1,4 @@
+import { WorkerCodeRuntime } from "../src/adapters/node/code-runtime/worker-code-runtime.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AiCoderRunCheckpoint } from "../src/context/checkpoint.js";
@@ -3695,4 +3696,102 @@ test("plan mode refuses mutating tools and leaves the catalog alone", async () =
   assert.ok(String(firstSystem?.content).includes("PLAN MODE"));
   assert.ok(!String(lastSystem?.content).includes("PLAN MODE"), "the guidance disappears once the human approves");
   assert.equal(model.requests[0]?.tools?.length, model.requests.at(-1)?.tools?.length, "the tool catalog stays stable across the mode change");
+});
+test("a ptc round offers run_code alone, and the program's inner calls still become evidence", async () => {
+  const runtime = new WorkerCodeRuntime();
+  const inner: string[] = [];
+  const model = new ScriptedModel([
+    Object.freeze([
+      toolWithArguments("run_code", "call-code-1", {
+        goal: "list the workspace",
+        program: 'const listing = await list_files({ path: "." }); return { first: listing };',
+      }),
+      done("", "tool_calls"),
+    ]),
+    /* The completion gate may ask for a better final report; give it room to be asked twice. */
+    Object.freeze([done("The listing is on the record: two files were found.")]),
+    Object.freeze([done("Final report: the workspace listing is recorded as evidence, two files found.")]),
+    Object.freeze([done("Final report: workspace listing recorded.")]),
+  ]);
+  /* The sandbox calls back into the same executor a direct call would have used. */
+  const executor = {
+    calls: [] as CodingToolCall[],
+    async getToolSet(): Promise<AiCoderRuntimeToolSet> {
+      return Object.freeze({
+        canonicalToolIds: Object.freeze({ list_files: "workspace.list", run_code: "code.run" }),
+        /* The registry snapshot the round validates against, so run_code must be in it — the projection decides
+           only what the model sees, not what the host is allowed to execute. */
+        definitions: Object.freeze([
+          Object.freeze({
+            function: Object.freeze({ description: "the sandbox entry point", name: "run_code", parameters: Object.freeze({ type: "object" }) }),
+            type: "function" as const,
+          }),
+          Object.freeze({
+            function: Object.freeze({ description: "deterministic test tool", name: "list_files", parameters: Object.freeze({ type: "object" }) }),
+            type: "function" as const,
+          }),
+        ]),
+        effectCapabilities: Object.freeze({ "code.run": Object.freeze(["approval" as const, "inspect" as const]), "workspace.list": Object.freeze(["approval" as const, "inspect" as const]) }),
+        snapshotHash: "sha256:ptc-tool-set",
+      });
+    },
+    async execute(call: CodingToolCall): Promise<AiCoderRuntimeToolResult> {
+      this.calls.push(call);
+      if (call.name !== "run_code") {
+        inner.push(call.name);
+        return Object.freeze({
+          canonicalToolId: "workspace.list",
+          content: "file-a\nfile-b",
+          effects: Object.freeze({ inspectedPaths: Object.freeze(["."]) }),
+          effectsAuthority: "host",
+          ok: true as const,
+          summary: "listed",
+          trust: "workspace" as const,
+        });
+      }
+      const outcome = await runtime.run({
+        callTool: async (name: string, args: Record<string, unknown>) => {
+          const nested = await this.execute({ arguments: args, name, toolCallId: "code-1" });
+          return nested.ok ? { ok: true as const, value: nested.content } : { code: nested.error.code, error: nested.error.message, ok: false as const };
+        },
+        goal: String(call.arguments.goal),
+        limits: { heapMb: 128, maxToolCalls: 8, outputBytes: 4096, wallClockMs: 20_000 },
+        program: String(call.arguments.program),
+        toolNames: ["list_files"],
+      });
+      if (!outcome.ok) throw new Error(outcome.error);
+      return Object.freeze({
+        canonicalToolId: "code.run",
+        content: outcome.value,
+        effects: Object.freeze({}),
+        effectsAuthority: "host",
+        ok: true as const,
+        summary: outcome.value.slice(0, 120),
+        trust: "workspace" as const,
+      });
+    },
+  };
+  /* The run reports its own progress; the assertion below proves the program became one tool call. */
+  const seen: string[] = [];
+  await new AiCoderRunController({
+    codeRuntime: runtime,
+    model,
+    onEvent: async (event) => {
+      seen.push(event.type === "tool_result" ? "tool_result:" + JSON.stringify((event as { result?: { error?: { code?: string; message?: string }; ok?: boolean } }).result ?? null).slice(0, 160) : event.type);
+    },
+    toolExecutor: executor,
+  })
+    .start(Object.freeze({ ...request("run-ptc-round"), toolPresentation: "ptc" })).result;
+  /*
+   * What this test is about: the round offered exactly one tool, the program ran inside the sandbox, and its inner
+   * call went through the host's own tool path and came back with a value. Whether the completion gate later
+   * accepts the closing prose is the gate's own business and has its own tests.
+   */
+  assert.deepEqual(inner, ["list_files"], "the program's call is the call that reached the tool, saw " + JSON.stringify(inner));
+  const codeResults = seen.filter(entry => entry.startsWith("tool_result:") && entry.includes("code.run"));
+  assert.equal(codeResults.length, 1, "the program produced exactly one tool result: " + JSON.stringify(seen));
+  assert.match(codeResults[0] ?? "", /file-a/, "and it carries the value the program returned");
+  const offered = (model.requests[0] as unknown as { tools?: readonly { function: { description: string; name: string } }[] }).tools ?? [];
+  assert.deepEqual(offered.map(entry => entry.function.name), ["run_code"], "a ptc round offers exactly one tool");
+  assert.match(offered[0]?.function.description ?? "", /declare function list_files/, "and the SDK travels with it");
 });

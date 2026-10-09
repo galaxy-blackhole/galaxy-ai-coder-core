@@ -1,4 +1,4 @@
-import { DEFAULT_CODE_RUN_LIMITS, type CodeRunLimits, type CodeRuntimePort } from "../../../ports/code-runtime-port.js";
+import { DEFAULT_CODE_RUN_LIMITS, type CodeRunEvent, type CodeRunLimits, type CodeRuntimePort } from "../../../ports/code-runtime-port.js";
 import {
   AiCoderTokenEstimator,
   AiCoderToolRegistry,
@@ -262,6 +262,11 @@ export interface NodeToolExecutorOptions {
   /** Composed by the host when a session may run in tools mode ptc; absent means run_code is unavailable. */
   readonly codeRuntime?: CodeRuntimePort;
   readonly codeLimits?: Partial<CodeRunLimits>;
+  /**
+   * Where a program's inner calls are reported. The host turns these into the same transcript rows a direct call
+   * would produce, so a `ptc` run is never less visible than a native one.
+   */
+  readonly onCodeEvent?: (event: CodeRunEvent) => void;
   readonly command: CommandRunnerPort;
   /** Enables deterministic contract doubles; this is not a production integration profile. */
   readonly enableContractTools?: boolean;
@@ -424,6 +429,7 @@ function researchCacheUrl(value: string): string {
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
   private readonly codeRuntime: CodeRuntimePort | null;
+  private readonly onCodeEvent: ((event: CodeRunEvent) => void) | null;
   private readonly codeLimits: CodeRunLimits;
   private readonly contractTools: ContractToolPort | null;
   private readonly contractToolsEnabled: boolean;
@@ -465,6 +471,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;
+    this.onCodeEvent = options.onCodeEvent ?? null;
     this.codeLimits = Object.freeze({ ...DEFAULT_CODE_RUN_LIMITS, ...options.codeLimits });
     this.approvalPolicy = createAiCoderApprovalPolicy({
       approvalProfile: options.approvalProfile ?? "balanced",
@@ -1109,6 +1116,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           },
           goal,
           limits: this.codeLimits,
+          ...(this.onCodeEvent === null ? {} : { onEvent: this.onCodeEvent }),
           program,
           toolNames,
         }, context.signal);

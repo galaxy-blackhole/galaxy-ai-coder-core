@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Times are recorded in Asia/Ho_Chi_Minh (+07:00). Per-fix fragments are filed in
 [CHANGELOG.d](CHANGELOG.d/README.md) and compiled here at release time.
 
-## [0.3.21] - 2026-10-09 15:40 +0700
+## [0.3.22] - 2026-10-09 17:10 +0700
+
+### Added (P3 của `docs/design/tool-modes.md`)
+
+- **Đồng hồ của chương trình tạm dừng khi chờ người**: deadline được giữ lại lúc một call con bắt đầu và nạp lại
+  khi nó kết thúc. Trước đó, một chương trình hỏi ý kiến người dùng có thể bị giết vì *tội danh xin phép*. Thời
+  gian chờ tool do `approvalTimeoutMs` và timeout từng tool quy định, không phải deadline của chương trình.
+- **`onCodeEvent` trên `NodeToolExecutor`**: host nhận `code/tool-start`, `code/tool-result`, `code/log` của từng
+  call con để dựng đúng những dòng transcript mà một call trực tiếp sẽ có — chương trình không bao giờ kém minh
+  bạch hơn cách gọi thường.
+
+### Test
+
+- **Một round `ptc` trọn vẹn qua run controller**: model chỉ được trao **đúng một** tool (`run_code`), SDK đi kèm
+  trong mô tả, sandbox chạy chương trình, call con `list_files` đi qua **chính executor của host**, và giá trị
+  chương trình trả về nằm trong tool result. Test cũng ghi lại hai bất biến của core mà nó va phải: tool mà model
+  gọi phải có trong registry snapshot, và khai báo effect của tool phải khớp catalogue.
+- `test/code-runtime.test.ts` lên 7: thêm ca *call chờ người không tiêu đồng hồ của chương trình* và ca
+  *call con được báo cho host theo đúng thứ tự* (log → tool-start → tool-result).## [0.3.21] - 2026-10-09 15:40 +0700
 
 ### Added (P2 của `docs/design/tool-modes.md`)
 

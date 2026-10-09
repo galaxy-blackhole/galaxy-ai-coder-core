@@ -94,3 +94,33 @@ test("a program that fails reports why, with its logs", async () => {
   assert.equal(result.ok === false ? result.code : "", "RUN_CODE_FAILED");
   assert.match(result.ok === false ? result.error : "", /boom/);
 });
+test("a call that waits for a human does not spend the program's clock", async () => {
+  const result = await runtime.run({
+    callTool: async () => {
+      await new Promise(resolve => setTimeout(resolve, 900));
+      return { ok: true, value: "late but allowed" };
+    },
+    goal: "wait for an approval",
+    limits: { ...limits, wallClockMs: 400 },
+    program: 'const answer = await ask_user({ questions: [] }); return answer;',
+    toolNames: ["ask_user"],
+  });
+  assert.equal(result.ok, true, "a human thinking is not the program looping: " + JSON.stringify(result));
+  assert.match(result.ok ? result.value : "", /late but allowed/);
+});
+
+test("inner calls are reported to the host as they happen", async () => {
+  const events: string[] = [];
+  const result = await runtime.run({
+    callTool: async () => ({ ok: true, value: "ok" }),
+    goal: "report",
+    limits,
+    onEvent: (event) => {
+      events.push(event.type === "code/log" ? "log:" + event.text : event.type + ":" + (event.type === "code/tool-start" ? event.name : event.summary));
+    },
+    program: 'console.log("hello"); await list_files({ path: "." }); return "done";',
+    toolNames: ["list_files"],
+  });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual(events, ["log:hello", "code/tool-start:list_files", "code/tool-result:ok"], JSON.stringify(events));
+});
