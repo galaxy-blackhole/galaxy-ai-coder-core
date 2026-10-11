@@ -394,7 +394,12 @@ const CATALOG: AiCoderToolDescriptor[] = [
     id: "code.run", modelName: "run_code", title: "Run a program that calls tools",
     description: "Run a short program that calls the active tools and returns a value. In tools mode ptc this is the only tool offered, so every action goes through it: the program reaches the workspace only through the calls it makes, and each of those is approved exactly as a direct call would be. Prefer batching independent calls into one program over many small runs.",
     category: "command", transport: "native", inputSchema: objectSchema({ goal: STRING, program: STRING }, ["goal", "program"]),
-    outputSchema: objectSchema({ ok: BOOLEAN, summary: STRING, value: STRING }, ["ok", "summary"]),
+    /*
+     * The worker returns { logs, ok, value }: the contract has to describe that, or a successful program is rejected
+     * after its side effects have already happened. `summary` stays declared for hosts that add one, and is no longer
+     * required because the runtime does not produce it.
+     */
+    outputSchema: objectSchema({ logs: arraySchema(STRING, 200), ok: BOOLEAN, summary: STRING, value: STRING }, ["ok"]),
     permissions: ["workspace.read", "workspace.write"], risk: "medium", mutability: "write", timeoutMs: 600_000, supportsCancellation: true, modalities: STRUCTURED_MODALITY,
   }),
 ];
