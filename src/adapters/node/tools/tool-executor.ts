@@ -472,9 +472,15 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   constructor(private readonly options: NodeToolExecutorOptions) {
     this.contractToolsEnabled = options.contractTools !== undefined;
     this.contractTools = options.contractTools ?? null;
+    /*
+     * The entry tool carries its own permission names, and the profile's set uses a different namespace, so a ptc
+     * round dropped the one tool it offers for missing workspace.write. Granting them alongside fs.workspace adds no
+     * reach the profile did not already have: the approval policy still decides every actual write.
+     */
     this.grantedPermissions = new Set([
       ...(this.contractToolsEnabled ? LAB_FULL_CONTRACT_PERMISSIONS : LAB_GRANTED_PERMISSIONS),
       ...(options.research === undefined ? [] : ["network.outbound"]),
+      ...(options.toolPresentation === undefined || options.toolPresentation === "native" ? [] : ["workspace.read", "workspace.write"]),
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;

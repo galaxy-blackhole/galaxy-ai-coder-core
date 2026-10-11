@@ -4329,3 +4329,23 @@ START 2026-10-11 16:29:03 +07:00 (2026-10-11T09:29:03.388Z). [Progress](<.galaxy
 2026-10-11 16:29:12 +07:00 (2026-10-11T09:29:12.463Z) | PASSED | PASS 233/234 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-10-11T09-29-03-371Z-8Cytua/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-11T09-29-03-371Z-8Cytua/summary.json>).
+
+## Core tests 2026-10-11T09-57-17-312Z-aM0Xl8
+
+START 2026-10-11 16:57:17 +07:00 (2026-10-11T09:57:17.327Z). [Progress](<.galaxy/tests/2026-10-11T09-57-17-312Z-aM0Xl8/summary.md>). Commit: 106bd66c6971608022dce718235c0b3c93a07d85; source SHA-256: c4137a72795be3262337ed31af948e4fd19ca005eee62cedee2ac173daac39f1.
+
+### Finished 2026-10-11T09-57-17-312Z-aM0Xl8
+
+2026-10-11 16:57:25 +07:00 (2026-10-11T09:57:25.979Z) | PASSED | PASS 233/234 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-11T09-57-17-312Z-aM0Xl8/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-11T09-57-17-312Z-aM0Xl8/summary.json>).
+
+## Core tests 2026-10-11T09-57-44-627Z-YNPIv7
+
+START 2026-10-11 16:57:44 +07:00 (2026-10-11T09:57:44.637Z). [Progress](<.galaxy/tests/2026-10-11T09-57-44-627Z-YNPIv7/summary.md>). Commit: 106bd66c6971608022dce718235c0b3c93a07d85; source SHA-256: c17be08619ab6ae7b1ced649fe08e42d476ae51f29a99060f25b314f826ed74d.
+
+### Finished 2026-10-11T09-57-44-627Z-YNPIv7
+
+2026-10-11 16:57:53 +07:00 (2026-10-11T09:57:53.356Z) | PASSED | PASS 233/234 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-11T09-57-44-627Z-YNPIv7/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-11T09-57-44-627Z-YNPIv7/summary.json>).
