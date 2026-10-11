@@ -261,6 +261,12 @@ export interface NodeToolExecutorOptions {
   readonly capabilities: ModelCapabilities;
   /** Composed by the host when a session may run in tools mode ptc; absent means run_code is unavailable. */
   readonly codeRuntime?: CodeRuntimePort;
+  /**
+   * How the round presents its tools. It matters here, not only in the controller: a `ptc` round offers the model
+   * nothing but `run_code`, and that entry tool is not enabled by default, so the registry has to hold it open or
+   * the model is handed a tool the registry then refuses to run.
+   */
+  readonly toolPresentation?: "native" | "ptc" | "both";
   readonly codeLimits?: Partial<CodeRunLimits>;
   /**
    * Where a program's inner calls are reported. The host turns these into the same transcript rows a direct call
@@ -429,6 +435,7 @@ function researchCacheUrl(value: string): string {
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
   private readonly codeRuntime: CodeRuntimePort | null;
+  private readonly toolPresentation: "native" | "ptc" | "both";
   private readonly onCodeEvent: ((event: CodeRunEvent) => void) | null;
   private readonly codeLimits: CodeRunLimits;
   private readonly contractTools: ContractToolPort | null;
@@ -471,6 +478,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;
+    this.toolPresentation = options.toolPresentation ?? "native";
     this.onCodeEvent = options.onCodeEvent ?? null;
     this.codeLimits = Object.freeze({ ...DEFAULT_CODE_RUN_LIMITS, ...options.codeLimits });
     this.approvalPolicy = createAiCoderApprovalPolicy({
@@ -607,6 +615,11 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       mode: context.mode,
     });
     this.registry = new AiCoderToolRegistry(snapshot);
+    /*
+     * The entry tool stays open whenever a round is not purely native, so the tool the model is told to call is also
+     * a tool this registry will run.
+     */
+    if (this.toolPresentation !== "native") this.registry.activate("code.run");
     return this.registry;
   }
 
