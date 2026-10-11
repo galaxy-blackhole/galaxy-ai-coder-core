@@ -605,6 +605,11 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     const profileToolIds = [
       ...(this.contractToolsEnabled ? LAB_FULL_CONTRACT_TOOL_IDS : LAB_AVAILABLE_TOOL_IDS),
       ...(this.options.research === undefined ? [] : LAB_RESEARCH_TOOL_IDS),
+      /*
+       * The entry tool has to exist in the snapshot before it can be active in it. A ptc round offers the model
+       * nothing else, so leaving it out of the profile left the registry unable to run the one tool it advertised.
+       */
+      ...(this.toolPresentation === "native" ? [] : ["code.run"]),
     ];
     const snapshot = createAiCoderToolRegistrySnapshot({
       availableToolIds: this.options.enableGit === false
