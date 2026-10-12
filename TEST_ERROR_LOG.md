@@ -4359,3 +4359,89 @@ START 2026-10-11 17:10:05 +07:00 (2026-10-11T10:10:05.841Z). [Progress](<.galaxy
 2026-10-11 17:10:14 +07:00 (2026-10-11T10:10:14.622Z) | PASSED | PASS 233/234 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-10-11T10-10-05-829Z-q3j1VE/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-11T10-10-05-829Z-q3j1VE/summary.json>).
+
+## Core tests 2026-10-12T11-43-46-267Z-ABmK5V
+
+START 2026-10-12 18:43:46 +07:00 (2026-10-12T11:43:46.271Z). [Progress](<.galaxy/tests/2026-10-12T11-43-46-267Z-ABmK5V/summary.md>). Commit: 80c003740ffcd7e2ebf5a77d6dcd23b1ff83dc30; source SHA-256: 95d98062ba0d91155f46360572219d00d8f7dec28cacd5600a5ca273e075e7f2.
+
+### Finished 2026-10-12T11-43-46-267Z-ABmK5V
+
+2026-10-12 18:43:55 +07:00 (2026-10-12T11:43:55.164Z) | FAILED | PASS 231/234 tests; FAIL 2; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### the model-facing ids a model actually calls are all named
+
+Recorded: 2026-10-12 18:43:55 +07:00 (2026-10-12T11:43:55.084Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:8.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Liệt kê'<br>- 'Liệt kê thư mục'<br>          ^<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Liệt kê'<br>  - 'Liệt kê thư mục'<br>            ^<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:11:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Liệt kê',<br>    expected: 'Liệt kê thư mục',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### a detail follows the label without leaking control characters
+
+Recorded: 2026-10-12 18:43:55 +07:00 (2026-10-12T11:43:55.090Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:15.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Đọc (src/app.ts)'<br>- 'Đọc tệp (src/app.ts)'<br>       ^<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Đọc (src/app.ts)'<br>  - 'Đọc tệp (src/app.ts)'<br>         ^<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:16:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Đọc (src/app.ts)',<br>    expected: 'Đọc tệp (src/app.ts)',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-12T11-43-46-267Z-ABmK5V/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-12T11-43-46-267Z-ABmK5V/summary.json>).
+
+## Core tests 2026-10-12T11-44-41-103Z-WzHWrb
+
+START 2026-10-12 18:44:41 +07:00 (2026-10-12T11:44:41.112Z). [Progress](<.galaxy/tests/2026-10-12T11-44-41-103Z-WzHWrb/summary.md>). Commit: 80c003740ffcd7e2ebf5a77d6dcd23b1ff83dc30; source SHA-256: d986d235506cd76a891d90a2cac0461d73200681c5a523e033616ffb540011ee.
+
+### Finished 2026-10-12T11-44-41-103Z-WzHWrb
+
+2026-10-12 18:44:49 +07:00 (2026-10-12T11:44:49.780Z) | FAILED | PASS 231/234 tests; FAIL 2; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### the model-facing ids a model actually calls are all named
+
+Recorded: 2026-10-12 18:44:49 +07:00 (2026-10-12T11:44:49.701Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:8.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Liệt kê thư mục'<br>- 'Liệt kê'<br>          ^<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Liệt kê thư mục'<br>  - 'Liệt kê'<br>            ^<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:9:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Liệt kê thư mục',<br>    expected: 'Liệt kê',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### a detail follows the label without leaking control characters
+
+Recorded: 2026-10-12 18:44:49 +07:00 (2026-10-12T11:44:49.703Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:15.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Lệnh (npm test )'<br>- 'Chạy lệnh (npm test )'<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Lệnh (npm test )'<br>  - 'Chạy lệnh (npm test )'<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:17:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Lệnh (npm test )',<br>    expected: 'Chạy lệnh (npm test )',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-12T11-44-41-103Z-WzHWrb/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-12T11-44-41-103Z-WzHWrb/summary.json>).
+
+## Core tests 2026-10-12T11-45-06-979Z-Qycu6S
+
+START 2026-10-12 18:45:06 +07:00 (2026-10-12T11:45:06.983Z). [Progress](<.galaxy/tests/2026-10-12T11-45-06-979Z-Qycu6S/summary.md>). Commit: 80c003740ffcd7e2ebf5a77d6dcd23b1ff83dc30; source SHA-256: e0d993a497f5d9239023d3812299288b708504d2d05b855fdfe4a0c77b67a64a.
+
+### Finished 2026-10-12T11-45-06-979Z-Qycu6S
+
+2026-10-12 18:45:15 +07:00 (2026-10-12T11:45:15.840Z) | FAILED | PASS 232/234 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a detail follows the label without leaking control characters
+
+Recorded: 2026-10-12 18:45:15 +07:00 (2026-10-12T11:45:15.758Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:15.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Lệnh (npm test )'<br>- 'Chạy lệnh (npm test )'<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Lệnh (npm test )'<br>  - 'Chạy lệnh (npm test )'<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:17:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Lệnh (npm test )',<br>    expected: 'Chạy lệnh (npm test )',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-12T11-45-06-979Z-Qycu6S/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-12T11-45-06-979Z-Qycu6S/summary.json>).
+
+## Core tests 2026-10-12T11-45-32-048Z-ImGW1f
+
+START 2026-10-12 18:45:32 +07:00 (2026-10-12T11:45:32.123Z). [Progress](<.galaxy/tests/2026-10-12T11-45-32-048Z-ImGW1f/summary.md>). Commit: 80c003740ffcd7e2ebf5a77d6dcd23b1ff83dc30; source SHA-256: 7a4df4350f46aafe0d2b56cc29061f5d63f4bc6c54ca84d6fcada5201ff4634e.
+
+### Finished 2026-10-12T11-45-32-048Z-ImGW1f
+
+2026-10-12 18:45:40 +07:00 (2026-10-12T11:45:40.914Z) | FAILED | PASS 232/234 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### a detail follows the label without leaking control characters
+
+Recorded: 2026-10-12 18:45:40 +07:00 (2026-10-12T11:45:40.848Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:15.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br>+ actual - expected<br><br>+ 'Git (git diff)'<br>- 'Kiểm tra Git (git diff)'<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  + actual - expected<br>  <br>  + 'Git (git diff)'<br>  - 'Kiểm tra Git (git diff)'<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-labels.test.ts:19:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 'Git (git diff)',<br>    expected: 'Kiểm tra Git (git diff)',<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-12T11-45-32-048Z-ImGW1f/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-12T11-45-32-048Z-ImGW1f/summary.json>).
+
+## Core tests 2026-10-12T11-46-22-249Z-H3JzMm
+
+START 2026-10-12 18:46:22 +07:00 (2026-10-12T11:46:22.257Z). [Progress](<.galaxy/tests/2026-10-12T11-46-22-249Z-H3JzMm/summary.md>). Commit: da4b8163135b41667e028eaafe1029e711c40ff8; source SHA-256: 1cf59b4caab18bfe8db18a4d67e6e692dfd980061924adbd011159b5bc8729ae.
+
+### Finished 2026-10-12T11-46-22-249Z-H3JzMm
+
+2026-10-12 18:46:30 +07:00 (2026-10-12T11:46:30.886Z) | PASSED | PASS 233/234 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-12T11-46-22-249Z-H3JzMm/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-12T11-46-22-249Z-H3JzMm/summary.json>).

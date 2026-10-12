@@ -1,17 +1,18 @@
 /**
  * Human names for the tools the model calls. The model sees `list_files`; the user should read
- * "Liệt kê thư mục". Every host that shows a tool call (the TUI timeline, the webview transcript) reads this
+ * "Liệt kê". Every host that shows a tool call (the TUI timeline, the webview transcript) reads this
  * table, so a new tool is named once.
  */
 export const TOOL_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  run_command: "Chạy lệnh", "command.run": "Chạy lệnh", git_operation: "Kiểm tra Git", "git.exec": "Kiểm tra Git",
-  read_file: "Đọc tệp", "workspace.read": "Đọc tệp", write_file: "Ghi tệp", "workspace.write": "Ghi tệp",
-  edit_file: "Sửa tệp", "workspace.edit": "Sửa tệp", list_directory: "Liệt kê thư mục", "workspace.list": "Liệt kê thư mục",
-  search_files: "Tìm tệp", "workspace.glob": "Tìm tệp", search_text: "Tìm nội dung", "workspace.grep": "Tìm nội dung",
+  /* Short verbs, the way the reference reads: "Đọc · <tệp>" beats "Đọc (<tệp>)". */
+  run_command: "Lệnh", "command.run": "Lệnh", git_operation: "Git", "git.exec": "Git",
+  read_file: "Đọc", "workspace.read": "Đọc", write_file: "Ghi", "workspace.write": "Ghi",
+  edit_file: "Sửa", "workspace.edit": "Sửa", list_directory: "Liệt kê", "workspace.list": "Liệt kê",
+  search_files: "Tìm", "workspace.glob": "Tìm", search_text: "Tìm", "workspace.grep": "Tìm",
   search_tools: "Tìm công cụ", detect_project: "Nhận diện dự án", validate_project: "Kiểm thử dự án", "project.validate": "Kiểm thử dự án",
-  review_changes: "Kiểm tra thay đổi", task_checkpoint: "Cập nhật kế hoạch", update_checkpoint: "Cập nhật kế hoạch", list_files: "Liệt kê thư mục", glob_files: "Tìm tệp", memory_search: "Tìm bộ nhớ",
+  review_changes: "Kiểm tra thay đổi", task_checkpoint: "Cập nhật kế hoạch", update_checkpoint: "Cập nhật kế hoạch", list_files: "Liệt kê", glob_files: "Tìm", memory_search: "Tìm bộ nhớ",
   memory_remember: "Lưu bộ nhớ", memory_forget: "Xóa bộ nhớ", skill_list: "Liệt kê skills", skill_load: "Đọc skill", skill_read: "Đọc tài liệu skill",
-  tool_output_read: "Đọc kết quả đầy đủ", "tool_output.read": "Đọc kết quả đầy đủ", "code.run": "Chạy chương trình", run_code: "Chạy chương trình",
+  tool_output_read: "Đọc kết quả", "tool_output.read": "Đọc kết quả", "code.run": "Chạy", run_code: "Chạy",
   /* First-party MCP tools (orbit / nebula) — friendly names hide call mechanics. */
   orbit_knowledge_topics: "Danh mục tri thức Orbit", orbit_knowledge_read: "Tra cứu tri thức Orbit",
   orbit_scaffold_module: "Tạo module Orbit", orbit_scaffold_graphql: "Tạo GraphQL Orbit",
