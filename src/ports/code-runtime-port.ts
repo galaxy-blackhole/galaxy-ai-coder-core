@@ -30,7 +30,7 @@ export const DEFAULT_CODE_RUN_LIMITS: CodeRunLimits = Object.freeze({
 export type CodeRunEvent = Readonly<
   | { type: "code/log"; stream: "stderr" | "stdout"; text: string }
   | { type: "code/tool-result"; callId: string; ok: boolean; summary: string }
-  | { type: "code/tool-start"; callId: string; name: string }
+  | { type: "code/tool-start"; callId: string; name: string; args: Readonly<Record<string, unknown>> }
 >;
 
 export interface CodeRunInput {

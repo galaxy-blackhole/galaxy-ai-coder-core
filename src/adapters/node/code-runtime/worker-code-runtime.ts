@@ -95,7 +95,7 @@ export class WorkerCodeRuntime implements CodeRuntimePort {
             worker.postMessage({ code: "CODE_TOOL_LIMIT", error: "the program asked for more than " + limits.maxToolCalls.toString() + " tool calls", id, ok: false, type: "tool-result" });
             return;
           }
-          input.onEvent?.({ callId, name, type: "code/tool-start" });
+          input.onEvent?.({ args: message.args ?? {}, callId, name, type: "code/tool-start" });
           void input.callTool(name, message.args ?? {}).then(
             (outcome) => {
               rearmDeadline();
