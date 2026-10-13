@@ -297,6 +297,32 @@ const CATALOG: AiCoderToolDescriptor[] = [
     outputSchema: objectSchema({ command: NON_EMPTY_STRING, cwd: PATH, exitCode: INTEGER, stdout: STRING, stderr: STRING, timedOut: BOOLEAN, cancelled: BOOLEAN, truncated: BOOLEAN, derivedMutations: DERIVED_MUTATION_OBSERVATION }, ["command", "exitCode", "stdout", "stderr", "timedOut", "cancelled", "truncated"]),
     permissions: ["process.execute"], risk: "high", mutability: "execute", idempotency: "unsafe", timeoutMs: 180_000, maxOutputTokens: 6_000, supportsCancellation: true, enabledByDefault: true,
   }),
+  /*
+   * Background work, the reference's three tools: start it, read what it printed since the last read, end it.
+   * A command that takes minutes cannot be a call that blocks for them — the call has a deadline and the command
+   * does not, so the run dies waiting.
+   */
+  descriptor({
+    id: "job.list", modelName: "job_list", title: "List background jobs",
+    description: "List the background jobs this session started, running and finished, with their ids, kinds and statuses.",
+    category: "command", transport: "native", inputSchema: objectSchema({}),
+    outputSchema: objectSchema({ jobs: arraySchema(objectSchema({ exitCode: INTEGER, id: NON_EMPTY_STRING, kind: STRING, label: STRING, status: NON_EMPTY_STRING }, ["id", "status"]), 200) }, ["jobs"]),
+    permissions: ["process.execute"], risk: "low", mutability: "read", maxOutputTokens: 4_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "job.output", modelName: "job_output", title: "Read a background job",
+    description: "Read a background job: the output since the previous read, or the result of a finished one. With wait, hold until it ends or the timeout expires — a timeout leaves the job running.",
+    category: "command", transport: "native", inputSchema: objectSchema({ job_id: NON_EMPTY_STRING, wait: BOOLEAN, timeout_ms: LIMIT }, ["job_id"]),
+    outputSchema: objectSchema({ exitCode: INTEGER, status: NON_EMPTY_STRING, text: STRING, truncated: BOOLEAN }, ["status"]),
+    permissions: ["process.execute"], risk: "low", mutability: "read", maxOutputTokens: 6_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "job.kill", modelName: "job_kill", title: "End a background job",
+    description: "End a background job that is still running. Its output stays readable afterwards.",
+    category: "command", transport: "native", inputSchema: objectSchema({ job_id: NON_EMPTY_STRING }, ["job_id"]),
+    outputSchema: objectSchema({ ended: BOOLEAN, status: NON_EMPTY_STRING }, ["ended"]),
+    permissions: ["process.execute"], risk: "medium", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_000, enabledByDefault: true,
+  }),
   descriptor({
     id: "project.detect", modelName: "detect_project", title: "Detect project",
     description: "Detect project roots, languages, package manager, manifests, and known scripts from workspace metadata. Pass '.' for the workspace root or a workspace-relative POSIX path; never pass an absolute host path. Use before validation. Check scan.complete and warnings before relying on absence; do not guess commands from filenames alone. Returns deterministic project metadata with explicit scan coverage.",

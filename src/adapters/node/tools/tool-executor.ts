@@ -25,7 +25,8 @@ import {
   type ToolExecutionContext,
   type WorkspacePort,
 } from "../../../index.js";
-import { posix } from "node:path";
+import { posix, resolve } from "node:path";
+import { JobRegistry, type JobRow } from "../host/job-registry.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -64,6 +65,9 @@ export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "workspace.edit",
   "workspace.write",
   "command.run",
+  "job.list",
+  "job.output",
+  "job.kill",
   "project.detect",
   "project.validate",
   /*
@@ -443,6 +447,8 @@ function researchCacheUrl(value: string): string {
 
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
+  /** Background work this executor started, read by the job tools. */
+  private readonly jobs = new JobRegistry();
   private readonly codeRuntime: CodeRuntimePort | null;
   private readonly toolPresentation: "native" | "ptc" | "both";
   private readonly onCodeEvent: ((event: CodeRunEvent) => void) | null;
@@ -979,7 +985,58 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           }),
         });
       }
+      case "job.list": {
+        const rows = this.jobs.list();
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(JSON.stringify(rows)) }),
+          output: Object.freeze({ jobs: rows }),
+          summary: rows.length === 0 ? "No background jobs." : rows.length + " background job(s).",
+          trust: "trusted" as const,
+        });
+      }
+      case "job.output": {
+        const read = await this.jobs.output(
+          stringArgument(argumentsValue, "job_id"),
+          optionalBoolean(argumentsValue, "wait") ?? false,
+          optionalNumber(argumentsValue, "timeout_ms") ?? 30_000,
+        );
+        if (read === null) throw new ToolAdapterError("NOT_FOUND", "No background job with that id.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(JSON.stringify(read)) }),
+          output: Object.freeze({ ...read }),
+          summary: "Job " + read.status + " (" + read.text.length + " characters read).",
+          trust: "trusted" as const,
+        });
+      }
+      case "job.kill": {
+        const id = stringArgument(argumentsValue, "job_id");
+        const ended = this.jobs.kill(id);
+        const row = this.jobs.list().find((entry: JobRow) => entry.id === id);
+        if (row === undefined) throw new ToolAdapterError("NOT_FOUND", "No background job with that id.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(row.id + row.status + String(ended)) }),
+          output: Object.freeze({ ended, status: row.status }),
+          summary: ended ? "Asked the job to stop." : "The job had already stopped.",
+          trust: "trusted" as const,
+        });
+      }
       case "command.run": {
+        /*
+         * Started, not waited on: a build that takes ten minutes goes to the background and is asked about later,
+         * instead of holding a tool call until its deadline kills the run.
+         */
+        if (optionalBoolean(argumentsValue, "run_in_background") === true) {
+          const row = this.jobs.start(stringArgument(argumentsValue, "command"), {
+            cwd: resolve(context.workspaceRoot, optionalString(argumentsValue, "cwd") ?? "."),
+            kind: "command",
+          });
+          return Object.freeze({
+            effects: Object.freeze({ stateVersion: sha256Text(row.id + row.status) }),
+            output: Object.freeze({ jobId: row.id, status: row.status }),
+            summary: "Started " + row.id + " in the background: " + row.label,
+            trust: "trusted" as const,
+          });
+        }
         const cwd = optionalString(argumentsValue, "cwd") ?? ".";
         // The agent's own timeout is honoured as given; only the run deadline bounds it.
         const timeoutMs = optionalNumber(argumentsValue, "timeoutMs");

@@ -38,7 +38,7 @@ function effectCapabilities(
 }
 
 /**
- * Exact effect capabilities for all 21 built-in tools. An empty or omitted
+ * Exact effect capabilities for every built-in tool. An empty or omitted
  * effect is always valid; these arrays only describe effects a host may attest.
  * Acceptance-criterion effects intentionally remain unavailable to built-in
  * tools until a dedicated evidence-bearing contract is introduced.
@@ -59,6 +59,10 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "command.run": effectCapabilities("approval", "state_version", "write"),
   "command.session": effectCapabilities("approval", "state_version", "write"),
   "git.exec": effectCapabilities("approval", "diff_review", "inspect"),
+  /* Background work: reading it inspects, ending it changes the process table and nothing in the workspace. */
+  "job.kill": effectCapabilities("approval", "state_version", "write"),
+  "job.list": effectCapabilities("approval", "inspect"),
+  "job.output": effectCapabilities("approval", "inspect"),
   "perception.analyze": effectCapabilities("approval"),
   "preview.manage": effectCapabilities("approval", "state_version"),
   "project.detect": effectCapabilities("approval", "inspect"),

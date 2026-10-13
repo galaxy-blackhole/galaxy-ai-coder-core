@@ -4515,3 +4515,103 @@ START 2026-10-13 15:42:06 +07:00 (2026-10-13T08:42:06.262Z). [Progress](<.galaxy
 2026-10-13 15:42:15 +07:00 (2026-10-13T08:42:15.921Z) | PASSED | PASS 238/239 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-10-13T08-42-06-245Z-eqb7Pb/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-42-06-245Z-eqb7Pb/summary.json>).
+
+## Core tests 2026-10-13T08-56-06-256Z-elfHov
+
+START 2026-10-13 15:56:06 +07:00 (2026-10-13T08:56:06.280Z). [Progress](<.galaxy/tests/2026-10-13T08-56-06-256Z-elfHov/summary.md>). Commit: 07fbabc36dbee8d3e7fd2c81b72a1a54e3306447; source SHA-256: 0bf98b6616a27dda6295caee15b4ff1f8a1131ea0450d55d931bcf9a5f737ee7.
+
+### Finished 2026-10-13T08-56-06-256Z-elfHov
+
+2026-10-13 15:56:15 +07:00 (2026-10-13T08:56:15.089Z) | FAILED | PASS 142/148 tests; FAIL 5; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### test/agent-platform.test.ts
+
+Recorded: 2026-10-13 15:56:07 +07:00 (2026-10-13T08:56:07.128Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/agent-platform.test.ts:1.
+
+[Error: test failed] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: 'test failed',<br>  exitCode: 1,<br>  signal: null<br>}
+
+### catalog is compact, canonical, deeply immutable, and has concrete schemas
+
+Recorded: 2026-10-13 15:56:14 +07:00 (2026-10-13T08:56:14.975Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:71.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br><br>25 !== 22<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  <br>  25 !== 22<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:72:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 25,<br>    expected: 22,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### test/runtime.test.ts
+
+Recorded: 2026-10-13 15:56:15 +07:00 (2026-10-13T08:56:15.018Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/runtime.test.ts:1.
+
+[Error: test failed] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: 'test failed',<br>  exitCode: 1,<br>  signal: null<br>}
+
+### test/tool-effect-profile.test.ts
+
+Recorded: 2026-10-13 15:56:15 +07:00 (2026-10-13T08:56:15.053Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:1.
+
+[Error: test failed] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: 'test failed',<br>  exitCode: 1,<br>  signal: null<br>}
+
+### test/workspace-generated-state.test.ts
+
+Recorded: 2026-10-13 15:56:15 +07:00 (2026-10-13T08:56:15.074Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/workspace-generated-state.test.ts:1.
+
+[Error: test failed] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: 'test failed',<br>  exitCode: 1,<br>  signal: null<br>}
+
+[Full trace](<.galaxy/tests/2026-10-13T08-56-06-256Z-elfHov/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-56-06-256Z-elfHov/summary.json>).
+
+## Core tests 2026-10-13T08-56-53-101Z-ikV3wt
+
+START 2026-10-13 15:56:53 +07:00 (2026-10-13T08:56:53.105Z). [Progress](<.galaxy/tests/2026-10-13T08-56-53-101Z-ikV3wt/summary.md>). Commit: 07fbabc36dbee8d3e7fd2c81b72a1a54e3306447; source SHA-256: 7ebf9170b2a2065a04a70b560faf93834c4bb340fb8cd306bf95265430ffd3bf.
+
+### Finished 2026-10-13T08-56-53-101Z-ikV3wt
+
+2026-10-13 15:57:02 +07:00 (2026-10-13T08:57:02.041Z) | FAILED | PASS 234/239 tests; FAIL 4; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### catalog is compact, canonical, deeply immutable, and has concrete schemas
+
+Recorded: 2026-10-13 15:57:01 +07:00 (2026-10-13T08:57:01.762Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:71.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br><br>25 !== 22<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  <br>  25 !== 22<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:72:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 25,<br>    expected: 22,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### canonical effect profile covers the complete core catalog without drift
+
+Recorded: 2026-10-13 15:57:01 +07:00 (2026-10-13T08:57:01.978Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:15.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br><br>25 !== 22<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  <br>  25 !== 22<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:23:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 25,<br>    expected: 22,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### profile grants workspace mutation evidence only to explicit mutation-capable tools
+
+Recorded: 2026-10-13 15:57:01 +07:00 (2026-10-13T08:57:01.980Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:34.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly deep-equal:<br>+ actual - expected<br><br>  [<br>    'command.run',<br>    'command.session',<br>+   'job.kill',<br>    'project.validate',<br>    'workspace.edit',<br>    'workspace.write'<br>  ]<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:<br>  + actual - expected<br>  <br>    [<br>      'command.run',<br>      'command.session',<br>  +   'job.kill',<br>      'project.validate',<br>      'workspace.edit',<br>      'workspace.write'<br>    ]<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:38:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: [<br>      'command.run',<br>      'command.session',<br>      'job.kill',<br>      'project.validate',<br>      'workspace.edit',<br>      'workspace.write'<br>    ],<br>    expected: [<br>      'command.run',<br>      'command.session',<br>      'project.validate',<br>      'workspace.edit',<br>      'workspace.write'<br>    ],<br>    operator: 'deepStrictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+### active metadata derives canonical ids and retains the stable full profile
+
+Recorded: 2026-10-13 15:57:01 +07:00 (2026-10-13T08:57:01.986Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:69.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br><br>16 !== 13<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  <br>  16 !== 13<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/tool-effect-profile.test.ts:72:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)<br>      at Test.postRun (node:internal/test_runner/test:1542:19)<br>      at Test.run (node:internal/test_runner/test:1467:12)<br>      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 16,<br>    expected: 13,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-13T08-56-53-101Z-ikV3wt/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-56-53-101Z-ikV3wt/summary.json>).
+
+## Core tests 2026-10-13T08-57-36-071Z-7uqB4M
+
+START 2026-10-13 15:57:36 +07:00 (2026-10-13T08:57:36.076Z). [Progress](<.galaxy/tests/2026-10-13T08-57-36-071Z-7uqB4M/summary.md>). Commit: 07fbabc36dbee8d3e7fd2c81b72a1a54e3306447; source SHA-256: 539be4282a59002b853c8979912ec387c231c1c0d4e56769d6e4e02a245a74a2.
+
+### Finished 2026-10-13T08-57-36-071Z-7uqB4M
+
+2026-10-13 15:57:45 +07:00 (2026-10-13T08:57:45.093Z) | FAILED | PASS 237/239 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### catalog is compact, canonical, deeply immutable, and has concrete schemas
+
+Recorded: 2026-10-13 15:57:44 +07:00 (2026-10-13T08:57:44.701Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:71.
+
+[Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:<br><br>25 !== 22<br>] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:<br>  <br>  25 !== 22<br>  <br>      at TestContext.&lt;anonymous&gt; (/Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/registry-prompt-approval.test.ts:78:10)<br>      at Test.runInAsyncScope (node:async_hooks:226:14)<br>      at Test.run (node:internal/test_runner/test:1402:25)<br>      at Test.start (node:internal/test_runner/test:1262:17)<br>      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {<br>    generatedMessage: true,<br>    code: 'ERR_ASSERTION',<br>    actual: 25,<br>    expected: 22,<br>    operator: 'strictEqual',<br>    diff: 'simple'<br>  }<br>}
+
+[Full trace](<.galaxy/tests/2026-10-13T08-57-36-071Z-7uqB4M/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-57-36-071Z-7uqB4M/summary.json>).
+
+## Core tests 2026-10-13T08-58-28-073Z-ku91U6
+
+START 2026-10-13 15:58:28 +07:00 (2026-10-13T08:58:28.202Z). [Progress](<.galaxy/tests/2026-10-13T08-58-28-073Z-ku91U6/summary.md>). Commit: 07fbabc36dbee8d3e7fd2c81b72a1a54e3306447; source SHA-256: 1f1e17c48411c92a373e817bb8bb81313b9d5602f1d10b91eb98e578c5caa22c.
+
+### Finished 2026-10-13T08-58-28-073Z-ku91U6
+
+2026-10-13 15:58:44 +07:00 (2026-10-13T08:58:44.636Z) | PASSED | PASS 238/239 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-13T08-58-28-073Z-ku91U6/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-58-28-073Z-ku91U6/summary.json>).
