@@ -12,6 +12,10 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = Object.freeze({
   search_tools: "Tìm công cụ", detect_project: "Nhận diện dự án", validate_project: "Kiểm thử dự án", "project.validate": "Kiểm thử dự án",
   review_changes: "Kiểm tra thay đổi", task_checkpoint: "Cập nhật kế hoạch", update_checkpoint: "Cập nhật kế hoạch", list_files: "Liệt kê", glob_files: "Tìm", memory_search: "Tìm bộ nhớ",
   memory_remember: "Lưu bộ nhớ", memory_forget: "Xóa bộ nhớ", skill_list: "Liệt kê skills", skill_load: "Đọc skill", skill_read: "Đọc tài liệu skill",
+  /*
+   * Background work reads as a sentence: "Việc nền" plus the job it names, which the row shows beside it.
+   */
+  "job.list": "Việc nền", "job.output": "Đọc việc nền", "job.kill": "Dừng việc nền",
   tool_output_read: "Đọc kết quả", "tool_output.read": "Đọc kết quả", "code.run": "Chạy", run_code: "Chạy",
   /* First-party MCP tools (orbit / nebula) — friendly names hide call mechanics. */
   orbit_knowledge_topics: "Danh mục tri thức Orbit", orbit_knowledge_read: "Tra cứu tri thức Orbit",

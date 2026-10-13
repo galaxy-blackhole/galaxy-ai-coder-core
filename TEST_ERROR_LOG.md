@@ -4615,3 +4615,29 @@ START 2026-10-13 15:58:28 +07:00 (2026-10-13T08:58:28.202Z). [Progress](<.galaxy
 2026-10-13 15:58:44 +07:00 (2026-10-13T08:58:44.636Z) | PASSED | PASS 238/239 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
 
 [Full trace](<.galaxy/tests/2026-10-13T08-58-28-073Z-ku91U6/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T08-58-28-073Z-ku91U6/summary.json>).
+
+## Core tests 2026-10-13T09-04-02-613Z-tvgsFc
+
+START 2026-10-13 16:04:02 +07:00 (2026-10-13T09:04:02.621Z). [Progress](<.galaxy/tests/2026-10-13T09-04-02-613Z-tvgsFc/summary.md>). Commit: 9b4ef963c96999b809a86759ebc2296b896e17a2; source SHA-256: 142020e3797cc5fd4c0a932a8d11866f7a7bd23f24589f0d09ec060735e72c80.
+
+### Finished 2026-10-13T09-04-02-613Z-tvgsFc
+
+2026-10-13 16:04:11 +07:00 (2026-10-13T09:04:11.657Z) | FAILED | PASS 238/240 tests; FAIL 1; CANCELED 0; SKIP 1. Source unchanged: true.
+
+### test/job-tools.test.ts
+
+Recorded: 2026-10-13 16:04:05 +07:00 (2026-10-13T09:04:05.966Z); /Users/buitronghieu/Desktop/Project/galaxy/galaxy-blackhole/galaxy-ai-coder-core/test/job-tools.test.ts:1.
+
+[Error: test failed] {<br>  code: 'ERR_TEST_FAILURE',<br>  failureType: 'testCodeFailure',<br>  cause: 'test failed',<br>  exitCode: 1,<br>  signal: null<br>}
+
+[Full trace](<.galaxy/tests/2026-10-13T09-04-02-613Z-tvgsFc/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T09-04-02-613Z-tvgsFc/summary.json>).
+
+## Core tests 2026-10-13T09-04-43-006Z-K9OErB
+
+START 2026-10-13 16:04:43 +07:00 (2026-10-13T09:04:43.014Z). [Progress](<.galaxy/tests/2026-10-13T09-04-43-006Z-K9OErB/summary.md>). Commit: 9b4ef963c96999b809a86759ebc2296b896e17a2; source SHA-256: bd867db6f711f1ab82b5ab1948d4ae1f0e7661ac5ba5d5fcb31baf71b61e9c7b.
+
+### Finished 2026-10-13T09-04-43-006Z-K9OErB
+
+2026-10-13 16:04:52 +07:00 (2026-10-13T09:04:52.915Z) | PASSED | PASS 239/240 tests; FAIL 0; CANCELED 0; SKIP 1. Source unchanged: true.
+
+[Full trace](<.galaxy/tests/2026-10-13T09-04-43-006Z-K9OErB/events.jsonl>) | [Summary](<.galaxy/tests/2026-10-13T09-04-43-006Z-K9OErB/summary.json>).
