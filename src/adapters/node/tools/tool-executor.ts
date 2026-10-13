@@ -27,6 +27,7 @@ import {
 } from "../../../index.js";
 import { posix, resolve } from "node:path";
 import { JobRegistry, type JobRow } from "../host/job-registry.js";
+import { GoalStore } from "../../../runtime/goal-store.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -68,6 +69,9 @@ export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "job.list",
   "job.output",
   "job.kill",
+  "goal.create",
+  "goal.get",
+  "goal.update",
   "project.detect",
   "project.validate",
   /*
@@ -447,6 +451,8 @@ function researchCacheUrl(value: string): string {
 
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
+  /** Goals this session recorded; they outlive the run that made them, which is the point of them. */
+  private readonly goals = new GoalStore();
   /** Background work this executor started, read by the job tools. */
   private readonly jobs = new JobRegistry();
   private readonly codeRuntime: CodeRuntimePort | null;
@@ -983,6 +989,52 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             writes: mutations.writes,
             stateVersion: mutations.stateVersion,
           }),
+        });
+      }
+      case "goal.create": {
+        const goal = this.goals.create(
+          stringArgument(argumentsValue, "objective"),
+          optionalNumber(argumentsValue, "max_goal_rounds"),
+        );
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(goal.id + goal.revision) }),
+          output: Object.freeze({ goal_id: goal.id, max_goal_rounds: goal.maxGoalRounds, objective: goal.objective, phase: goal.phase, revision: goal.revision }),
+          summary: "Goal " + goal.id + " recorded: " + goal.objective,
+          trust: "trusted" as const,
+        });
+      }
+      case "goal.get": {
+        const named = optionalString(argumentsValue, "goal_id");
+        const goal = named === undefined ? this.goals.current() : this.goals.get(named);
+        if (goal === null) throw new ToolAdapterError("NOT_FOUND", "No goal recorded yet.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(goal.id + goal.revision) }),
+          output: Object.freeze({ goal_id: goal.id, objective: goal.objective, phase: goal.phase, revision: goal.revision, rounds_started: goal.roundsStarted }),
+          summary: "Goal " + goal.id + " is " + goal.phase + " at revision " + goal.revision + ".",
+          trust: "trusted" as const,
+        });
+      }
+      case "goal.update": {
+        const updated = this.goals.update(
+          stringArgument(argumentsValue, "goal_id"),
+          optionalNumber(argumentsValue, "expected_revision") ?? 0,
+          stringArgument(argumentsValue, "action") as "edit" | "pause" | "resume" | "complete" | "blocked",
+          Object.freeze({
+            ...(optionalString(argumentsValue, "objective") === undefined ? {} : { objective: optionalString(argumentsValue, "objective") as string }),
+            ...(optionalString(argumentsValue, "blocked_reason") === undefined ? {} : { blockedReason: optionalString(argumentsValue, "blocked_reason") as string }),
+            ...(optionalNumber(argumentsValue, "max_goal_rounds") === undefined ? {} : { maxGoalRounds: optionalNumber(argumentsValue, "max_goal_rounds") as number }),
+          }),
+        );
+        if (updated.ok === false) {
+          if ("missing" in updated) throw new ToolAdapterError("NOT_FOUND", "No goal with that id.");
+          throw new ToolAdapterError("CONFLICT", "The goal moved on: it is at revision " + updated.conflict.revision + ".");
+        }
+        const goal = updated.goal;
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(goal.id + goal.revision) }),
+          output: Object.freeze({ goal_id: goal.id, phase: goal.phase, revision: goal.revision, rounds_started: goal.roundsStarted }),
+          summary: "Goal " + goal.id + " is now " + goal.phase + " at revision " + goal.revision + ".",
+          trust: "trusted" as const,
         });
       }
       case "job.list": {

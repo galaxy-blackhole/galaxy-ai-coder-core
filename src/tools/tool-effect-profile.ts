@@ -59,6 +59,9 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "command.run": effectCapabilities("approval", "state_version", "write"),
   "command.session": effectCapabilities("approval", "state_version", "write"),
   "git.exec": effectCapabilities("approval", "diff_review", "inspect"),
+  "goal.create": effectCapabilities("approval", "state_version", "write"),
+  "goal.get": effectCapabilities("approval", "inspect"),
+  "goal.update": effectCapabilities("approval", "state_version", "write"),
   /* Background work: reading it inspects, ending it changes the process table and nothing in the workspace. */
   "job.kill": effectCapabilities("approval", "state_version", "write"),
   "job.list": effectCapabilities("approval", "inspect"),

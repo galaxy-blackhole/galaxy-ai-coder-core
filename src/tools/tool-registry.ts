@@ -323,6 +323,32 @@ const CATALOG: AiCoderToolDescriptor[] = [
     outputSchema: objectSchema({ ended: BOOLEAN, status: NON_EMPTY_STRING }, ["ended"]),
     permissions: ["process.execute"], risk: "medium", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_000, enabledByDefault: true,
   }),
+  /*
+   * Goals that outlive a turn. The revision is in the schema because it is the whole protection: a writer that
+   * read a goal an hour ago must pass the revision it saw, and is told when the world moved on instead of
+   * silently overwriting a decision somebody made since.
+   */
+  descriptor({
+    id: "goal.create", modelName: "create_goal", title: "Create a goal",
+    description: "Record what this session is for, so it survives turns, compaction and restarts. One goal is usually enough; a second means the work really has two objectives.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ objective: NON_EMPTY_STRING, max_goal_rounds: LIMIT }, ["objective"]),
+    outputSchema: objectSchema({ goal_id: NON_EMPTY_STRING, max_goal_rounds: INTEGER, objective: NON_EMPTY_STRING, phase: NON_EMPTY_STRING, revision: INTEGER }, ["goal_id"]),
+    permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_500, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "goal.get", modelName: "get_goal", title: "Read the goal",
+    description: "Read the goal and the revision it is at, which is what a later update must pass back.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ goal_id: NON_EMPTY_STRING }),
+    outputSchema: objectSchema({ goal_id: NON_EMPTY_STRING, objective: NON_EMPTY_STRING, phase: NON_EMPTY_STRING, revision: INTEGER, rounds_started: INTEGER }, ["goal_id"]),
+    permissions: ["core.storage"], risk: "low", mutability: "read", maxOutputTokens: 1_500, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "goal.update", modelName: "update_goal", title: "Move the goal on",
+    description: "Move a goal through its life: edit, pause, resume, complete, or blocked with the reason. Pass the revision last read; a stale one is refused rather than applied.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ goal_id: NON_EMPTY_STRING, expected_revision: LIMIT, action: { type: "string", enum: ["edit", "pause", "resume", "complete", "blocked"] }, objective: STRING, blocked_reason: STRING, max_goal_rounds: LIMIT }, ["goal_id", "expected_revision", "action"]),
+    outputSchema: objectSchema({ goal_id: NON_EMPTY_STRING, phase: NON_EMPTY_STRING, revision: INTEGER, rounds_started: INTEGER }, ["goal_id"]),
+    permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_500, enabledByDefault: true,
+  }),
   descriptor({
     id: "project.detect", modelName: "detect_project", title: "Detect project",
     description: "Detect project roots, languages, package manager, manifests, and known scripts from workspace metadata. Pass '.' for the workspace root or a workspace-relative POSIX path; never pass an absolute host path. Use before validation. Check scan.complete and warnings before relying on absence; do not guess commands from filenames alone. Returns deterministic project metadata with explicit scan coverage.",
