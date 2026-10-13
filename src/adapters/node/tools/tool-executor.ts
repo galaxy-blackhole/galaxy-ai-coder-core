@@ -53,10 +53,14 @@ export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "catalog.search",
   "task.checkpoint",
   /*
-   * No list, glob, grep, read or git tool. The reference gives its agent a shell and a writer and nothing else, so
-   * reading, searching and inspecting a repository are things the agent does with a command — which is also where
-   * the wrong-directory git failures came from: a tool that guesses a working directory will guess wrong.
+   * The reference gives its agent a shell and a writer; ours also carries a reader, a searcher and a git tool.
+   * Removing them was tried and had to be undone: the completion gate expects a run to have looked at the project,
+   * so a tool set that can only write fails the gate with NO_PROGRESS. The trim belongs with the gate, not before it.
    */
+  "workspace.list",
+  "workspace.glob",
+  "workspace.grep",
+  "workspace.read",
   "workspace.edit",
   "workspace.write",
   "command.run",

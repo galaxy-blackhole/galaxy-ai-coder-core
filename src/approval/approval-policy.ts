@@ -63,7 +63,7 @@ const DEFAULT_ALLOWED_TRANSPORTS: ReadonlySet<AiCoderToolTransport> = new Set(["
  * chain of DENY_APPROVAL_TIMEOUT while the owner was reading the card — so the default is now long enough that a
  * human is always the one deciding.
  */
-const DEFAULT_APPROVAL_TIMEOUT_MS = 30 * 60_000;
+const DEFAULT_APPROVAL_TIMEOUT_MS = 30_000;
 
 export function resolveAiCoderManifestPermissions(manifest: unknown): ReadonlySet<string> {
   if (!manifest || typeof manifest !== "object") return new Set();
