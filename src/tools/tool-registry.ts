@@ -183,7 +183,12 @@ const TASK_CHECKPOINT_INPUT_STEP = objectSchema(
     status: { type: "string", enum: ["completed", "in_progress", "pending", "skipped", "done", "doing", "todo", "skip"] },
     title: NON_EMPTY_STRING,
   },
-  ["status", "title"],
+  /*
+   * Only the title is required. Callers routinely send a step without its status, and demanding both made the
+   * oneOf match no branch at all — the checkpoint failed, the transcript filled with INVALID_TOOL_ARGUMENTS, and a
+   * piece of bookkeeping was treated as a broken run.
+   */
+  ["title"],
 );
 const TASK_CHECKPOINT_STEP = objectSchema(
   {
