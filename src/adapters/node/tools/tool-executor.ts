@@ -66,7 +66,11 @@ export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "command.run",
   "project.detect",
   "project.validate",
-  "git.exec",
+  /*
+   * No git tool. The reference has none: inspecting a repository is a command, and a tool that guesses which
+   * directory to run in guesses wrong — which is exactly how `fatal: not a git repository` reached the transcript
+   * of a workspace whose repositories live one level down.
+   */
 ] as const);
 
 export const LAB_GRANTED_PERMISSIONS = Object.freeze([
