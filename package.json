@@ -21,6 +21,10 @@
       "types": "./dist/tools/index.d.ts",
       "import": "./dist/tools/index.js"
     },
+    "./runtime/agent-presets": {
+      "types": "./dist/runtime/agent-presets.d.ts",
+      "import": "./dist/runtime/agent-presets.js"
+    },
     "./context": {
       "types": "./dist/context/index.d.ts",
       "import": "./dist/context/index.js"
