@@ -349,6 +349,39 @@ const CATALOG: AiCoderToolDescriptor[] = [
     outputSchema: objectSchema({ goal_id: NON_EMPTY_STRING, phase: NON_EMPTY_STRING, revision: INTEGER, rounds_started: INTEGER }, ["goal_id"]),
     permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_500, enabledByDefault: true,
   }),
+  /*
+   * Children, the reference's four tools: hand work to an agent of its own, list them, say something to one, stop
+   * one. A delegation carries its whole task because a child sees none of this conversation — which is also why a
+   * child is cheap to reason about and easy to waste on a task that only says "continue".
+   */
+  descriptor({
+    id: "subagent.spawn", modelName: "subagent", title: "Delegate to a child agent",
+    description: "Hand a self-contained task to an agent of its own: its own context, budget and stop button. Write the prompt as if to a stranger — the child sees nothing of this conversation. Use for focused work that would bury this one in output.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ description: NON_EMPTY_STRING, prompt: NON_EMPTY_STRING, provider: STRING, model: STRING, reasoning_effort: STRING, run_in_background: BOOLEAN }, ["description", "prompt"]),
+    outputSchema: objectSchema({ agent_id: NON_EMPTY_STRING, status: NON_EMPTY_STRING }, ["agent_id"]),
+    permissions: ["core.storage"], risk: "medium", mutability: "write", idempotency: "unsafe", maxOutputTokens: 2_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "subagent.list", modelName: "list_agents", title: "List child agents",
+    description: "List the child agents this session started, with their ids, tasks, depths and statuses.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({}),
+    outputSchema: objectSchema({ agents: arraySchema(objectSchema({ depth: INTEGER, description: STRING, id: NON_EMPTY_STRING, kind: STRING, status: NON_EMPTY_STRING }, ["id"]), 64) }, ["agents"]),
+    permissions: ["core.storage"], risk: "low", mutability: "read", maxOutputTokens: 3_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "subagent.send", modelName: "send_message", title: "Message a child agent",
+    description: "Send a message to a running child agent and continue its work with it.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ target: NON_EMPTY_STRING, message: NON_EMPTY_STRING }, ["target", "message"]),
+    outputSchema: objectSchema({ sent: BOOLEAN }, ["sent"]),
+    permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "subagent.interrupt", modelName: "interrupt_agent", title: "Stop a child agent",
+    description: "Stop a running child agent. Its work ends; whatever it produced before stopping stays readable.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ target: NON_EMPTY_STRING }, ["target"]),
+    outputSchema: objectSchema({ interrupted: BOOLEAN }, ["interrupted"]),
+    permissions: ["core.storage"], risk: "medium", mutability: "write", idempotency: "with_key", maxOutputTokens: 1_000, enabledByDefault: true,
+  }),
   descriptor({
     id: "project.detect", modelName: "detect_project", title: "Detect project",
     description: "Detect project roots, languages, package manager, manifests, and known scripts from workspace metadata. Pass '.' for the workspace root or a workspace-relative POSIX path; never pass an absolute host path. Use before validation. Check scan.complete and warnings before relying on absence; do not guess commands from filenames alone. Returns deterministic project metadata with explicit scan coverage.",

@@ -28,6 +28,7 @@ import {
 import { posix, resolve } from "node:path";
 import { JobRegistry, type JobRow } from "../host/job-registry.js";
 import { GoalStore } from "../../../runtime/goal-store.js";
+import { SubagentRegistry } from "../../../runtime/subagent-registry.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -72,6 +73,10 @@ export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "goal.create",
   "goal.get",
   "goal.update",
+  "subagent.spawn",
+  "subagent.list",
+  "subagent.send",
+  "subagent.interrupt",
   "project.detect",
   "project.validate",
   /*
@@ -280,6 +285,8 @@ export interface NodeToolExecutorOptions {
    * actually hold it; a name that grants nothing is a label, and labels are how settings drift from behaviour.
    */
   readonly presetPermissions?: readonly string[];
+  /** The child-agent seam, supplied by the host that can build a child run; absent leaves the tools refusing. */
+  readonly subagents?: SubagentRegistry;
   readonly capabilities: ModelCapabilities;
   /** Composed by the host when a session may run in tools mode ptc; absent means run_code is unavailable. */
   readonly codeRuntime?: CodeRuntimePort;
@@ -456,6 +463,8 @@ function researchCacheUrl(value: string): string {
 
 export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   private readonly approvalPolicy: ReturnType<typeof createAiCoderApprovalPolicy>;
+  /** Child agents this session started, when a host gave this executor a seam to start them through. */
+  private readonly subagents: SubagentRegistry | null;
   /** Goals this session recorded; they outlive the run that made them, which is the point of them. */
   private readonly goals = new GoalStore();
   /** Background work this executor started, read by the job tools. */
@@ -511,6 +520,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;
+    this.subagents = options.subagents ?? null;
     this.toolPresentation = options.toolPresentation ?? "native";
     this.onCodeEvent = options.onCodeEvent ?? null;
     this.codeLimits = Object.freeze({ ...DEFAULT_CODE_RUN_LIMITS, ...options.codeLimits });
@@ -995,6 +1005,61 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             writes: mutations.writes,
             stateVersion: mutations.stateVersion,
           }),
+        });
+      }
+      case "subagent.spawn": {
+        const seam = this.subagents;
+        if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
+        const providerName = optionalString(argumentsValue, "provider") ?? (seam.providerNames()[0] ?? "in-process");
+        const spawned = await seam.spawn({
+          description: stringArgument(argumentsValue, "description"),
+          kind: "spawn",
+          prompt: stringArgument(argumentsValue, "prompt"),
+          provider: providerName,
+        });
+        if (spawned.ok === false) {
+          throw new ToolAdapterError(spawned.reason === "unknown_provider" ? "NOT_FOUND" : "LIMIT_EXCEEDED", "Cannot start a child agent: " + spawned.reason + ".");
+        }
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(spawned.record.id + spawned.record.status) }),
+          output: Object.freeze({ agent_id: spawned.record.id, status: spawned.record.status }),
+          summary: "Started " + spawned.record.id + ": " + spawned.record.description,
+          trust: "trusted" as const,
+        });
+      }
+      case "subagent.list": {
+        const seam = this.subagents;
+        if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
+        const agents = seam.list();
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(JSON.stringify(agents)) }),
+          output: Object.freeze({ agents }),
+          summary: agents.length === 0 ? "No child agents." : agents.length + " child agent(s).",
+          trust: "trusted" as const,
+        });
+      }
+      case "subagent.send": {
+        const seam = this.subagents;
+        if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
+        const sent = seam.send(stringArgument(argumentsValue, "target"), stringArgument(argumentsValue, "message"));
+        if (!sent) throw new ToolAdapterError("NOT_FOUND", "No running child agent with that id.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text("sent" + Date.now()) }),
+          output: Object.freeze({ sent }),
+          summary: "Message delivered to the child agent.",
+          trust: "trusted" as const,
+        });
+      }
+      case "subagent.interrupt": {
+        const seam = this.subagents;
+        if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
+        const stopped = seam.interrupt(stringArgument(argumentsValue, "target"));
+        if (!stopped) throw new ToolAdapterError("NOT_FOUND", "No running child agent with that id.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text("stopped" + Date.now()) }),
+          output: Object.freeze({ interrupted: stopped }),
+          summary: "Asked the child agent to stop.",
+          trust: "trusted" as const,
         });
       }
       case "goal.create": {

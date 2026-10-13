@@ -50,11 +50,6 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "artifact.list": effectCapabilities("approval"),
   "artifact.read": effectCapabilities("approval"),
   "catalog.search": effectCapabilities("approval", "state_version"),
-  /*
-   * A program has no authority of its own: it reaches the workspace only through inner calls, and each of those
-   * is attested individually. So this entry claims inspection and nothing more — a mutation is evidence of the
-   * call that made it, never of the program that asked for it.
-   */
   "code.run": effectCapabilities("approval", "inspect"),
   "command.run": effectCapabilities("approval", "state_version", "write"),
   "command.session": effectCapabilities("approval", "state_version", "write"),
@@ -62,7 +57,6 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "goal.create": effectCapabilities("approval", "state_version", "write"),
   "goal.get": effectCapabilities("approval", "inspect"),
   "goal.update": effectCapabilities("approval", "state_version", "write"),
-  /* Background work: reading it inspects, ending it changes the process table and nothing in the workspace. */
   "job.kill": effectCapabilities("approval", "state_version", "write"),
   "job.list": effectCapabilities("approval", "inspect"),
   "job.output": effectCapabilities("approval", "inspect"),
@@ -72,6 +66,10 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "project.validate": effectCapabilities("approval", "state_version", "validate", "write"),
   "research.fetch": effectCapabilities("approval", "research"),
   "research.search": effectCapabilities("approval", "research"),
+  "subagent.interrupt": effectCapabilities("approval", "state_version", "write"),
+  "subagent.list": effectCapabilities("approval", "inspect"),
+  "subagent.send": effectCapabilities("approval", "state_version", "write"),
+  "subagent.spawn": effectCapabilities("approval", "state_version", "write"),
   "task.checkpoint": effectCapabilities("approval", "plan", "state_version"),
   "user.ask": effectCapabilities("approval"),
   "workspace.edit": effectCapabilities("approval", "state_version", "write"),
