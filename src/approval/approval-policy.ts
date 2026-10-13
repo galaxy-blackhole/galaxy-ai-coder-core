@@ -57,7 +57,13 @@ const APPROVAL_THRESHOLDS: Readonly<Record<AiCoderApprovalProfile, AiCoderToolRi
 });
 
 const DEFAULT_ALLOWED_TRANSPORTS: ReadonlySet<AiCoderToolTransport> = new Set(["native", "core"]);
-const DEFAULT_APPROVAL_TIMEOUT_MS = 30_000;
+/**
+ * How long a permission card waits before it decides on its own. The reference has no such timer at all: its
+ * approval layer waits for the person. Thirty seconds was far too eager — a run with several commands died in a
+ * chain of DENY_APPROVAL_TIMEOUT while the owner was reading the card — so the default is now long enough that a
+ * human is always the one deciding.
+ */
+const DEFAULT_APPROVAL_TIMEOUT_MS = 30 * 60_000;
 
 export function resolveAiCoderManifestPermissions(manifest: unknown): ReadonlySet<string> {
   if (!manifest || typeof manifest !== "object") return new Set();

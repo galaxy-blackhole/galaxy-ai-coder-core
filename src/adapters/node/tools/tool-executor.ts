@@ -52,10 +52,11 @@ export interface ContractToolPort {
 export const LAB_AVAILABLE_TOOL_IDS = Object.freeze([
   "catalog.search",
   "task.checkpoint",
-  "workspace.list",
-  "workspace.glob",
-  "workspace.grep",
-  "workspace.read",
+  /*
+   * No list, glob, grep, read or git tool. The reference gives its agent a shell and a writer and nothing else, so
+   * reading, searching and inspecting a repository are things the agent does with a command — which is also where
+   * the wrong-directory git failures came from: a tool that guesses a working directory will guess wrong.
+   */
   "workspace.edit",
   "workspace.write",
   "command.run",
