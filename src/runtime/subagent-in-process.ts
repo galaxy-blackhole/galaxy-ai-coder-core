@@ -61,7 +61,11 @@ export class InProcessSubagentProvider implements SubagentProvider {
       try {
         const outcome = await this.factory({ prompt, record, signal: controller.signal });
         this.results.set(record.id, outcome);
-        this.reporter.finish(record.id, outcome.ok ? "completed" : "failed");
+        /*
+         * Interrupted is interrupted, whatever the factory chose to return: a child that unwinds politely on abort
+         * and reports ok:false was still cancelled, and the book has to say so or nobody can tell a stop from a bug.
+         */
+        this.reporter.finish(record.id, controller.signal.aborted ? "cancelled" : outcome.ok ? "completed" : "failed");
       } catch (error) {
         const aborted = controller.signal.aborted;
         this.results.set(record.id, Object.freeze({

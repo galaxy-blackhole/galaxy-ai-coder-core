@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InProcessSubagentProvider } from "../src/runtime/subagent-in-process.js";
-import { SubagentRegistry, type SubagentRecord } from "../src/runtime/subagent-registry.js";
+import { SubagentRegistry } from "../src/runtime/subagent-registry.js";
 
 /** Waits for a condition rather than a fixed delay, so the tests do not depend on a machine's speed. */
 async function until(check: () => boolean, timeoutMs = 2_000): Promise<void> {
@@ -9,9 +9,6 @@ async function until(check: () => boolean, timeoutMs = 2_000): Promise<void> {
   while (!check() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
 }
 
-function record(id: string): SubagentRecord {
-  return Object.freeze({ depth: 1, description: "test", id, kind: "spawn" as const, parentId: null, startedAt: Date.now(), status: "running" as const });
-}
 
 test("starting returns at once, and the book learns the outcome", async () => {
   const finished: string[] = [];
