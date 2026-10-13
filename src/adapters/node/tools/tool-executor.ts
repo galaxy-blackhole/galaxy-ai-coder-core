@@ -275,6 +275,11 @@ export interface NodeToolExecutorOptions {
   readonly approval?: ApprovalPort;
   readonly approvalProfile?: AiCoderApprovalProfile;
   readonly approvalTimeoutMs?: number;
+  /**
+   * Permission ids a preset adds on top of the granted baseline. A preset that says it holds the workspace should
+   * actually hold it; a name that grants nothing is a label, and labels are how settings drift from behaviour.
+   */
+  readonly presetPermissions?: readonly string[];
   readonly capabilities: ModelCapabilities;
   /** Composed by the host when a session may run in tools mode ptc; absent means run_code is unavailable. */
   readonly codeRuntime?: CodeRuntimePort;
@@ -502,6 +507,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
       ...(this.contractToolsEnabled ? LAB_FULL_CONTRACT_PERMISSIONS : LAB_GRANTED_PERMISSIONS),
       ...(options.research === undefined ? [] : ["network.outbound"]),
       ...(options.toolPresentation === undefined || options.toolPresentation === "native" ? [] : ["workspace.read", "workspace.write"]),
+      ...(options.presetPermissions ?? []),
     ]);
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;
