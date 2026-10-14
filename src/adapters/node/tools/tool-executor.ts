@@ -29,6 +29,7 @@ import { posix, resolve } from "node:path";
 import { JobRegistry, type JobRow } from "../host/job-registry.js";
 import { GoalStore } from "../../../runtime/goal-store.js";
 import { SubagentRegistry } from "../../../runtime/subagent-registry.js";
+import { readHookConfig, runToolHooks, type HookConfig } from "../../../runtime/hooks.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -562,6 +563,16 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     }
   }
 
+  /** Read once per executor: a workspace that edits its hooks mid-run gets them on the next run. */
+  private hookConfig: HookConfig | null | undefined;
+
+  private async hookConfigFor(workspaceRoot: string): Promise<HookConfig | null> {
+    if (this.hookConfig !== undefined) return this.hookConfig;
+    const config = await readHookConfig(workspaceRoot);
+    this.hookConfig = Object.keys(config).length === 0 ? null : config;
+    return this.hookConfig;
+  }
+
   async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
     const registry = this.ensureRegistry(context);
     const descriptor = registry.resolveModelName(call.name);
@@ -584,6 +595,21 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     const cached = descriptor.idempotency === "with_key" ? this.idempotencyCache.get(context.idempotencyKey) : undefined;
     if (cached !== undefined) return cached;
 
+    /*
+     * A workspace's own hooks come first, because they are the project speaking rather than the person at the
+     * keyboard. Exit 2 refuses the call and the model is told why; any other failure is written down and the work
+     * continues, since a hook that cannot answer must not be able to freeze every tool call in the session.
+     */
+    const hookRoot = (context as { workspaceRoot?: unknown }).workspaceRoot;
+    if (typeof hookRoot === "string") {
+      const hooks = await this.hookConfigFor(hookRoot);
+      if (hooks !== null) {
+        const decision = await runToolHooks(hooks, "PreToolUse", descriptor.id, { arguments: effectiveArguments, tool: descriptor.id });
+        if (decision.deny) {
+          return errorResult(call, descriptor.id, "PERMISSION_DENIED", "A workspace hook refused this call: " + (decision.reason ?? "no reason given"));
+        }
+      }
+    }
     const policy = await this.approvalPolicy(descriptor, effectiveArguments, context);
     const approvalEffect: AiCoderRuntimeToolEffects["approval"] = policy.allowed
       ? policy.decision === "approved_by_host" ? "granted" : "not_required"
