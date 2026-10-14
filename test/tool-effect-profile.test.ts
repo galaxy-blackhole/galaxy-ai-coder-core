@@ -35,7 +35,7 @@ test("profile grants workspace mutation evidence only to explicit mutation-capab
   const writeCapable = Object.entries(AI_CODER_CORE_TOOL_EFFECT_PROFILE)
     .filter(([, capabilities]) => capabilities.includes("write"))
     .map(([id]) => id);
-  assert.deepEqual(writeCapable, ["command.run", "command.session", "goal.create", "goal.update", "job.kill", "project.validate", "subagent.fork", "subagent.interrupt", "subagent.send", "subagent.spawn", "workspace.edit", "workspace.write"]);
+  assert.deepEqual(writeCapable, ["command.run", "command.session", "goal.create", "goal.update", "job.kill", "project.validate", "schedule.create", "schedule.delete", "subagent.fork", "subagent.interrupt", "subagent.send", "subagent.spawn", "workspace.edit", "workspace.write"]);
   assert.deepEqual(
     AI_CODER_CORE_TOOL_EFFECT_PROFILE["project.validate"],
     ["approval", "state_version", "validate", "write"],

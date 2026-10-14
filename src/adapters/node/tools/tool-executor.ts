@@ -30,6 +30,7 @@ import { JobRegistry, type JobRow } from "../host/job-registry.js";
 import { GoalStore } from "../../../runtime/goal-store.js";
 import { SubagentRegistry } from "../../../runtime/subagent-registry.js";
 import { readHookConfig, runToolHooks, type HookConfig } from "../../../runtime/hooks.js";
+import { addReminder, readReminders, removeReminder, writeReminders } from "../../../runtime/reminders.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -573,6 +574,30 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     return this.hookConfig;
   }
 
+  /**
+   * The file this session keeps reminders in, or null when there is no workspace to keep one in.
+   *
+   * Reminders live beside the project they are about, so a reminder about this repository is found here and not in
+   * some other project's list. The store itself tolerates a missing file, so this only decides where.
+   */
+  private reminderStore(context: ToolExecutionContext): string | null {
+    const root = (context as { workspaceRoot?: unknown }).workspaceRoot;
+    return typeof root === "string" && root.length > 0
+      ? root.replace(/[/\\]+$/, "") + "/.galaxy/reminders.json"
+      : null;
+  }
+
+  /** An ISO timestamp or epoch milliseconds; anything else is refused rather than guessed. */
+  private parseReminderWhen(value: string): number | null {
+    const trimmed = value.trim();
+    if (/^[0-9]+$/.test(trimmed)) {
+      const epoch = Number(trimmed);
+      return Number.isFinite(epoch) ? epoch : null;
+    }
+    const parsed = Date.parse(trimmed);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
   async execute(call: CodingToolCall, context: ToolExecutionContext): Promise<AiCoderRuntimeToolResult> {
     const registry = this.ensureRegistry(context);
     const descriptor = registry.resolveModelName(call.name);
@@ -815,6 +840,35 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           effects: Object.freeze({ stateVersion: result.activeHash }),
         });
       }
+      case "schedule.list": {
+        const store = this.reminderStore(context);
+        if (store === null) throw new ToolAdapterError("UNAVAILABLE", "This session has no workspace to read reminders from.");
+        const reminders = await readReminders(store);
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(JSON.stringify(reminders)) }),
+          output: Object.freeze({
+            reminders: reminders.map((reminder) => reminder.id + " · " + new Date(reminder.dueAt).toISOString()
+              + (reminder.deliveredAt === undefined ? "" : " · đã nói") + " · " + reminder.text),
+          }),
+          summary: String(reminders.length) + " reminder(s).",
+          trust: "trusted" as const,
+        });
+      }
+      case "schedule.delete": {
+        const store = this.reminderStore(context);
+        if (store === null) throw new ToolAdapterError("UNAVAILABLE", "This session has no workspace to drop a reminder from.");
+        const id = stringArgument(argumentsValue, "id");
+        const before = await readReminders(store);
+        const after = removeReminder(before, id);
+        if (after.length === before.length) throw new ToolAdapterError("NOT_FOUND", "No reminder with that id.");
+        await writeReminders(store, after);
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(id + "removed") }),
+          output: Object.freeze({ removed: true }),
+          summary: "Reminder dropped.",
+          trust: "trusted" as const,
+        });
+      }
       case "task.checkpoint": {
         const action = stringArgument(argumentsValue, "action") as "read" | "update";
         let checkpoint = this.taskCheckpointStore.get(context.runId);
@@ -1034,6 +1088,26 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             writes: mutations.writes,
             stateVersion: mutations.stateVersion,
           }),
+        });
+      }
+      case "schedule.create": {
+        const store = this.reminderStore(context);
+        if (store === null) throw new ToolAdapterError("UNAVAILABLE", "This session has no workspace to keep a reminder in.");
+        const now = Date.now();
+        const dueAt = this.parseReminderWhen(stringArgument(argumentsValue, "when"));
+        if (dueAt === null || dueAt <= now) {
+          throw new ToolAdapterError("INVALID_TOOL_ARGUMENTS", "when must be an ISO timestamp or epoch milliseconds in the future.");
+        }
+        const existing = await readReminders(store);
+        const reminderId = "reminder-" + String(existing.length + 1) + "-" + String(now);
+        await writeReminders(store, addReminder(existing, {
+          createdAt: now, dueAt, id: reminderId, text: stringArgument(argumentsValue, "text"),
+        }));
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(reminderId + String(dueAt)) }),
+          output: Object.freeze({ due_at: new Date(dueAt).toISOString(), reminder_id: reminderId }),
+          summary: "Reminder set for " + new Date(dueAt).toISOString() + ".",
+          trust: "trusted" as const,
         });
       }
       case "subagent.spawn": {

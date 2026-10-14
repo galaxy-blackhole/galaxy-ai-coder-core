@@ -234,6 +234,27 @@ const CATALOG: AiCoderToolDescriptor[] = [
     permissions: [], risk: "low", mutability: "read", maxOutputTokens: 2_000, supportsPagination: true, enabledByDefault: true, modalities: STRUCTURED_MODALITY,
   }),
   descriptor({
+    id: "schedule.create", modelName: "schedule_create", title: "Leave a reminder for later",
+    description: "Leave a reminder for a time: it is written to this workspace, survives a restart, and is marked when it has been said rather than dropped. when is an ISO timestamp or epoch milliseconds.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ text: NON_EMPTY_STRING, when: NON_EMPTY_STRING }, ["text", "when"]),
+    outputSchema: objectSchema({ due_at: NON_EMPTY_STRING, reminder_id: NON_EMPTY_STRING }, ["reminder_id"]),
+    permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "unsafe", maxOutputTokens: 1_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "schedule.list", modelName: "schedule_list", title: "List reminders",
+    description: "List the reminders this workspace holds, including the ones already spoken, so nothing is invisible.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({}),
+    outputSchema: objectSchema({ reminders: arraySchema(STRING, 64) }, ["reminders"]),
+    permissions: ["core.storage"], risk: "low", mutability: "read", maxOutputTokens: 2_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "schedule.delete", modelName: "schedule_delete", title: "Drop a reminder",
+    description: "Drop one reminder by its id, for a promise that no longer applies.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ id: NON_EMPTY_STRING }, ["id"]),
+    outputSchema: objectSchema({ removed: BOOLEAN }, ["removed"]),
+    permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "safe", maxOutputTokens: 500, enabledByDefault: true,
+  }),
+  descriptor({
     id: "task.checkpoint", modelName: "update_checkpoint", title: "Manage task checkpoint",
     description: "Read or update bounded durable task state before compaction or long work. The required action is exactly 'read' or 'update': use {\"action\":\"read\"} to recover state, or {\"action\":\"update\",\"goal\":\"...\",\"progress\":\"...\",\"decisions\":[],\"nextStep\":\"...\"} to save it. Do not omit action and do not store secrets, raw logs, or private reasoning. Returns the verified checkpoint record.",
     category: "bootstrap", transport: "native",
