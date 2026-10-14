@@ -41,6 +41,13 @@ export type AiCoderResolvedContextBudget = Readonly<{
   tightenThreshold: number;
 }>;
 
+/**
+ * Tool definitions are a real context cost, and these ceilings are what keeps that cost visible.
+ *
+ * They were sized when the catalogue shipped 22 tools. It now ships 32 — background jobs, goals, delegation —
+ * and the measured definitions sat 838 tokens above the balanced ceiling, which is the point at which the CLI's
+ * own end-to-end test failed. The raise is about a fifth, and the same test will catch the next breach.
+ */
 const PROFILE_CONFIGS: Readonly<Record<AiCoderTokenProfile, AiCoderContextProfileConfig>> = Object.freeze({
   conservative: Object.freeze({
     compactionThreshold: 150_000,
@@ -52,7 +59,7 @@ const PROFILE_CONFIGS: Readonly<Record<AiCoderTokenProfile, AiCoderContextProfil
     schemaVersion: AI_CODER_CONTEXT_PROFILE_SCHEMA_VERSION,
     softInputTokens: 120_000,
     tightenThreshold: 90_000,
-    toolDefinitionBudget: 8_000,
+    toolDefinitionBudget: 9_500,
   }),
   balanced: Object.freeze({
     compactionThreshold: 190_000,
@@ -64,7 +71,7 @@ const PROFILE_CONFIGS: Readonly<Record<AiCoderTokenProfile, AiCoderContextProfil
     schemaVersion: AI_CODER_CONTEXT_PROFILE_SCHEMA_VERSION,
     softInputTokens: 160_000,
     tightenThreshold: 120_000,
-    toolDefinitionBudget: 10_000,
+    toolDefinitionBudget: 12_000,
   }),
   extended: Object.freeze({
     compactionThreshold: 210_000,
@@ -76,7 +83,7 @@ const PROFILE_CONFIGS: Readonly<Record<AiCoderTokenProfile, AiCoderContextProfil
     schemaVersion: AI_CODER_CONTEXT_PROFILE_SCHEMA_VERSION,
     softInputTokens: 190_000,
     tightenThreshold: 160_000,
-    toolDefinitionBudget: 16_000,
+    toolDefinitionBudget: 18_000,
   }),
 });
 
