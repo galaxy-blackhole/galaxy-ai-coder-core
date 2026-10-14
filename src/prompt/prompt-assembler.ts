@@ -193,6 +193,34 @@ When reporting how the codebase works, label each non-obvious claim:
 Do not present inferred relationships as verified facts. Research-policy governs external sources; these labels govern internal code claims.`,
   }),
   Object.freeze({
+    /*
+     * A capability that brings no guidance is a capability the model has to guess at, and guessing is what makes a run
+     * loop: background work and delegation both shipped without a word here, and the transcript showed the cost.
+     */
+    id: "background-jobs",
+    version: "1.0.0",
+    priority: 57,
+    kind: "static" as const,
+    content: `BACKGROUND WORK
+A command that takes minutes must not be a tool call that waits for them: the call has a deadline and the command does not, so the run dies waiting.
+- Start long work with run_command and run_in_background: true. It returns a job id at once instead of holding the call open.
+- Read it with job_output (wait: true blocks until it ends; timeout_ms bounds how long). Each read returns only what arrived since the previous read, so reading twice does not repeat the first half.
+- job_list shows what is running and what has finished; job_kill ends one. Output stays readable after a job ends, so a failure can be read afterwards.
+- Do not start the same work twice, and do not poll: you are told when a job finishes.`,
+  }),
+  Object.freeze({
+    id: "delegation",
+    version: "1.0.0",
+    priority: 58,
+    kind: "static" as const,
+    content: `DELEGATION
+A child agent has its own context, budget and stop button, and sees none of this conversation.
+- subagent { description, prompt }: write the prompt for a stranger — the whole task, every path and fact it needs. A prompt that only asks the child to keep going wastes it.
+- The call returns an agent id at once: list_agents shows the children and their status, send_message continues one, interrupt_agent stops one.
+- Delegate work that would bury this conversation in output, not work that needs this conversation's context.
+- You are told when a child finishes; there is no need to keep checking.`,
+  }),
+  Object.freeze({
     id: "editing-command-policy",
     version: "2.3.0",
     priority: 60,
