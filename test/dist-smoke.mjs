@@ -6,7 +6,17 @@ const ports = await import("@galaxy-stack/ai-coder-core/ports");
 
 assert.equal(core.DEFAULT_AI_CODER_CORE_SETTINGS.executionMode, "single");
 assert.equal(core.AI_CODER_PROMPT_VERSION, "ai-coder-single/2.8.0");
-assert.equal(Object.keys(core.AI_CODER_CORE_TOOL_EFFECT_PROFILE).length, 22);
+/*
+ * Coverage, not a count. A count has to be edited on every release that adds a tool, and the one time it is
+ * forgotten the published package fails its own verify step — which is exactly how this release was stopped.
+ */
+const catalogueIds = core.AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.id);
+assert.ok(catalogueIds.length > 0, "the published catalogue must not be empty");
+assert.deepEqual(
+  Object.keys(core.AI_CODER_CORE_TOOL_EFFECT_PROFILE),
+  catalogueIds,
+  "the published effect profile must cover the catalogue key for key",
+);
 assert.deepEqual(core.AI_CODER_WORKSPACE_ENTRY_KINDS, ["directory", "file", "missing", "other", "symlink"]);
 assert.equal(core.isAiCoderWorkspaceMutationEvidence({
   beforeKind: "missing",
