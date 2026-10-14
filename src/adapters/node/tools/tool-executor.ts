@@ -285,6 +285,8 @@ export interface NodeToolExecutorOptions {
    * actually hold it; a name that grants nothing is a label, and labels are how settings drift from behaviour.
    */
   readonly presetPermissions?: readonly string[];
+  /** Told whenever the background book changes, so the host can put the list on screen. */
+  readonly onJobsChanged?: (rows: readonly JobRow[]) => void;
   /** The child-agent seam, supplied by the host that can build a child run; absent leaves the tools refusing. */
   readonly subagents?: SubagentRegistry;
   readonly capabilities: ModelCapabilities;
@@ -468,7 +470,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
   /** Goals this session recorded; they outlive the run that made them, which is the point of them. */
   private readonly goals = new GoalStore();
   /** Background work this executor started, read by the job tools. */
-  private readonly jobs = new JobRegistry();
+  private readonly jobs: JobRegistry;
   private readonly codeRuntime: CodeRuntimePort | null;
   private readonly toolPresentation: "native" | "ptc" | "both";
   private readonly onCodeEvent: ((event: CodeRunEvent) => void) | null;
@@ -521,6 +523,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     this.taskCheckpointStore = options.taskCheckpointStore ?? new Map<string, LabTaskCheckpointState>();
     this.codeRuntime = options.codeRuntime ?? null;
     this.subagents = options.subagents ?? null;
+    this.jobs = new JobRegistry(options.onJobsChanged ?? null);
     this.toolPresentation = options.toolPresentation ?? "native";
     this.onCodeEvent = options.onCodeEvent ?? null;
     this.codeLimits = Object.freeze({ ...DEFAULT_CODE_RUN_LIMITS, ...options.codeLimits });

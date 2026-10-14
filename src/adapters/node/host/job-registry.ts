@@ -62,6 +62,12 @@ export class JobRegistry {
   private readonly jobs = new Map<string, JobRecord>();
   private next = 1;
 
+  /**
+   * Told once whenever the book changes — a job starting or ending — so a host can show the list without polling
+   * it. A caller that has to poll for something this cheap ends up polling for everything.
+   */
+  constructor(private readonly onChange: ((rows: readonly JobRow[]) => void) | null = null) {}
+
   start(command: string, options: JobStartOptions): JobRow {
     const id = "job-" + String(this.next);
     this.next += 1;
@@ -106,7 +112,9 @@ export class JobRegistry {
       record.child = null;
       if (signal !== null) record.status = "killed";
       else record.status = code === 0 ? "completed" : "failed";
+      this.announce();
     });
+    this.announce();
     return this.row(record);
   }
 
@@ -142,6 +150,10 @@ export class JobRegistry {
       if (record.status === "running") child.kill("SIGKILL");
     }, 2000).unref();
     return true;
+  }
+
+  private announce(): void {
+    if (this.onChange !== null) this.onChange(this.list());
   }
 
   private row(record: JobRecord): JobRow {

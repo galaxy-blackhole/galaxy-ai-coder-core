@@ -25,6 +25,14 @@
       "types": "./dist/runtime/agent-presets.d.ts",
       "import": "./dist/runtime/agent-presets.js"
     },
+    "./runtime/subagent-registry": {
+      "types": "./dist/runtime/subagent-registry.d.ts",
+      "import": "./dist/runtime/subagent-registry.js"
+    },
+    "./runtime/subagent-in-process": {
+      "types": "./dist/runtime/subagent-in-process.d.ts",
+      "import": "./dist/runtime/subagent-in-process.js"
+    },
     "./context": {
       "types": "./dist/context/index.d.ts",
       "import": "./dist/context/index.js"
