@@ -129,7 +129,18 @@ function runHookCommand(command: HookCommand, toolName: string, payload: unknown
       void stdout;
       resolve(Object.freeze({ deny: false, warnings: Object.freeze([]) }));
     });
-    child.stdin?.end(JSON.stringify(payload));
+    /*
+     * A hook is allowed to ignore its input — `exit 0` is a perfectly good hook — and a command that ignores stdin
+     * exits without reading it, which closes the pipe under us. Writing then raises EPIPE on a stream nobody is
+     * listening to, and an unhandled stream error takes the whole session down with it. The payload is a courtesy,
+     * so a hook that does not want it is not an error.
+     */
+    child.stdin?.on("error", () => {});
+    try {
+      child.stdin?.end(JSON.stringify(payload));
+    } catch {
+      /* The pipe was already gone; the exit code is the answer that matters. */
+    }
   });
 }
 

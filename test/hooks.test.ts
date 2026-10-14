@@ -41,6 +41,19 @@ test("a hook that fails to answer is reported and does not freeze the call", asy
   assert.equal(decision.warnings.length, 1);
 });
 
+test("a hook that ignores its input is a hook, not an error", async () => {
+  /*
+   * `exit 0` never reads stdin, so the pipe closes under the writer. On a fast enough machine that used to raise
+   * EPIPE and take the run down - it was CI, not macOS, that showed it. A hook that does not want the payload is
+   * still a hook that answered.
+   */
+  const decision = await runToolHooks({ PreToolUse: [{ hooks: [{ command: "exit 0" }] }] }, "PreToolUse", "Bash", { tool: "Bash" });
+  assert.equal(decision.deny, false);
+  assert.deepEqual(decision.warnings, []);
+  const refused = await runToolHooks({ PreToolUse: [{ hooks: [{ command: "exit 2" }] }] }, "PreToolUse", "Bash", { tool: "Bash" });
+  assert.equal(refused.deny, true, "an ignored payload does not make a refusal disappear");
+});
+
 test("a matcher that does not cover the tool never runs its command", async () => {
   const decision = await runToolHooks({ PreToolUse: [{ hooks: [{ command: "exit 2" }], matcher: "Edit" }] }, "PreToolUse", "Bash", {});
   assert.equal(decision.deny, false);
