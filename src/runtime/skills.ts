@@ -10,6 +10,7 @@
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parseSkillRequires, type SkillRequirement } from "../agent/skill-requirements.js";
 
 export interface WorkspaceSkill {
   readonly body: string;
@@ -17,6 +18,13 @@ export interface WorkspaceSkill {
   readonly name: string;
   /** Where it was read from, so a person can go and edit it. */
   readonly source: string;
+  /**
+   * The MCP servers this skill's call shapes need, with the version range each one must satisfy.
+   *
+   * Empty when the skill declares none — and also when it declares something malformed, because a requirement that
+   * cannot be read must not hide a document that can.
+   */
+  readonly requires: readonly SkillRequirement[];
 }
 
 /** The places skills are looked for, in the order they are read. */
@@ -28,6 +36,8 @@ export const SKILL_DIRECTORIES = Object.freeze([
 interface Frontmatter {
   readonly body: string;
   readonly fields: Readonly<Record<string, string>>;
+  /** The indented lines of a `requires:` mapping, in the order they were written. */
+  readonly requiresLines: readonly string[];
 }
 
 /**
@@ -36,16 +46,53 @@ interface Frontmatter {
  */
 export function parseSkillDocument(text: string): Frontmatter {
   const lines = text.split(String.fromCharCode(10));
-  if (lines[0]?.trim() !== "---") return Object.freeze({ body: text.trim(), fields: Object.freeze({}) });
+  if (lines[0]?.trim() !== "---") return Object.freeze({ body: text.trim(), fields: Object.freeze({}), requiresLines: Object.freeze([]) });
   const end = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
-  if (end === -1) return Object.freeze({ body: text.trim(), fields: Object.freeze({}) });
+  if (end === -1) return Object.freeze({ body: text.trim(), fields: Object.freeze({}), requiresLines: Object.freeze([]) });
   const fields: Record<string, string> = {};
+  const requiresLines: string[] = [];
+  let collecting = false;
   for (const line of lines.slice(1, end)) {
+    /*
+     * `requires:` opens a nested mapping whose entries are indented under it. Reading it here keeps this parser flat
+     * on purpose: a skill that needs a real YAML parser is not this feature.
+     */
+    if (collecting && /^\s+\S/.test(line)) { requiresLines.push(line.trim()); continue; }
+    collecting = false;
     const separator = line.indexOf(":");
     if (separator <= 0) continue;
-    fields[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    if (key === "requires" && value.length === 0) { collecting = true; continue; }
+    fields[key] = value;
   }
-  return Object.freeze({ body: lines.slice(end + 1).join(String.fromCharCode(10)).trim(), fields: Object.freeze(fields) });
+  return Object.freeze({
+    body: lines.slice(end + 1).join(String.fromCharCode(10)).trim(),
+    fields: Object.freeze(fields),
+    requiresLines: Object.freeze(requiresLines),
+  });
+}
+
+/**
+ * Turns the indented lines of `requires:` into validated requirements.
+ *
+ * Validation is delegated rather than reinvented: the same rules guard the MCP config elsewhere, so a skill cannot
+ * smuggle in a server name that could never be resolved.
+ */
+function parseRequires(lines: readonly string[]): readonly SkillRequirement[] {
+  if (lines.length === 0) return Object.freeze([]);
+  const mapping: Record<string, string> = {};
+  for (const line of lines) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) continue;
+    mapping[line.slice(0, separator).trim()] = line.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
+  }
+  try {
+    return parseSkillRequires(mapping) ?? Object.freeze([]);
+  } catch {
+    /* A malformed requirement must not hide a document that can still be read. */
+    return Object.freeze([]);
+  }
 }
 
 async function readSkillFile(source: string, directoryName: string): Promise<WorkspaceSkill | null> {
@@ -55,13 +102,14 @@ async function readSkillFile(source: string, directoryName: string): Promise<Wor
   } catch {
     return null;
   }
-  const { body, fields } = parseSkillDocument(text);
+  const { body, fields, requiresLines } = parseSkillDocument(text);
   const name = (fields.name ?? directoryName).trim();
   if (name.length === 0 || body.length === 0) return null;
   return Object.freeze({
     body,
     description: (fields.description ?? "").trim(),
     name,
+    requires: parseRequires(requiresLines),
     source,
   });
 }
@@ -91,6 +139,9 @@ export async function readWorkspaceSkills(workspaceRoot: string): Promise<readon
 /** How a workspace's skills are listed for the model: names, descriptions, and where to read them. */
 export function formatSkillList(skills: readonly WorkspaceSkill[]): string {
   return skills
-    .map((skill) => skill.name + (skill.description.length === 0 ? "" : " — " + skill.description) + "  [" + skill.source + "]")
+    .map((skill) => skill.name
+      + (skill.description.length === 0 ? "" : " — " + skill.description)
+      + (skill.requires.length === 0 ? "" : "  needs: " + skill.requires.map((need) => need.server + need.range).join(", "))
+      + "  [" + skill.source + "]")
     .join(String.fromCharCode(10));
 }
