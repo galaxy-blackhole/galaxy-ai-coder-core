@@ -3321,7 +3321,10 @@ export class AiCoderRunController {
         "Continue only with the missing evidence; do not repeat the final report unchanged.",
       ].join("\n"), session.modelTurns);
       if (session.completionRejections >= session.budget.maxCompletionRejections) {
-        throw new AiCoderRuntimeError("NO_PROGRESS", `Completion gate failed ${session.completionRejections} times.`);
+        throw new AiCoderRuntimeError(
+          "NO_PROGRESS",
+          `Completion gate failed ${session.completionRejections} times: ${gate.issues.map((item) => item.code).join(", ")}.`,
+        );
       }
       return null;
     }

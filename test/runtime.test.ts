@@ -1,5 +1,6 @@
 import { WorkerCodeRuntime } from "../src/adapters/node/code-runtime/worker-code-runtime.js";
 import assert from "node:assert/strict";
+import { mergeProgramToolEffects } from "../src/adapters/node/tools/tool-executor.js";
 import test from "node:test";
 import type { AiCoderRunCheckpoint } from "../src/context/checkpoint.js";
 import type { ModelCapabilities, ModelIdentity } from "../src/ports/capability-port.js";
@@ -3749,9 +3750,15 @@ test("a ptc round offers run_code alone, and the program's inner calls still bec
           trust: "workspace" as const,
         });
       }
+      /*
+       * The real executor unions this program's nested effects into the run_code result; a stub that answered with
+       * empty effects was modelling the bug that made every program-driven inspection invisible to the gate.
+       */
+      const collected: Parameters<typeof mergeProgramToolEffects>[0][number][] = [];
       const outcome = await runtime.run({
         callTool: async (name: string, args: Record<string, unknown>) => {
           const nested = await this.execute({ arguments: args, name, toolCallId: "code-1" });
+          if (nested.ok && nested.effects !== undefined) collected.push(nested.effects);
           return nested.ok ? { ok: true as const, value: nested.content } : { code: nested.error.code, error: nested.error.message, ok: false as const };
         },
         goal: String(call.arguments.goal),
@@ -3763,7 +3770,7 @@ test("a ptc round offers run_code alone, and the program's inner calls still bec
       return Object.freeze({
         canonicalToolId: "code.run",
         content: outcome.value,
-        effects: Object.freeze({}),
+        effects: mergeProgramToolEffects(collected),
         effectsAuthority: "host",
         ok: true as const,
         summary: outcome.value.slice(0, 120),

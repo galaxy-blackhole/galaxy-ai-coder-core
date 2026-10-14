@@ -12,17 +12,23 @@ async function until(check: () => boolean, timeoutMs = 2_000): Promise<void> {
 
 test("starting returns at once, and the book learns the outcome", async () => {
   const finished: string[] = [];
+  /*
+   * The child holds this gate until the test releases it, so "returned early" is a fact rather than a stopwatch:
+   * the suite runs files in parallel, and a busy machine made the old 40ms wall-clock assertion fail at random.
+   */
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
   const registry = new SubagentRegistry();
   const provider = new InProcessSubagentProvider({
-    factory: async () => { await new Promise((resolve) => setTimeout(resolve, 50)); return { ok: true, text: "xong" }; },
+    factory: async () => { await gate; return { ok: true, text: "xong" }; },
     reporter: { finish: (id, status) => { finished.push(id + ":" + status); } },
   });
   registry.register(provider);
-  const started = Date.now();
   const spawned = await registry.spawn({ description: "one", kind: "spawn", prompt: "làm đi", provider: "in-process" });
   assert.equal(spawned.ok, true);
-  assert.ok(Date.now() - started < 40, "spawning must not wait for the child");
+  assert.deepEqual(finished, [], "spawning must not wait for the child — the book is still empty while it works");
   const id = spawned.ok ? spawned.record.id : "";
+  release?.();
   await until(() => finished.length === 1);
   assert.deepEqual(finished, [id + ":completed"]);
   assert.equal(provider.result(id)?.text, "xong");

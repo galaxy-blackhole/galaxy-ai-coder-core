@@ -1319,6 +1319,14 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           .map(tool => tool.modelName)
           .filter(name => name !== "run_code");
         let callIndex = 0;
+        /*
+         * A program's calls are the run's calls. Their reads, writes and validations are evidence exactly like a
+         * top-level call's — and returning empty effects here made every read inside a program invisible, so a
+         * session that inspected a repository through programs looked like it had never looked at the workspace at
+         * all. The gate then refused the report with INSPECTION_MISSING, the model read the refusal as "keep
+         * going", and three of those ended the run.
+         */
+        const nestedEffects: AiCoderRuntimeToolEffects[] = [];
         const outcome = await this.codeRuntime.run({
           callTool: async (name, args) => {
             callIndex += 1;
@@ -1326,6 +1334,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
               { arguments: args, name, toolCallId: `code-${callIndex.toString()}` },
               context,
             );
+            if (nested.ok && nested.effects !== undefined) nestedEffects.push(nested.effects);
             return nested.ok
               ? { ok: true as const, value: nested.content }
               : { code: nested.error.code, error: nested.error.message, ok: false as const };
@@ -1339,7 +1348,7 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
         /* A failed program is a failed tool call, so the ordinary error path owns retries and reporting. */
         if (!outcome.ok) throw new ToolAdapterError(outcome.code, outcome.error, false);
         return Object.freeze({
-          effects: Object.freeze({}),
+          effects: mergeProgramToolEffects(nestedEffects),
           output: Object.freeze({ logs: Object.freeze(outcome.logs), ok: true as const, value: outcome.value }),
           summary: outcome.value.slice(0, 400),
           trust: "workspace",
@@ -1466,4 +1475,54 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
         throw new Error(`No deterministic adapter exists for ${descriptor.id}.`);
     }
   }
+}
+
+/**
+ * Unions what a program's nested calls did into the single effect set the controller sees.
+ *
+ * Collections are concatenated; scalars take the last value that was set, because a plan or a diff review from
+ * later in the program is the one that describes the state the program ended in.
+ */
+export function mergeProgramToolEffects(effects: readonly AiCoderRuntimeToolEffects[]): AiCoderRuntimeToolEffects {
+  if (effects.length === 0) return Object.freeze({});
+  const inspectedPaths: string[] = [];
+  const writes: NonNullable<AiCoderRuntimeToolEffects["writes"]>[number][] = [];
+  const validations: NonNullable<AiCoderRuntimeToolEffects["validations"]>[number][] = [];
+  const researchSources: NonNullable<AiCoderRuntimeToolEffects["researchSources"]>[number][] = [];
+  const satisfied: string[] = [];
+  const waived: string[] = [];
+  let plan: AiCoderRuntimeToolEffects["plan"];
+  let diffReview: AiCoderRuntimeToolEffects["diffReview"];
+  let approval: AiCoderRuntimeToolEffects["approval"];
+  let approvalRequestId: string | undefined;
+  let nextAction: string | undefined;
+  let stateVersion: string | undefined;
+  for (const effect of effects) {
+    if (effect.inspectedPaths !== undefined) inspectedPaths.push(...effect.inspectedPaths);
+    if (effect.writes !== undefined) writes.push(...effect.writes);
+    if (effect.validations !== undefined) validations.push(...effect.validations);
+    if (effect.researchSources !== undefined) researchSources.push(...effect.researchSources);
+    if (effect.acceptanceCriteriaSatisfied !== undefined) satisfied.push(...effect.acceptanceCriteriaSatisfied);
+    if (effect.acceptanceCriteriaWaived !== undefined) waived.push(...effect.acceptanceCriteriaWaived);
+    if (effect.plan !== undefined) plan = effect.plan;
+    if (effect.diffReview !== undefined) diffReview = effect.diffReview;
+    if (effect.approval !== undefined) approval = effect.approval;
+    if (effect.approvalRequestId !== undefined) approvalRequestId = effect.approvalRequestId;
+    if (effect.nextAction !== undefined) nextAction = effect.nextAction;
+    if (effect.stateVersion !== undefined) stateVersion = effect.stateVersion;
+  }
+  return Object.freeze({
+    ...(approval === undefined ? {} : { approval }),
+    ...(approvalRequestId === undefined ? {} : { approvalRequestId }),
+    ...(satisfied.length === 0 ? {} : { acceptanceCriteriaSatisfied: Object.freeze(satisfied) }),
+    ...(waived.length === 0 ? {} : { acceptanceCriteriaWaived: Object.freeze(waived) }),
+    ...(diffReview === undefined ? {} : { diffReview }),
+    ...(inspectedPaths.length === 0 ? {} : { inspectedPaths: Object.freeze(inspectedPaths) }),
+    ...(nextAction === undefined ? {} : { nextAction }),
+    ...(plan === undefined ? {} : { plan }),
+    ...(researchSources.length === 0 ? {} : { researchSources: Object.freeze(researchSources) }),
+    ...(stateVersion === undefined ? {} : { stateVersion }),
+    ...(validations.length === 0 ? {} : { validations: Object.freeze(validations) }),
+    ...(writes.length === 0 ? {} : { writes: Object.freeze(writes) }),
+  });
 }
