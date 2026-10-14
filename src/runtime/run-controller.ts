@@ -6,7 +6,7 @@ import {
 import { compareAiCoderText } from "../deterministic-order.js";
 import type { AiCoderPlanSnapshot, AiCoderPlanStep } from "../runtime/runtime-types.js";
 import { mergePlanSnapshot } from "./plan.js";
-import { dispatchGuardMs } from "../tools/tool-timeouts.js";
+import { defaultToolTimeoutMs, dispatchGuardMs } from "../tools/tool-timeouts.js";
 import {
   assertPresentationAvailable,
   projectToolDefinitions,
@@ -2238,13 +2238,17 @@ export class AiCoderRunController {
     // choice so the tool returns its own timeout result instead of being killed from here.
     const guardArguments = prepared.call.arguments as Record<string, unknown>;
     const requestedTimeoutMs = typeof guardArguments?.timeoutMs === "number" ? guardArguments.timeoutMs : undefined;
-    const timeoutMs = dispatchGuardMs(requestedTimeoutMs);
+    /*
+     * A program is not a command. When the call carries no timeout of its own, the tool's own kind decides
+     * the default: minutes for run_code, seconds for a command.
+     */
+    const timeoutMs = dispatchGuardMs(requestedTimeoutMs ?? defaultToolTimeoutMs(prepared.call.name));
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
         this.executeToolCall(session, prepared, roundToolSet),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new AiCoderRuntimeError("TOOL_TIMEOUT", `Tool ${prepared.call.name} did not return within ${timeoutMs}ms.`)), timeoutMs);
+          timer = setTimeout(() => reject(new AiCoderRuntimeError("TOOL_TIMEOUT", `Tool ${prepared.call.name} was still running after ${timeoutMs}ms and was stopped. That is a limit, not a failure: a program should read only what one step needs, and a step that genuinely needs longer belongs in a background job.`)), timeoutMs);
           timer.unref?.();
         }),
       ]);

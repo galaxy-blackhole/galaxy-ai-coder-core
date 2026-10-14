@@ -26,3 +26,17 @@ export function dispatchGuardMs(requestedTimeoutMs?: number): number {
     : DEFAULT_TOOL_TIMEOUT_MS;
   return usable + TOOL_DISPATCH_GUARD_MARGIN_MS;
 }
+
+/**
+ * The wait a tool gets when the call carries none of its own.
+ *
+ * A program is not a command: it reads, reasons and calls tools, so a repository-sized read takes minutes while a
+ * command takes seconds. Using the command default here killed every long program at 180s, and the model read the
+ * kill as a failure and wrote the program again — which is exactly the loop it looked like.
+ */
+export function defaultToolTimeoutMs(toolName: string): number {
+  return toolName === "run_code" || toolName === "code.run" ? DEFAULT_CODE_RUN_TIMEOUT_MS : DEFAULT_TOOL_TIMEOUT_MS;
+}
+
+/** run_code's own ceiling: minutes, because a program may read a whole repository before it answers. */
+export const DEFAULT_CODE_RUN_TIMEOUT_MS = 600_000;
