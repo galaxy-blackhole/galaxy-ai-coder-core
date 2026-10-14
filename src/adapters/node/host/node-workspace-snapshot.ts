@@ -264,11 +264,17 @@ export class NodeWorkspaceSnapshotter {
         throw codedError("PERMISSION_DENIED", `Workspace snapshot cannot follow a symlink: ${relativePath}.`);
       }
       if (derived) {
+        /*
+         * A generated path is observed, never evidenced. An installer or a build rewrites it while the snapshot is
+         * being taken, and that churn is the normal case rather than a conflict — throwing here is how a running
+         * `npm install` used to kill the entire run. The identity must still hold; the bytes may move under us, and
+         * the first observation is what the snapshot records.
+         */
         const after = await lstat(absolutePath);
-        if (!after.isFile() || !sameIdentity(before, after) || !stableMetadata(before, after)) {
+        if (!after.isFile() || !sameIdentity(before, after)) {
           throw codedError("CONFLICT", `Workspace file changed while taking a mutation snapshot: ${relativePath}.`);
         }
-        return metadataHash(after);
+        return stableMetadata(before, after) ? metadataHash(after) : metadataHash(before);
       }
       if (before.size > this.maxFileBytes || byteCount + before.size > this.maxHashedBytes) {
         this.bytesDegraded = true;
