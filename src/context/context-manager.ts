@@ -27,6 +27,7 @@ import type {
   CodingToolCall,
   CodingToolDefinition,
 } from "../tools/coding-messages.js";
+import { pruneToolText } from "./tool-result-pruner.js";
 import type { AiCoderTokenProfile } from "../tools/settings-types.js";
 import type { AiCoderAttachment } from "./attachment-types.js";
 
@@ -228,6 +229,32 @@ export class AiCoderContextManager {
   readonly ledger: AiCoderTokenLedger;
   private readonly visionEstimator = new AiCoderVisionTokenEstimator();
   private items: AiCoderContextItem[] = [];
+
+  /**
+   * Skims the largest tool blocks in place: the head, the tail, and a marker where the middle was.
+   *
+   * It runs BEFORE the compaction decision, because the alternative — summarising everything — costs a model call
+   * and loses the tail, which is where a failure explains itself. Deterministic, so a replay rebuilds the same
+   * context, and free, so trying it first costs nothing when it does not help.
+   */
+  private pruneToolResults(): void {
+    let pruned = 0;
+    const items = this.items.map((item) => {
+      if (item.kind !== "tool" && item.kind !== "research") return item;
+      /*
+       * Only a tool item that actually carries text is skimmed: the item union has shapes without one, and a
+       * guard here keeps this method honest about what it can prune.
+       */
+      const text = (item as { content?: unknown }).content;
+      if (typeof text !== "string") return item;
+      const result = pruneToolText(text);
+      if (!result.pruned) return item;
+      pruned += 1;
+      return Object.freeze({ ...item, content: result.text, tokenCount: this.estimator.estimateText(result.text) });
+    });
+    if (pruned === 0) return;
+    this.items = items;
+  }
   private compactionCount = 0;
   private sequence = 0;
   private toolRoundsSinceCheckpoint = 0;
@@ -737,6 +764,10 @@ export class AiCoderContextManager {
       ? this.visionEstimator.estimate(this.options.attachments ?? [])
       : this.visionEstimator.estimate([]);
     let budget = resolveAiCoderContextBudget(this.options.profile, this.options.capabilities, this.ledger.hasProviderUsage);
+    /*
+     * Try the cheap thing first: skim the biggest tool blocks before deciding that only a compaction can help.
+     */
+    this.pruneToolResults();
     const rawToolTokens = this.items
       .filter((item) => item.kind === "tool" || item.kind === "research" || item.kind === "file" || item.kind === "diff")
       .reduce((sum, item) => sum + item.tokenCount, 0);
