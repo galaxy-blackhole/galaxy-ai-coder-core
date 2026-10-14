@@ -64,6 +64,7 @@ import {
   type AiCoderPromptSnapshot,
   type AiCoderTaskContract,
 } from "../prompt/prompt-assembler.js";
+import { readWorkspaceInstructions } from "./workspace-instructions.js";
 import {
   CodingProviderError,
   type CodingAssistantMessage,
@@ -1304,7 +1305,7 @@ export class AiCoderRunController {
     }
   }
 
-  private buildPromptSnapshot(
+  private async buildPromptSnapshot(
     session: RunSession,
     toolSet: AiCoderRuntimeToolSet,
   ): Promise<AiCoderPromptSnapshot> {
@@ -1323,8 +1324,20 @@ export class AiCoderRunController {
         );
       }
     }
+    /*
+     * A workspace that writes AGENTS.md — or CLAUDE.md, which a project may already have from another tool — is
+     * telling every agent that works in it how it wants to be worked with. The host may supply its own list; when it
+     * does not, the files are read here, because this is the one place that knows both the workspace and the moment
+     * the prompt is assembled.
+     */
+    const hostInstructions = session.request.prompt.trustedWorkspaceInstructions;
+    const workspaceRoot = session.context.workspaceRoot;
+    const fromDisk = hostInstructions === undefined && typeof workspaceRoot === "string"
+      ? await readWorkspaceInstructions(workspaceRoot)
+      : undefined;
     return assembleAiCoderPrompt({
       ...session.request.prompt,
+      ...(fromDisk === undefined || fromDisk.length === 0 ? {} : { trustedWorkspaceInstructions: fromDisk }),
       capabilities: session.capabilities,
       mode: session.context.mode,
       registrySnapshotHash: toolSet.snapshotHash,
