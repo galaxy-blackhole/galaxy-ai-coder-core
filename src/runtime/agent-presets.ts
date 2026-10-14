@@ -15,6 +15,8 @@ export type AgentToolPresentation = "native" | "ptc" | "both";
 export interface AgentPreset {
   readonly approvalProfile: AiCoderApprovalProfile;
   readonly description: string;
+  /** One line a person can read in a tooltip: what this choice means for them, not what it is called. */
+  readonly help: string;
   readonly id: string;
   readonly label: string;
   /** Extra permission ids beyond the granted baseline; empty means the baseline alone. */
@@ -35,6 +37,7 @@ export const AGENT_PRESETS: readonly AgentPreset[] = Object.freeze([
     approvalProfile: "balanced" as const,
     description: "Tools, with permission asked before anything that changes the workspace.",
     id: "standard",
+    help: "Gọi từng công cụ, hỏi trước khi thay đổi workspace.",
     label: "Tiêu chuẩn",
     permissions: Object.freeze([]),
     toolPresentation: "native" as const,
@@ -43,6 +46,7 @@ export const AGENT_PRESETS: readonly AgentPreset[] = Object.freeze([
     approvalProfile: "balanced" as const,
     description: "A program per turn instead of a call per step.",
     id: "ptc",
+    help: "Mỗi lượt gửi MỘT chương trình thay vì gọi từng bước — ít token, ít vòng hơn.",
     label: "Chương trình",
     permissions: Object.freeze(["workspace.read", "workspace.write"]),
     toolPresentation: "ptc" as const,
@@ -51,6 +55,7 @@ export const AGENT_PRESETS: readonly AgentPreset[] = Object.freeze([
     approvalProfile: "strict" as const,
     description: "Asks more often, and works through tools only.",
     id: "cautious",
+    help: "Hỏi nhiều hơn, và chỉ dùng công cụ.",
     label: "Thận trọng",
     permissions: Object.freeze([]),
     toolPresentation: "native" as const,
@@ -59,6 +64,7 @@ export const AGENT_PRESETS: readonly AgentPreset[] = Object.freeze([
     approvalProfile: "trusted-workspace" as const,
     description: "A workspace the owner already trusts; the fewest interruptions.",
     id: "trusted",
+    help: "Workspace bạn đã tin: ít ngắt nhất.",
     label: "Tin cậy",
     permissions: Object.freeze(["workspace.read", "workspace.write"]),
     toolPresentation: "ptc" as const,
