@@ -221,6 +221,17 @@ A child agent has its own context, budget and stop button, and sees none of this
 - You are told when a child finishes; there is no need to keep checking.`,
   }),
   Object.freeze({
+    id: "goal-tracker",
+    version: "1.0.0",
+    priority: 59,
+    kind: "static" as const,
+    content: `GOALS THAT OUTLIVE A TURN
+A goal records what this work is for, and keeps saying so across turns, compaction and restarts.
+- create_goal { objective } when the request is a long-running objective — even if the user never says the word goal. Not for single-turn work.
+- get_goal reads the goal WITH its revision. update_goal must be given that exact revision: a stale one is refused with CONFLICT rather than applied, so re-read and try again instead of forcing it.
+- update_goal actions: edit, pause, resume (which counts a round), complete, and blocked with blocked_reason. Mark complete only when the objective is actually achieved; a blocker that persists across rounds is blocked, while difficulty or remaining work is not.`,
+  }),
+  Object.freeze({
     id: "editing-command-policy",
     version: "2.3.0",
     priority: 60,
@@ -488,7 +499,27 @@ export function formatAiCoderUserTask(
   return `[GALAXY USER TASK trust=user; current request]\n${JSON.stringify(envelope)}${suffix}`;
 }
 
+/**
+ * What the assembler needs, named before it is used.
+ *
+ * Called with a partial object this used to fail as 'Cannot read properties of undefined' — a sentence that names
+ * nothing, from a function whose whole job is to say things. A caller who forgot a field should be told which one.
+ */
+function requireAssemblerOptions(options: AiCoderPromptAssemblerOptions | undefined | null): void {
+  if (options === undefined || options === null) throw new Error("assembleAiCoderPrompt cần options.");
+  const missing: string[] = [];
+  if (options.capabilities === undefined || options.capabilities === null) missing.push("capabilities");
+  else {
+    if (options.capabilities.input === undefined) missing.push("capabilities.input");
+    if (options.capabilities.output === undefined) missing.push("capabilities.output");
+  }
+  if (missing.length > 0) {
+    throw new Error("assembleAiCoderPrompt thiếu: " + missing.join(", ") + ".");
+  }
+}
+
 export async function assembleAiCoderPrompt(options: AiCoderPromptAssemblerOptions): Promise<AiCoderPromptSnapshot> {
+  requireAssemblerOptions(options);
   const estimator = new AiCoderTokenEstimator();
   const mode = normalizeMode(options.mode);
   const complexity = normalizeComplexity(options.complexity);
