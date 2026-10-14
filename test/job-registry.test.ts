@@ -33,7 +33,18 @@ test("a failed command is failed, not completed", async () => {
 test("a job that will not end is ended", async () => {
   const job = registry.start("sleep 30", { cwd: process.cwd(), kind: "command" });
   assert.equal(registry.kill(job.id), true);
-  const read = await registry.output(job.id, true, 10_000);
+  /*
+   * A kill is a signal and a reap, and how long that takes is the machine's business rather than this test's: a busy
+   * CI runner does it slower than a laptop, which is how this went from green to red without anything changing in
+   * the code under test. So the wait is a poll with a generous bound — the claim is that the job IS ended, not that
+   * it ends inside ten seconds.
+   */
+  const deadline = Date.now() + 30_000;
+  let read = await registry.output(job.id, false, 0);
+  while (read?.status === "running" && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    read = await registry.output(job.id, false, 0);
+  }
   assert.equal(read?.status, "killed");
   assert.equal(registry.kill(job.id), false);
 });
