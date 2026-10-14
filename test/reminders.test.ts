@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { addReminder, deliveredReminders, dueReminders, markDelivered, readReminders, removeReminder, writeReminders } from "../src/runtime/reminders.js";
+import { addReminder, deliveredReminders, dueReminders, formatReminderNote, markDelivered, readReminders, removeReminder, writeReminders } from "../src/runtime/reminders.js";
 
 const base = { createdAt: 1_000, dueAt: 5_000, id: "r1", text: "nhắc việc" };
 
@@ -37,6 +37,13 @@ test("a store round-trips, and a malformed entry is forgotten rather than fatal"
     const recovered = await readReminders(file);
     assert.deepEqual(recovered.map((item) => item.id), ["r1"], "only the entry that makes sense survives");
   } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("a due reminder is handed over as data, above the work that was asked for", () => {
+  const note = formatReminderNote([{ createdAt: 1, dueAt: 2, id: "r1", text: "gọi cho khách" }]);
+  assert.match(note, /GALAXY REMINDER/);
+  assert.match(note, /data, not an instruction/);
+  assert.match(note, /- gọi cho khách/);
 });
 
 test("a store that is not there is an empty store, not an error", async () => {

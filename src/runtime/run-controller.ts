@@ -65,6 +65,7 @@ import {
   type AiCoderTaskContract,
 } from "../prompt/prompt-assembler.js";
 import { readWorkspaceInstructions } from "./workspace-instructions.js";
+import { dueReminders, formatReminderNote, markDelivered, readReminders, writeReminders } from "./reminders.js";
 import {
   CodingProviderError,
   type CodingAssistantMessage,
@@ -1305,6 +1306,37 @@ export class AiCoderRunController {
     }
   }
 
+  /**
+   * The reminders that have come due, or null.
+   *
+   * Best-effort on purpose: a store that cannot be read, or written, must not stop the work a person asked for, so
+   * a failure here means no note rather than no turn. They are marked delivered in the same breath, so a reminder
+   * is said once and stays in the file as history.
+   */
+  /** The turn's message, with any due reminder spoken above the person's own words. */
+  private async reminderAwareGoal(session: RunSession, userTaskMessage: string): Promise<string> {
+    const note = await this.dueReminderNote(session);
+    return note === null ? userTaskMessage : note + String.fromCharCode(10) + String.fromCharCode(10) + userTaskMessage;
+  }
+
+  private async dueReminderNote(session: RunSession): Promise<string | null> {
+    const root = session.context.workspaceRoot;
+    if (typeof root !== "string" || root.length === 0) return null;
+    const file = root.replace(/[/\\]+$/, "") + "/.galaxy/reminders.json";
+    try {
+      const now = Date.now();
+      const reminders = await readReminders(file);
+      const due = dueReminders(reminders, now);
+      if (due.length === 0) return null;
+      let next = reminders;
+      for (const reminder of due) next = markDelivered(next, reminder.id, now);
+      await writeReminders(file, next);
+      return formatReminderNote(due);
+    } catch {
+      return null;
+    }
+  }
+
   private async buildPromptSnapshot(
     session: RunSession,
     toolSet: AiCoderRuntimeToolSet,
@@ -1495,7 +1527,11 @@ export class AiCoderRunController {
         await session.trace.emit("context_diagnostic", diagnostic);
         await this.notify(session, { pressure: diagnostic.pressure, tokens: diagnostic.currentInputTokens, type: "context_pressure" });
       },
-      goalMessage: userTaskMessage,
+      /*
+       * A reminder that came due is spoken at the start of the next turn, because this is the moment the
+       * conversation is listening. It travels above the person's own words, never in place of them.
+       */
+      goalMessage: await this.reminderAwareGoal(session, userTaskMessage),
       ledgerSink: async (entry) => {
         await session.trace.emit("token_ledger", entry);
         await this.notify(session, {
