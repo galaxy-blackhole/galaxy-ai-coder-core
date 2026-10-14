@@ -362,6 +362,13 @@ const CATALOG: AiCoderToolDescriptor[] = [
     permissions: ["core.storage"], risk: "medium", mutability: "write", idempotency: "unsafe", maxOutputTokens: 2_000, enabledByDefault: true,
   }),
   descriptor({
+    id: "subagent.fork", modelName: "subagent_fork", title: "Delegate to a child that already knows part of this work",
+    description: "Hand a task to a child seeded with a prefix of this conversation. Write only what the prefix does not already say. It costs more context than a plain delegation, so use it when that context IS the task.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ description: NON_EMPTY_STRING, prompt: NON_EMPTY_STRING, provider: STRING, model: STRING, reasoning_effort: STRING, run_in_background: BOOLEAN }, ["description", "prompt"]),
+    outputSchema: objectSchema({ agent_id: NON_EMPTY_STRING, status: NON_EMPTY_STRING }, ["agent_id"]),
+    permissions: ["core.storage"], risk: "medium", mutability: "write", idempotency: "unsafe", maxOutputTokens: 2_000, enabledByDefault: true,
+  }),
+  descriptor({
     id: "subagent.list", modelName: "list_agents", title: "List child agents",
     description: "List the child agents this session started, with their ids, tasks, depths and statuses.",
     category: "bootstrap", transport: "native", inputSchema: objectSchema({}),

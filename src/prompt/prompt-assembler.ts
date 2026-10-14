@@ -210,7 +210,7 @@ A command that takes minutes must not be a tool call that waits for them: the ca
   }),
   Object.freeze({
     id: "delegation",
-    version: "1.0.0",
+    version: "1.1.0",
     priority: 58,
     kind: "static" as const,
     content: `DELEGATION
@@ -218,7 +218,8 @@ A child agent has its own context, budget and stop button, and sees none of this
 - subagent { description, prompt }: write the prompt for a stranger — the whole task, every path and fact it needs. A prompt that only asks the child to keep going wastes it.
 - The call returns an agent id at once: list_agents shows the children and their status, send_message continues one, interrupt_agent stops one.
 - Delegate work that would bury this conversation in output, not work that needs this conversation's context.
-- You are told when a child finishes; there is no need to keep checking.`,
+- You are told when a child finishes; there is no need to keep checking.
+- subagent_fork is the other half of this: the child starts holding a prefix of this conversation. Write only what that prefix does not already say — telling it what it has already read wastes the context you paid for.`,
   }),
   Object.freeze({
     id: "goal-tracker",

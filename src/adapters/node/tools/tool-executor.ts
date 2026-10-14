@@ -1041,17 +1041,37 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           trust: "trusted" as const,
         });
       }
-      case "subagent.send": {
+      case "subagent.fork": {
         const seam = this.subagents;
         if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
-        const sent = seam.send(stringArgument(argumentsValue, "target"), stringArgument(argumentsValue, "message"));
-        if (!sent) throw new ToolAdapterError("NOT_FOUND", "No running child agent with that id.");
+        const providerName = optionalString(argumentsValue, "provider") ?? (seam.providerNames()[0] ?? "in-process");
+        const spawned = await seam.spawn({
+          description: stringArgument(argumentsValue, "description"),
+          kind: "fork",
+          prompt: stringArgument(argumentsValue, "prompt"),
+          provider: providerName,
+        });
+        if (spawned.ok === false) {
+          throw new ToolAdapterError(spawned.reason === "unknown_provider" ? "NOT_FOUND" : "LIMIT_EXCEEDED", "Cannot start a child agent: " + spawned.reason + ".");
+        }
         return Object.freeze({
-          effects: Object.freeze({ stateVersion: sha256Text("sent" + Date.now()) }),
-          output: Object.freeze({ sent }),
-          summary: "Message delivered to the child agent.",
+          effects: Object.freeze({ stateVersion: sha256Text(spawned.record.id + spawned.record.status) }),
+          output: Object.freeze({ agent_id: spawned.record.id, status: spawned.record.status }),
+          summary: "Started " + spawned.record.id + ": " + spawned.record.description,
           trust: "trusted" as const,
         });
+      }
+      case "subagent.send": {
+      const seam = this.subagents;
+      if (seam === null) throw new ToolAdapterError("UNSUPPORTED", "No child-agent backend is configured.");
+      const sent = seam.send(stringArgument(argumentsValue, "target"), stringArgument(argumentsValue, "message"));
+      if (!sent) throw new ToolAdapterError("NOT_FOUND", "No running child agent with that id.");
+      return Object.freeze({
+        effects: Object.freeze({ stateVersion: sha256Text("sent" + Date.now()) }),
+        output: Object.freeze({ sent }),
+        summary: "Message delivered to the child agent.",
+        trust: "trusted" as const,
+      });
       }
       case "subagent.interrupt": {
         const seam = this.subagents;

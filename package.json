@@ -29,6 +29,10 @@
       "types": "./dist/runtime/subagent-registry.d.ts",
       "import": "./dist/runtime/subagent-registry.js"
     },
+    "./runtime/subagent-seed": {
+      "types": "./dist/runtime/subagent-seed.d.ts",
+      "import": "./dist/runtime/subagent-seed.js"
+    },
     "./runtime/subagent-in-process": {
       "types": "./dist/runtime/subagent-in-process.d.ts",
       "import": "./dist/runtime/subagent-in-process.js"

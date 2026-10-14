@@ -20,7 +20,7 @@ test("canonical effect profile covers the complete core catalog without drift", 
     Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE),
     AI_CODER_CORE_TOOL_CATALOG.map((tool) => tool.id),
   );
-  assert.equal(Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE).length, 32);
+
   assert.equal(Object.isFrozen(AI_CODER_CORE_TOOL_EFFECT_PROFILE), true);
   assert.equal(Object.isFrozen(AI_CODER_TOOL_EFFECT_CAPABILITIES), true);
 
@@ -35,7 +35,7 @@ test("profile grants workspace mutation evidence only to explicit mutation-capab
   const writeCapable = Object.entries(AI_CODER_CORE_TOOL_EFFECT_PROFILE)
     .filter(([, capabilities]) => capabilities.includes("write"))
     .map(([id]) => id);
-  assert.deepEqual(writeCapable, ["command.run", "command.session", "goal.create", "goal.update", "job.kill", "project.validate", "subagent.interrupt", "subagent.send", "subagent.spawn", "workspace.edit", "workspace.write"]);
+  assert.deepEqual(writeCapable, ["command.run", "command.session", "goal.create", "goal.update", "job.kill", "project.validate", "subagent.fork", "subagent.interrupt", "subagent.send", "subagent.spawn", "workspace.edit", "workspace.write"]);
   assert.deepEqual(
     AI_CODER_CORE_TOOL_EFFECT_PROFILE["project.validate"],
     ["approval", "state_version", "validate", "write"],
@@ -69,8 +69,8 @@ test("profile validation reports missing, extra, duplicated, unordered, and unkn
 test("active metadata derives canonical ids and retains the stable full profile", () => {
   const active = AI_CODER_CORE_TOOL_CATALOG.filter((tool) => tool.enabledByDefault);
   const metadata = createAiCoderCoreToolEffectMetadata([...active].reverse());
-  assert.equal(Object.keys(metadata.canonicalToolIds).length, 23);
-  assert.equal(Object.keys(metadata.effectCapabilities).length, 32);
+  assert.equal(Object.keys(metadata.canonicalToolIds).length, active.length);
+  assert.equal(Object.keys(metadata.effectCapabilities).length, Object.keys(AI_CODER_CORE_TOOL_EFFECT_PROFILE).length);
   assert.equal(metadata.canonicalToolIds.read_file, "workspace.read");
   assert.deepEqual(metadata.effectCapabilities["workspace.read"], ["approval", "inspect"]);
   assert.equal(Object.isFrozen(metadata), true);

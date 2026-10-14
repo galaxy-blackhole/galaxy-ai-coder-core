@@ -66,6 +66,7 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "project.validate": effectCapabilities("approval", "state_version", "validate", "write"),
   "research.fetch": effectCapabilities("approval", "research"),
   "research.search": effectCapabilities("approval", "research"),
+  "subagent.fork": effectCapabilities("approval", "state_version", "write"),
   "subagent.interrupt": effectCapabilities("approval", "state_version", "write"),
   "subagent.list": effectCapabilities("approval", "inspect"),
   "subagent.send": effectCapabilities("approval", "state_version", "write"),
