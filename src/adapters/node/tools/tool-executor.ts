@@ -31,6 +31,7 @@ import { GoalStore } from "../../../runtime/goal-store.js";
 import { SubagentRegistry } from "../../../runtime/subagent-registry.js";
 import { readHookConfig, runToolHooks, type HookConfig } from "../../../runtime/hooks.js";
 import { addReminder, readReminders, removeReminder, writeReminders } from "../../../runtime/reminders.js";
+import { formatSkillList, readWorkspaceSkills } from "../../../runtime/skills.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
 import { parsePlanSteps } from "../../../runtime/plan.js";
 import type { PlanStepInput } from "../../../runtime/plan.js";
@@ -580,6 +581,12 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
    * Reminders live beside the project they are about, so a reminder about this repository is found here and not in
    * some other project's list. The store itself tolerates a missing file, so this only decides where.
    */
+  /** The workspace this session is working in, or null when it has none. */
+  private workspaceRootOf(context: ToolExecutionContext): string | null {
+    const root = (context as { workspaceRoot?: unknown }).workspaceRoot;
+    return typeof root === "string" && root.length > 0 ? root : null;
+  }
+
   private reminderStore(context: ToolExecutionContext): string | null {
     const root = (context as { workspaceRoot?: unknown }).workspaceRoot;
     return typeof root === "string" && root.length > 0
@@ -1088,6 +1095,31 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
             writes: mutations.writes,
             stateVersion: mutations.stateVersion,
           }),
+        });
+      }
+      case "skill.list": {
+        const root = this.workspaceRootOf(context);
+        if (root === null) throw new ToolAdapterError("UNAVAILABLE", "This session has no workspace to read skills from.");
+        const skills = await readWorkspaceSkills(root);
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(formatSkillList(skills)) }),
+          output: Object.freeze({ skills: skills.map((skill) => skill.name + (skill.description.length === 0 ? "" : " — " + skill.description)) }),
+          summary: skills.length === 0 ? "No skills in this workspace." : String(skills.length) + " skill(s).",
+          trust: "trusted" as const,
+        });
+      }
+      case "skill.load": {
+        const root = this.workspaceRootOf(context);
+        if (root === null) throw new ToolAdapterError("UNAVAILABLE", "This session has no workspace to read a skill from.");
+        const wanted = stringArgument(argumentsValue, "name");
+        const skills = await readWorkspaceSkills(root);
+        const skill = skills.find((entry) => entry.name === wanted);
+        if (skill === undefined) throw new ToolAdapterError("NOT_FOUND", "No skill named " + wanted + " in this workspace.");
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(skill.source) }),
+          output: Object.freeze({ content: skill.body, source: skill.source }),
+          summary: "Read the " + skill.name + " skill.",
+          trust: "trusted" as const,
         });
       }
       case "schedule.create": {

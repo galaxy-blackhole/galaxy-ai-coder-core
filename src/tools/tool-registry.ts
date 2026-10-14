@@ -255,6 +255,20 @@ const CATALOG: AiCoderToolDescriptor[] = [
     permissions: ["core.storage"], risk: "low", mutability: "write", idempotency: "safe", maxOutputTokens: 500, enabledByDefault: true,
   }),
   descriptor({
+    id: "skill.list", modelName: "skill_list", title: "List the workspace's skills",
+    description: "List the skills this workspace keeps on disk — .galaxy/skills/<name>/SKILL.md and .claude/skills/<name>/SKILL.md — with what each one teaches.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({}),
+    outputSchema: objectSchema({ skills: arraySchema(STRING, 64) }, ["skills"]),
+    permissions: ["core.storage"], risk: "low", mutability: "read", maxOutputTokens: 2_000, enabledByDefault: true,
+  }),
+  descriptor({
+    id: "skill.load", modelName: "skill_load", title: "Read one skill",
+    description: "Read one skill's document in full, by the name the listing gave.",
+    category: "bootstrap", transport: "native", inputSchema: objectSchema({ name: NON_EMPTY_STRING }, ["name"]),
+    outputSchema: objectSchema({ content: STRING, source: STRING }, ["content"]),
+    permissions: ["core.storage"], risk: "low", mutability: "read", maxOutputTokens: 8_000, enabledByDefault: true,
+  }),
+  descriptor({
     id: "task.checkpoint", modelName: "update_checkpoint", title: "Manage task checkpoint",
     description: "Read or update bounded durable task state before compaction or long work. The required action is exactly 'read' or 'update': use {\"action\":\"read\"} to recover state, or {\"action\":\"update\",\"goal\":\"...\",\"progress\":\"...\",\"decisions\":[],\"nextStep\":\"...\"} to save it. Do not omit action and do not store secrets, raw logs, or private reasoning. Returns the verified checkpoint record.",
     category: "bootstrap", transport: "native",

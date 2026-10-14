@@ -69,6 +69,8 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "schedule.create": effectCapabilities("approval", "state_version", "write"),
   "schedule.delete": effectCapabilities("approval", "state_version", "write"),
   "schedule.list": effectCapabilities("approval", "inspect"),
+  "skill.list": effectCapabilities("approval", "inspect"),
+  "skill.load": effectCapabilities("approval", "inspect"),
   "subagent.fork": effectCapabilities("approval", "state_version", "write"),
   "subagent.interrupt": effectCapabilities("approval", "state_version", "write"),
   "subagent.list": effectCapabilities("approval", "inspect"),
