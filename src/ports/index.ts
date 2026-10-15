@@ -1,5 +1,6 @@
 export * from "./approval-port.js";
 export * from "./artifact-port.js";
+export * from "./authorization-port.js";
 export * from "./capability-port.js";
 export * from "./coding-model-port.js";
 export * from "./command-port.js";

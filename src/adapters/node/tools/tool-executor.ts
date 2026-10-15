@@ -30,6 +30,7 @@ import { JobRegistry, type JobRow } from "../host/job-registry.js";
 import { GoalStore } from "../../../runtime/goal-store.js";
 import { SubagentRegistry } from "../../../runtime/subagent-registry.js";
 import { readHookConfig, runToolHooks, type HookConfig } from "../../../runtime/hooks.js";
+import type { AiCoderAuthorizationPort } from "../../../ports/authorization-port.js";
 import { addReminder, readReminders, removeReminder, writeReminders } from "../../../runtime/reminders.js";
 import { formatSkillList, readWorkspaceSkills } from "../../../runtime/skills.js";
 import type { AiCoderPlanStep } from "../../../runtime/runtime-types.js";
@@ -565,6 +566,19 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
     if (registry.activeHash !== input.snapshotHash) {
       throw new Error(`Checkpoint tool snapshot mismatch: expected ${input.snapshotHash}, received ${registry.activeHash}.`);
     }
+  }
+
+  /**
+   * A host that can ask a human for a credential wires itself here.
+   *
+   * Without it the tool reports UNAVAILABLE rather than pretending: a run that needs a key it cannot obtain should say
+   * so, and point at wherever this host keeps credentials.
+   */
+  private authorizationPort: AiCoderAuthorizationPort | null = null;
+
+  /** Called once by a host that can hold a conversation with the human. */
+  attachAuthorization(port: AiCoderAuthorizationPort): void {
+    this.authorizationPort = port;
   }
 
   /** Read once per executor: a workspace that edits its hooks mid-run gets them on the next run. */
@@ -1166,6 +1180,33 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
           effects: Object.freeze({ stateVersion: sha256Text(reminderId + String(dueAt)) }),
           output: Object.freeze({ due_at: new Date(dueAt).toISOString(), reminder_id: reminderId }),
           summary: "Reminder set for " + new Date(dueAt).toISOString() + ".",
+          trust: "trusted" as const,
+        });
+      }
+      case "authorization.request": {
+        const port = this.authorizationPort;
+        if (port === null) {
+          throw new ToolAdapterError("UNAVAILABLE", "This host cannot ask for a credential in conversation; configure it where this host keeps credentials.");
+        }
+        const credential = stringArgument(argumentsValue, "credential");
+        const message = stringArgument(argumentsValue, "message");
+        const placeholder = stringArgument(argumentsValue, "placeholder");
+        const outcome = await port.requestSecret({
+          credential,
+          message,
+          ...(placeholder === "" ? {} : { placeholder }),
+        });
+        if (outcome === null) {
+          throw new ToolAdapterError("USER_DECLINED", `The human declined to supply ${credential}.`);
+        }
+        /*
+         * The output is what the model reads, so it carries the masked form and nothing else: a caller cannot leak a
+         * secret it never received. That is the whole point of the seam.
+         */
+        return Object.freeze({
+          effects: Object.freeze({ stateVersion: sha256Text(outcome.credential + outcome.masked) }),
+          output: Object.freeze({ credential: outcome.credential, masked: outcome.masked, stored: true }),
+          summary: `Stored ${outcome.credential} (${outcome.masked}).`,
           trust: "trusted" as const,
         });
       }

@@ -49,6 +49,8 @@ export const AI_CODER_CORE_TOOL_EFFECT_PROFILE: Readonly<
   "artifact.create": effectCapabilities("approval", "state_version"),
   "artifact.list": effectCapabilities("approval"),
   "artifact.read": effectCapabilities("approval"),
+  /* A stored credential is state, not a workspace mutation: claiming "write" would make this a mutation-capable tool. */
+  "authorization.request": effectCapabilities("approval", "state_version"),
   "catalog.search": effectCapabilities("approval", "state_version"),
   "code.run": effectCapabilities("approval", "inspect"),
   "command.run": effectCapabilities("approval", "state_version", "write"),

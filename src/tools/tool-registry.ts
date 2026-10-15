@@ -495,6 +495,13 @@ const CATALOG: AiCoderToolDescriptor[] = [
     permissions: ["core.artifacts"], risk: "low", mutability: "read", maxOutputTokens: 8_000, supportsCancellation: true, modalities: modality(["artifact", "image"], ["structured_data", "text"]),
   }),
   descriptor({
+    id: "authorization.request", modelName: "request_credential", title: "Ask for a credential",
+    description: "Ask the human for one credential that configuration cannot supply - a provider API key, a sign-in code - when the run cannot continue without it. The answer is masked, stored by the host, and never enters this conversation: the result says the credential is stored and what it looks like, not what it is. Never ask for a credential the host already has.",
+    category: "communication", inputSchema: objectSchema({ credential: NON_EMPTY_STRING, message: NON_EMPTY_STRING, placeholder: STRING }, ["credential", "message"]),
+    outputSchema: objectSchema({ credential: NON_EMPTY_STRING, masked: NON_EMPTY_STRING, stored: BOOLEAN }, ["credential", "masked", "stored"]),
+    permissions: ["user.interaction"], risk: "medium", mutability: "write", timeoutMs: 600_000, supportsCancellation: true,
+  }),
+  descriptor({
     id: "artifact.create", modelName: "create_artifact", title: "Create artifact",
     description: "Persist bounded text as an AI Coder artifact. Use for large durable output that should leave model context. Do not store secrets or raw private reasoning. Returns artifact identity, MIME, and hash.",
     category: "artifact", transport: "native", inputSchema: objectSchema({ name: NON_EMPTY_STRING, content: STRING, mimeType: NON_EMPTY_STRING, retention: { type: "string", enum: ["temporary", "default", "durable"] } }, ["name", "content", "mimeType"]),
