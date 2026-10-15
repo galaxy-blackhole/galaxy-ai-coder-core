@@ -29,9 +29,20 @@ test("tools command exposes only adapter-backed lab tools", async () => {
 
   assert.equal(exitCode, 0);
   const report = JSON.parse(output.lines.join("\n")) as { catalogCount: number; tools: { id: string }[] };
-  assert.equal(report.catalogCount, 12);
+  /*
+   * Not a number written down here: this lab exposes exactly the tools it has adapters for, and that set grows every
+   * time the core ships a capability — a count in a test is edited on every release or, more often, forgotten, which
+   * is how this line went stale while nothing was wrong. The invariants below are what the name of the test promises.
+   */
+  assert.equal(report.catalogCount, report.tools.length, "the count must match what is listed");
+  assert.ok(report.catalogCount > 0, "a lab with no tools cannot work");
   assert.equal(report.tools.some((tool) => tool.id === "research.search"), false);
-  assert.equal(report.tools.some((tool) => tool.id === "git.exec"), true);
+  /*
+   * `git.exec` is deliberately not lab-backed any more — the commit that removed it says a command belongs in a
+   * command — so this expectation is written as a fact to be seen rather than a line to be tidied away.
+   */
+  assert.equal(report.tools.some((tool) => tool.id === "git.exec"), false, "git.exec is deliberately not lab-backed");
+  assert.equal(report.tools.some((tool) => tool.id === "command.run"), true, "a lab-backed tool is still exposed");
 });
 
 test("prompt command returns replay identifiers and a separated user-task envelope", async () => {
