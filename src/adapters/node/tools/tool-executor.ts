@@ -674,6 +674,12 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
         { cause: error },
       );
     }
+    /*
+     * PostToolUse is told what happened and cannot change it: the other tools treat a failure here as a note rather
+     * than a veto, and a hook able to rewrite a finished call would be a second, invisible tool. It runs after the
+     * output was validated, so what it hears is what the model is about to see.
+     */
+    await this.runPostToolHooks(descriptor.id, context, dispatched.output);
     const outputValidation = validateAiCoderJsonSchema(descriptor.outputSchema, dispatched.output);
     if (!outputValidation.valid) {
       throw new UnknownSideEffectOutcomeError(
@@ -730,6 +736,25 @@ export class NodeToolExecutor implements AiCoderRuntimeToolExecutor {
      */
     if (this.toolPresentation !== "native") this.registry.activate("code.run");
     return this.registry;
+  }
+
+  /**
+   * Tells this workspace's PostToolUse hooks what a call produced.
+   *
+   * It never throws, on purpose: the call has already happened, so a hook here can inform a person or write a log,
+   * and it cannot fail work that is already done. The decision it returns is deliberately ignored for that reason —
+   * a refusal belongs to PreToolUse, where there is still something to refuse.
+   */
+  private async runPostToolHooks(toolId: string, context: ToolExecutionContext, output: unknown): Promise<void> {
+    const root = (context as { workspaceRoot?: unknown }).workspaceRoot;
+    if (typeof root !== "string") return;
+    try {
+      const hooks = await this.hookConfigFor(root);
+      if (hooks === null || hooks.PostToolUse === undefined) return;
+      await runToolHooks(hooks, "PostToolUse", toolId, { output, tool: toolId });
+    } catch {
+      /* A note, not a veto. */
+    }
   }
 
   private async dispatch(
