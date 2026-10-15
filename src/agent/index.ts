@@ -1,6 +1,6 @@
 import type { RunExecutionContext, ToolExecutionContext } from "../ports/execution-context.js";
 import type { CodingToolCall, CodingToolDefinition } from "../tools/coding-messages.js";
-import type { AiCoderRuntimeToolExecutor, AiCoderRuntimeToolResult, AiCoderRuntimeToolSet } from "../runtime/runtime-types.js";
+import type { AiCoderRuntimeEffectCapability, AiCoderRuntimeToolExecutor, AiCoderRuntimeToolResult, AiCoderRuntimeToolSet } from "../runtime/runtime-types.js";
 import { hashAiCoderCanonicalValue } from "../context/checkpoint.js";
 import { validateAiCoderJsonSchema } from "../tools/json-schema.js";
 import type { SkillRequirement } from "./skill-requirements.js";
@@ -108,6 +108,39 @@ export class AgentToolExecutor implements AiCoderRuntimeToolExecutor {
   }
 }
 
+/**
+ * Merges the effect policies of several executors without letting ignorance erase knowledge.
+ *
+ * A tool's policy belongs to whoever owns that tool. `Object.assign` looked like a merge but behaved like a
+ * last-writer-wins overwrite, so an executor that had never heard of a tool flattened its policy to an empty list —
+ * and the runtime, which refuses a tool whose declared capabilities drifted from the core profile, then rejected the
+ * tool outright. An empty list means "nothing to say", never "no policy".
+ *
+ * Two sets that disagree about a NON-empty policy are a real contradiction, and they are reported rather than
+ * quietly resolved, because silently preferring one would hide exactly the mistake this function exists to prevent.
+ */
+function mergeEffectCapabilities(
+  sets: readonly AiCoderRuntimeToolSet[],
+): Readonly<Record<string, readonly AiCoderRuntimeEffectCapability[]>> {
+  const merged: Record<string, readonly AiCoderRuntimeEffectCapability[]> = {};
+  for (const set of sets) {
+    for (const [canonicalToolId, capabilities] of Object.entries(set.effectCapabilities)) {
+      const existing = merged[canonicalToolId];
+      if (existing === undefined || existing.length === 0) {
+        if (capabilities.length > 0) merged[canonicalToolId] = capabilities;
+        else if (existing === undefined) merged[canonicalToolId] = capabilities;
+        continue;
+      }
+      if (capabilities.length === 0) continue;
+      const same = existing.length === capabilities.length && [...existing].sort().every((value, index) => value === [...capabilities].sort()[index]);
+      if (!same) {
+        throw new Error("Tool effect policy contradicts between executors for " + canonicalToolId + ".");
+      }
+    }
+  }
+  return Object.freeze(merged);
+}
+
 /** Refreshes dynamic catalogs and rejects collisions instead of silently shadowing tools. */
 export class CompositeToolExecutor implements AiCoderRuntimeToolExecutor {
   private routes = new Map<string, AiCoderRuntimeToolExecutor>();
@@ -123,7 +156,7 @@ export class CompositeToolExecutor implements AiCoderRuntimeToolExecutor {
     return {
       definitions: sets.flatMap(s => s.definitions),
       canonicalToolIds: Object.assign({}, ...sets.map(s => s.canonicalToolIds)),
-      effectCapabilities: Object.assign({}, ...sets.map(s => s.effectCapabilities)),
+      effectCapabilities: mergeEffectCapabilities(sets),
       snapshotHash: await hashAiCoderCanonicalValue(sets.map(s => s.snapshotHash)),
     };
   }
