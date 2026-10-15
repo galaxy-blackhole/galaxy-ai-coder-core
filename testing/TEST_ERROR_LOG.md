@@ -1653,3 +1653,31 @@ Earlier matching runs: none among retained logs. A match alone does not establis
 Resolution and regression requirements: [incident register and upstream references](<docs/TEST_FAILURE_ANALYSIS.md>).
 
 **SOURCE DRIFT:** source changed during this run; passing steps do not certify a single source revision.
+
+- 2026-10-15 16:33:32 +07:00 (2026-10-15T09:33:32.753Z) | run 2026-10-15T09-33-32-618Z-v9g3kp | started - - | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.md>)
+
+- 2026-10-15 16:33:32 +07:00 (2026-10-15T09:33:32.781Z) | run 2026-10-15T09-33-32-618Z-v9g3kp | step-started 1/2 core:build | DONE 0/2; PASS 0/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.md>)
+
+- 2026-10-15 16:33:38 +07:00 (2026-10-15T09:33:38.509Z) | run 2026-10-15T09-33-32-618Z-v9g3kp | step-passed 1/2 core:build | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.md>)
+
+- 2026-10-15 16:33:38 +07:00 (2026-10-15T09:33:38.516Z) | run 2026-10-15T09-33-32-618Z-v9g3kp | step-started 2/2 cli:unit | DONE 1/2; PASS 1/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.md>)
+
+- 2026-10-15 16:33:50 +07:00 (2026-10-15T09:33:50.105Z) | run 2026-10-15T09-33-32-618Z-v9g3kp | step-passed 2/2 cli:unit | DONE 2/2; PASS 2/2; FAIL 0 | [run trace](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.md>)
+
+<!-- audit-finished:2026-10-15T09-33-32-618Z-v9g3kp -->
+## Run 2026-10-15T09-33-32-618Z-v9g3kp
+
+- Status: **passed**. DONE 2/2; PASS 2/2; FAIL 0; NOT RUN 0; RUNNING 0.
+- Started: 2026-10-15 16:33:32 +07:00 (2026-10-15T09:33:32.753Z). Finished: 2026-10-15 16:33:50 +07:00 (2026-10-15T09:33:50.213Z).
+- Last PASS: cli:unit. First failure: none. Active: none.
+- Evidence: [summary.json](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/summary.json>).
+- Source SHA-256: 26fc4538a1d83becfd874d2d1ff6ebd3de3f9c1f2c3e578f6fa606c89781d4a7. Source unchanged: true.
+- Repositories: {"cli":{"head":"78811512ef8ff08ad91012d8bcb901f11fd90ccd","packageVersion":"2.0.0-alpha.8"},"core":{"head":"78811512ef8ff08ad91012d8bcb901f11fd90ccd","packageVersion":"0.5.1"}}.
+- Environment: {"node":"v26.9.0","platform":"darwin","arch":"x64"}. Options: {"live":false,"github":false,"keepGoing":false,"list":false,"repeat":1,"only":"cli:unit"}.
+
+DONE counts finished steps, including failures; PASS counts successful steps. Audit groups, scenario stages and individual tests have separate denominators.
+
+| Step | Result | Started (+07:00 and UTC) | Finished (+07:00 and UTC) | Detail / evidence |
+| --- | --- | --- | --- | --- |
+| 1/2 core:build | PASS | 2026-10-15 16:33:32 +07:00 (2026-10-15T09:33:32.781Z) | 2026-10-15 16:33:38 +07:00 (2026-10-15T09:33:38.509Z) | [stdout](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/001-core-build/stdout.log>) / [stderr](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/001-core-build/stderr.log>) |
+| 2/2 cli:unit | PASS | 2026-10-15 16:33:38 +07:00 (2026-10-15T09:33:38.516Z) | 2026-10-15 16:33:50 +07:00 (2026-10-15T09:33:50.105Z) | Tests: 123 passed, 0 failed, 0 skipped; total 123. Last PASS: baseline verifies retained bytes and rejects modified source, summary and invalid paths. [stdout](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/002-cli-unit/stdout.log>) / [stderr](<.galaxy/audit/2026-10-15T09-33-32-618Z-v9g3kp/002-cli-unit/stderr.log>) |

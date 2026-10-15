@@ -102,6 +102,8 @@ export const LAB_OPTIONAL_CONTRACT_TOOL_IDS = Object.freeze([
   "research.search",
   "command.session",
   "preview.manage",
+  /* The review tool the completion gate asks for after a mutation; the CLI wires it when the workspace has no Git. */
+  "workspace.review",
   "perception.analyze",
   "artifact.create",
   "artifact.list",

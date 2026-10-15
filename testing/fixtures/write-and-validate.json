@@ -3,7 +3,9 @@
   "name": "write and validate",
   "task": "Create hello.txt with the exact text hello and verify the project test before reporting completion.",
   "mode": "auto",
-  "approvalDecisions": { "project.validate": "allow" },
+  "approvalDecisions": {
+    "project.validate": "allow"
+  },
   "initialFiles": [
     {
       "path": "package.json",
@@ -20,7 +22,10 @@
         {
           "toolCallId": "call-inspect",
           "toolName": "list_files",
-          "arguments": { "path": ".", "depth": 2 }
+          "arguments": {
+            "path": ".",
+            "depth": 2
+          }
         }
       ],
       "finishReason": "tool_calls"
@@ -33,7 +38,9 @@
           "arguments": {
             "path": "hello.txt",
             "content": "hello\n",
-            "precondition": { "kind": "must_not_exist" }
+            "precondition": {
+              "kind": "must_not_exist"
+            }
           }
         }
       ],
@@ -44,7 +51,13 @@
         {
           "toolCallId": "call-validate",
           "toolName": "validate_project",
-          "arguments": { "checks": ["test"], "path": ".", "timeoutMs": 30000 }
+          "arguments": {
+            "checks": [
+              "test"
+            ],
+            "path": ".",
+            "timeoutMs": 30000
+          }
         }
       ],
       "finishReason": "tool_calls"
@@ -54,7 +67,10 @@
         {
           "toolCallId": "call-discover-git",
           "toolName": "search_tools",
-          "arguments": { "query": "inspect final git diff", "category": "git", "limit": 5 }
+          "arguments": {
+            "query": "inspect the file that was written",
+            "limit": 5
+          }
         }
       ],
       "finishReason": "tool_calls"
@@ -62,15 +78,15 @@
     {
       "toolCalls": [
         {
-          "toolCallId": "call-review-diff",
-          "toolName": "git_operation",
-          "arguments": { "action": "diff", "paths": ["hello.txt"] }
+          "toolCallId": "call-review",
+          "toolName": "review_changes",
+          "arguments": {}
         }
       ],
       "finishReason": "tool_calls"
     },
     {
-      "content": "Created hello.txt with the exact requested content. The project test passed and the final Git diff was reviewed.",
+      "content": "Created hello.txt with the exact requested content. The project test passed.",
       "finishReason": "stop"
     }
   ],
@@ -78,32 +94,51 @@
     "status": "completed",
     "errorCode": null,
     "allModelStepsConsumed": true,
-    "allowedChanges": ["hello.txt"],
+    "allowedChanges": [
+      "hello.txt"
+    ],
     "toolSequence": [
       "list_files",
       "write_file",
       "validate_project",
       "search_tools",
-      "git_operation"
+      "review_changes"
     ],
     "files": [
-      { "path": "hello.txt", "content": "hello\n" }
+      {
+        "path": "hello.txt",
+        "content": "hello\n"
+      }
     ],
     "toolResults": [
-      { "toolName": "list_files", "canonicalToolId": "workspace.list", "ok": true },
-      { "toolName": "write_file", "canonicalToolId": "workspace.write", "ok": true },
-      { "toolName": "validate_project", "canonicalToolId": "project.validate", "ok": true },
-      { "toolName": "search_tools", "canonicalToolId": "catalog.search", "ok": true },
       {
-        "toolName": "git_operation",
-        "canonicalToolId": "git.exec",
-        "ok": true,
-        "contentIncludes": ["hello.txt", "+hello"]
+        "toolName": "list_files",
+        "canonicalToolId": "workspace.list",
+        "ok": true
+      },
+      {
+        "toolName": "write_file",
+        "canonicalToolId": "workspace.write",
+        "ok": true
+      },
+      {
+        "toolName": "validate_project",
+        "canonicalToolId": "project.validate",
+        "ok": true
+      },
+      {
+        "toolName": "search_tools",
+        "canonicalToolId": "catalog.search",
+        "ok": true
+      },
+      {
+        "toolName": "review_changes",
+        "canonicalToolId": "workspace.review",
+        "ok": true
       }
     ],
     "finalResponseIncludes": [
-      "project test passed",
-      "final Git diff was reviewed"
+      "project test passed"
     ]
   }
 }

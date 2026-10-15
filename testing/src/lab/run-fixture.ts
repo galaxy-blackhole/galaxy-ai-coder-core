@@ -480,7 +480,7 @@ export async function runDeterministicFixture(options: DeterministicRunOptions):
         updatedAt: checkpoint.createdAt,
       }));
     }
-    return new LabToolExecutor({
+    const executor = new LabToolExecutor({
       approval: createFixtureApprovalPort(fixture.approvalDecisions),
       approvalProfile: fixture.runtime?.approvalProfile ?? "balanced",
       capabilities: model.capabilitiesSnapshot,
@@ -490,6 +490,12 @@ export async function runDeterministicFixture(options: DeterministicRunOptions):
       toolProfile: fixture.runtime?.toolProfile === "full_contract" ? "full_contract" : "default",
       workspace,
     });
+    /*
+     * The review tool the completion gate requires after a workspace mutation. The CLI wires the same executor for a
+     * workspace without Git; the lab had none, so a fixture that wrote a file could never satisfy the gate.
+     */
+    executor.attachWorkspaceReview(workspace);
+    return executor;
   };
   let executor = createExecutor();
   const provisionalContext: RunExecutionContext = Object.freeze({
